@@ -1386,6 +1386,9 @@ class WhatsAppBaileysChannelConfig:
     auth_dir: str = ""  # Defaults to ~/.openjarvis/whatsapp_auth
     assistant_name: str = "Jarvis"
     assistant_has_own_number: bool = False
+    # Comma-separated numbers allowed to talk to a dedicated assistant number
+    # (only used when assistant_has_own_number is true).
+    allowed_numbers: str = ""
 
 
 @dataclass

@@ -1,0 +1,168 @@
+# OpenJarvis en Railway: una instancia por persona, con WhatsApp
+
+Este fork prepara OpenJarvis para desplegarse en Railway como **asistente
+personal**: cada persona tiene su propio servicio (su propia memoria, su propia
+clave de acceso y su propio WhatsApp vinculado).
+
+```
+Proyecto Railway "jarvis"
+├── jarvis-jose    → volumen /data, WhatsApp de José
+├── jarvis-maria   → volumen /data, WhatsApp de María
+└── jarvis-pepe    → volumen /data, WhatsApp de Pepe
+        ▲
+        └── variables compartidas: OPENAI_API_KEY, ANTHROPIC_API_KEY
+```
+
+OpenJarvis no tiene usuarios internos: quien tiene la clave de una instancia
+ve todo lo de esa instancia. Por eso **una persona = un servicio**.
+
+## Qué incluye el fork
+
+| Cambio | Dónde |
+|---|---|
+| Imagen con OpenAI + Claude y Node para WhatsApp | `deploy/railway/Dockerfile` |
+| Arranque: puerto `$PORT`, permisos del volumen, `config.toml` desde variables | `deploy/railway/entrypoint.sh`, `bootstrap_config.py` |
+| Página para escanear el QR de WhatsApp | `/whatsapp` (`src/openjarvis/server/whatsapp_routes.py`) |
+| WhatsApp en modo personal: solo responde en el chat **"Tú" (mensajes a ti mismo)** | `whatsapp_baileys_bridge/src/bridge.ts` |
+| Sesión de WhatsApp guardada en el volumen, re-vinculación y reinicio automático | `channels/whatsapp_baileys.py` |
+| Script para crear instancias | `deploy/railway/new-instance.ps1` |
+
+## Cómo funciona WhatsApp (modo `self`, el de por defecto)
+
+1. La persona abre `https://<su-instancia>/whatsapp`, ve un QR y lo escanea
+   desde **WhatsApp → Ajustes → Dispositivos vinculados → Vincular dispositivo**
+   (igual que WhatsApp Web).
+2. La sesión se guarda en el volumen (`/data/whatsapp_auth`). Sobrevive a
+   reinicios y redeploys; no hay que volver a escanear.
+3. Para hablar con Jarvis, escribe en el chat **contigo mismo** ("Tú" /
+   "Mensajes para mí"). Jarvis contesta en ese mismo chat.
+4. **Los demás chats se ignoran**: Jarvis nunca contesta a tus contactos ni
+   a grupos.
+
+Si se desvincula desde el móvil o con el botón "Desvincular" de la página, se
+genera un QR nuevo automáticamente.
+
+> Modo `own` (opcional): si la persona tiene un **número dedicado** para el
+> asistente, pon `WHATSAPP_MODE=own` y `WHATSAPP_ALLOWED_NUMBERS=34600111222`.
+> Solo esos números podrán hablarle.
+
+> Baileys es una librería no oficial (protocolo de WhatsApp Web). Para uso
+> personal, en tu propio chat y con poco volumen, el riesgo es bajo, pero no
+> nulo: WhatsApp no lo soporta oficialmente. La alternativa oficial está en
+> [META-WHATSAPP.md](META-WHATSAPP.md).
+
+## Primera vez: preparar el proyecto en Railway
+
+1. Entra en [railway.com](https://railway.com) y crea un proyecto vacío
+   (**New Project → Empty Project**), por ejemplo `jarvis`.
+2. Conecta tu GitHub a Railway (Account Settings → GitHub) y da acceso al
+   repo `ergos-IA/OpenJarvis`.
+3. En el proyecto, **Settings → Shared Variables**, añade:
+   - `OPENAI_API_KEY` = tu clave de OpenAI (`sk-...`)
+   - `ANTHROPIC_API_KEY` = tu clave de Anthropic (`sk-ant-...`)
+4. En tu ordenador:
+   ```powershell
+   npm i -g @railway/cli
+   railway login
+   cd OpenJarvis
+   railway link        # elige el proyecto "jarvis"
+   ```
+
+## Crear una instancia para una persona
+
+```powershell
+./deploy/railway/new-instance.ps1 -Name maria
+./deploy/railway/new-instance.ps1 -Name pepe -Model claude-sonnet-4-6
+```
+
+El script crea el servicio `jarvis-<nombre>`, le pone volumen en `/data`,
+genera su clave de acceso, crea un dominio y te imprime el **enlace de
+vinculación**:
+
+```
+https://jarvis-maria-production.up.railway.app/whatsapp#key=oj_sk_...
+```
+
+Envía ese enlace a la persona (por un canal privado: lleva su clave). Al
+abrirlo verá el QR directamente. La clave va después de `#`, así que no viaja
+al servidor ni queda en los logs; el navegador la recuerda.
+
+El primer despliegue tarda unos 10-15 minutos (compila la imagen).
+
+### A mano, desde el panel (sin script)
+
+1. En el proyecto: **New → GitHub Repo → ergos-IA/OpenJarvis**. Railway
+   detecta `railway.toml` y usa `deploy/railway/Dockerfile`.
+2. **Variables** del servicio:
+
+   | Variable | Valor |
+   |---|---|
+   | `OPENJARVIS_API_KEY` | clave larga aleatoria (`oj_sk_...`) |
+   | `PORT` | `8000` |
+   | `OPENAI_API_KEY` | `${{shared.OPENAI_API_KEY}}` |
+   | `ANTHROPIC_API_KEY` | `${{shared.ANTHROPIC_API_KEY}}` |
+   | `JARVIS_MODEL` | `gpt-4o-mini` (o `claude-sonnet-4-6`, ...) |
+
+3. Clic derecho en el servicio → **Attach Volume** → mount path `/data`.
+4. **Settings → Networking → Generate Domain** (puerto 8000).
+5. Abre `https://<dominio>/whatsapp#key=<OPENJARVIS_API_KEY>`.
+
+## Variables de entorno
+
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| `OPENJARVIS_API_KEY` | — (obligatoria) | Clave de acceso a la API, la web y la página del QR |
+| `PORT` | `8000` | Puerto de escucha |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | — | Proveedores de modelos; puedes tener los dos |
+| `JARVIS_MODEL` | `gpt-4o-mini` | Modelo por defecto (también el de WhatsApp). Si contiene `claude` usa Anthropic, si no OpenAI |
+| `JARVIS_ENGINE` | `cloud` | Motor de inferencia |
+| `JARVIS_ASSISTANT_NAME` | `Jarvis` | Nombre del asistente |
+| `JARVIS_CHANNEL_AGENT` | `simple` | Agente que responde por WhatsApp (`simple`, `orchestrator`, ...) |
+| `WHATSAPP_ENABLED` | `true` | `false` para desactivar WhatsApp |
+| `WHATSAPP_MODE` | `self` | `self` = número personal, chat contigo mismo · `own` = número dedicado |
+| `WHATSAPP_ALLOWED_NUMBERS` | — | Solo modo `own`: números permitidos, con prefijo, separados por coma |
+
+Modelos que reconoce el motor cloud: `gpt-4o-mini`, `gpt-4o`, `gpt-5`,
+`gpt-5-mini`, `claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-opus-4-6`, ...
+(lista completa en `src/openjarvis/engine/cloud.py`). En la web se puede
+cambiar de modelo en cada conversación.
+
+## Operación diaria
+
+```powershell
+railway service list                       # ver instancias
+railway logs --service jarvis-maria        # logs
+railway service redeploy --service jarvis-maria
+railway variable set JARVIS_MODEL=claude-sonnet-4-6 --service jarvis-maria
+```
+
+- **Actualizar todas**: haz push a `main`; Railway redespliega cada servicio
+  conectado al repo. La sesión de WhatsApp y los datos siguen en el volumen.
+- **Traer novedades del proyecto original**:
+  ```powershell
+  git fetch upstream
+  git merge upstream/main
+  git push
+  ```
+- **Borrar una instancia**: `railway service delete --service jarvis-maria`
+  (borra también sus datos). Que la persona quite el dispositivo vinculado en
+  su WhatsApp.
+
+## Costes orientativos
+
+- Railway: cada instancia consume ~300-600 MB de RAM en reposo. En el plan
+  Hobby (5 $/mes de crédito incluido) cuenta con unos 3-6 $/mes por instancia
+  más el volumen (céntimos por GB).
+- Modelo: según uso. `gpt-4o-mini` y `claude-haiku-4-5` son muy baratos para
+  chat personal.
+
+## Problemas frecuentes
+
+| Síntoma | Causa / solución |
+|---|---|
+| El servicio se reinicia con `OPENJARVIS_API_KEY no está definida` | Falta la variable |
+| `/whatsapp` dice "WhatsApp no está activado" | `WHATSAPP_ENABLED=false`, o el canal no arrancó: mira los logs |
+| El QR no aparece | Espera ~30 s tras el arranque; revisa los logs (`Bridge error`) |
+| Tras un redeploy pide QR otra vez | El volumen no está montado en `/data` |
+| Jarvis no contesta | Escribe en el chat **contigo mismo**, no en otro chat (modo `self`) |
+| Error de permisos en `/data` | El entrypoint arregla la propiedad al arrancar; no cambies el usuario de arranque del contenedor |

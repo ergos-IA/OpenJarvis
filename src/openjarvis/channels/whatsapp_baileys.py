@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 import threading
@@ -41,6 +42,26 @@ if not _BRIDGE_SRC.exists():
 # Default runtime directory (npm install + auth state).
 _DEFAULT_RUNTIME_DIR = get_config_dir() / "whatsapp_baileys_bridge"
 
+# Optional pre-built bridge (``dist/`` + ``node_modules/``), e.g. baked into a
+# container image, so no ``npm install`` runs at startup.
+_PREBUILT_ENV = "OPENJARVIS_BAILEYS_BRIDGE_DIR"
+
+# Seconds to wait before respawning a bridge process that exited unexpectedly.
+_RESTART_DELAY_S = 5.0
+
+
+def _parse_numbers(value: str | List[str] | None) -> List[str]:
+    """Normalise a comma-separated string or list of phone numbers to digits."""
+    if not value:
+        return []
+    items = value.split(",") if isinstance(value, str) else value
+    out = []
+    for item in items:
+        num = "".join(ch for ch in str(item) if ch.isdigit())
+        if num:
+            out.append(num)
+    return out
+
 
 @ChannelRegistry.register("whatsapp_baileys")
 class WhatsAppBaileysChannel(BaseChannel):
@@ -56,8 +77,13 @@ class WhatsAppBaileysChannel(BaseChannel):
     assistant_name:
         Display name used by the assistant in conversations.
     assistant_has_own_number:
-        If ``True`` the assistant has a dedicated WhatsApp number and will
-        not filter out its own messages.
+        If ``False`` (default) the bridge is linked to the user's personal
+        number and only the "Message yourself" chat talks to the assistant.
+        If ``True`` the assistant has a dedicated number and answers only the
+        numbers in *allowed_numbers*.
+    allowed_numbers:
+        Phone numbers (with country code) allowed to talk to a dedicated
+        assistant number.  Falls back to ``WHATSAPP_ALLOWED_NUMBERS``.
     bus:
         Optional event bus for publishing channel events.
     """
@@ -70,11 +96,15 @@ class WhatsAppBaileysChannel(BaseChannel):
         auth_dir: str = "",
         assistant_name: str = "Jarvis",
         assistant_has_own_number: bool = False,
+        allowed_numbers: str | List[str] = "",
         bus: Optional[EventBus] = None,
     ) -> None:
         self._auth_dir = auth_dir
         self._assistant_name = assistant_name
         self._assistant_has_own_number = assistant_has_own_number
+        self._allowed_numbers = _parse_numbers(
+            allowed_numbers or os.environ.get("WHATSAPP_ALLOWED_NUMBERS", "")
+        )
         self._bus = bus
         self._handlers: List[ChannelHandler] = []
         self._status = ChannelStatus.DISCONNECTED
@@ -83,6 +113,12 @@ class WhatsAppBaileysChannel(BaseChannel):
         self._stop_event = threading.Event()
         self._runtime_dir = _DEFAULT_RUNTIME_DIR
         self._last_qr: str = ""
+        self._last_qr_svg: str = ""
+        self._me: str = ""
+        self._last_error: str = ""
+        self._stderr_thread: Optional[threading.Thread] = None
+        # Respawn the bridge if it dies; only once started via connect().
+        self._supervise = False
 
     # -- bridge lifecycle -------------------------------------------------------
 
@@ -100,6 +136,17 @@ class WhatsAppBaileysChannel(BaseChannel):
             raise RuntimeError(
                 "Node.js is required for WhatsAppBaileysChannel but 'node' "
                 "was not found on PATH.  Install Node.js 22+ and try again."
+            )
+
+        prebuilt = os.environ.get(_PREBUILT_ENV, "")
+        if prebuilt:
+            bridge_js = Path(prebuilt) / "dist" / "bridge.js"
+            if bridge_js.exists() and (Path(prebuilt) / "node_modules").exists():
+                return bridge_js
+            logger.warning(
+                "%s=%s has no built bridge; falling back to npm install",
+                _PREBUILT_ENV,
+                prebuilt,
             )
 
         runtime = self._runtime_dir
@@ -157,11 +204,15 @@ class WhatsAppBaileysChannel(BaseChannel):
             return
 
         auth = self._auth_dir or str(self._runtime_dir / "auth")
+        cmd = ["node", str(bridge_js), "--auth-dir", auth]
+        cmd += ["--mode", "own" if self._assistant_has_own_number else "self"]
+        if self._allowed_numbers:
+            cmd += ["--allowed", ",".join(self._allowed_numbers)]
 
         try:
             self._stop_event.clear()
             self._process = subprocess.Popen(
-                ["node", str(bridge_js), "--auth-dir", auth],
+                cmd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -173,6 +224,13 @@ class WhatsAppBaileysChannel(BaseChannel):
                 daemon=True,
             )
             self._reader_thread.start()
+            # An undrained stderr pipe fills up and blocks the bridge.
+            self._stderr_thread = threading.Thread(
+                target=self._stderr_loop,
+                daemon=True,
+            )
+            self._stderr_thread.start()
+            self._supervise = True
             logger.info(
                 "WhatsApp Baileys bridge started (pid=%s)",
                 self._process.pid,
@@ -183,6 +241,7 @@ class WhatsAppBaileysChannel(BaseChannel):
 
     def disconnect(self) -> None:
         """Send disconnect command to the bridge and terminate the subprocess."""
+        self._supervise = False
         self._stop_event.set()
 
         if self._process is not None and self._process.stdin is not None:
@@ -244,6 +303,34 @@ class WhatsAppBaileysChannel(BaseChannel):
         """Register a callback for incoming messages."""
         self._handlers.append(handler)
 
+    # -- pairing ------------------------------------------------------------------
+
+    def pairing_info(self) -> Dict[str, Any]:
+        """Return linking state for the pairing page.
+
+        ``qr_svg`` is only present while waiting for the QR to be scanned.
+        """
+        connected = self._status == ChannelStatus.CONNECTED
+        return {
+            "status": self._status.value,
+            "connected": connected,
+            "me": self._me if connected else "",
+            "mode": "own" if self._assistant_has_own_number else "self",
+            "qr_svg": "" if connected else self._last_qr_svg,
+            "error": self._last_error,
+        }
+
+    def logout(self) -> bool:
+        """Unlink the WhatsApp device; the bridge then offers a new QR."""
+        if self._process is None:
+            return False
+        try:
+            self._write_command({"type": "logout"})
+            return True
+        except Exception:
+            logger.debug("WhatsApp Baileys logout failed", exc_info=True)
+            return False
+
     # -- internal helpers -------------------------------------------------------
 
     def _write_command(self, cmd: Dict[str, Any]) -> None:
@@ -281,6 +368,30 @@ class WhatsAppBaileysChannel(BaseChannel):
                 logger.debug("Reader loop error", exc_info=True)
                 self._status = ChannelStatus.ERROR
 
+        # stdout closed: the bridge exited.  Respawn unless we are stopping.
+        if self._supervise and not self._stop_event.is_set() and self._process is proc:
+            logger.warning(
+                "WhatsApp Baileys bridge exited; restarting in %.0fs",
+                _RESTART_DELAY_S,
+            )
+            self._status = ChannelStatus.ERROR
+            if not self._stop_event.wait(_RESTART_DELAY_S):
+                self._process = None
+                self.connect()
+
+    def _stderr_loop(self) -> None:
+        """Background thread: forward bridge stderr to the log."""
+        proc = self._process
+        if proc is None or proc.stderr is None:
+            return
+        try:
+            for raw_line in proc.stderr:
+                line = raw_line.rstrip()
+                if line:
+                    logger.debug("baileys: %s", line)
+        except Exception:
+            logger.debug("Stderr loop error", exc_info=True)
+
     def _handle_bridge_event(self, event: Dict[str, Any]) -> None:
         """Dispatch a single JSON event from the bridge."""
         event_type = event.get("type", "")
@@ -289,13 +400,21 @@ class WhatsAppBaileysChannel(BaseChannel):
             new_status = event.get("status", "")
             if new_status == "connected":
                 self._status = ChannelStatus.CONNECTED
+                self._me = event.get("me", "")
+                self._last_qr = ""
+                self._last_qr_svg = ""
+                self._last_error = ""
                 logger.info("WhatsApp Baileys bridge connected")
-            elif new_status == "disconnected":
+            elif new_status in ("disconnected", "logged_out"):
                 self._status = ChannelStatus.DISCONNECTED
+                self._me = ""
+                if new_status == "logged_out":
+                    logger.info("WhatsApp device unlinked -- waiting for new QR")
 
         elif event_type == "qr":
             self._last_qr = event.get("data", "")
-            logger.info("WhatsApp QR code received -- scan to authenticate")
+            self._last_qr_svg = event.get("svg", "")
+            logger.info("WhatsApp QR code ready -- open /whatsapp to scan it")
 
         elif event_type == "message":
             cm = ChannelMessage(
@@ -322,8 +441,12 @@ class WhatsAppBaileysChannel(BaseChannel):
                 )
 
         elif event_type == "error":
-            logger.error("Bridge error: %s", event.get("message", "unknown"))
-            self._status = ChannelStatus.ERROR
+            message = event.get("message", "unknown")
+            logger.error("Bridge error: %s", message)
+            self._last_error = message
+            # Send failures and config warnings do not take the link down.
+            if message.startswith("Fatal"):
+                self._status = ChannelStatus.ERROR
 
     def _publish_sent(self, channel: str, content: str, conversation_id: str) -> None:
         """Publish a CHANNEL_MESSAGE_SENT event on the bus."""

@@ -149,6 +149,8 @@ def _whatsapp_baileys(c: Any) -> Dict[str, Any]:
         kw["auth_dir"] = c.auth_dir
     if c.assistant_name:
         kw["assistant_name"] = c.assistant_name
+    if getattr(c, "allowed_numbers", ""):
+        kw["allowed_numbers"] = c.allowed_numbers
     return kw
 
 

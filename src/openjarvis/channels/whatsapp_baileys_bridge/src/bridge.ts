@@ -5,22 +5,42 @@
  *
  * Input commands (stdin):
  *   {"type":"send","jid":"<jid>","text":"<message>"}
+ *   {"type":"logout"}       -- unlink the device, wipe auth, emit a new QR
  *   {"type":"disconnect"}
  *
  * Output events (stdout):
  *   {"type":"message","jid":"<jid>","sender":"<sender>","text":"<text>","message_id":"<id>"}
- *   {"type":"status","status":"connected"|"disconnected"}
- *   {"type":"qr","data":"<qr-string>"}
+ *   {"type":"status","status":"connected"|"disconnected"|"logged_out","me":"<number>"}
+ *   {"type":"qr","data":"<qr-string>","svg":"<svg markup>"}
  *   {"type":"error","message":"<description>"}
+ *
+ * Arguments:
+ *   --auth-dir <dir>      Baileys multi-file auth state (persist this!)
+ *   --mode self|own       self: personal number, only the "Message yourself"
+ *                         chat talks to the assistant (default).
+ *                         own: the assistant has its own number; only numbers
+ *                         listed in --allowed may talk to it.
+ *   --allowed <n1,n2>     Comma-separated phone numbers (digits, with country
+ *                         code) allowed in "own" mode.
  */
 
 import makeWASocket, {
+  areJidsSameUser,
   DisconnectReason,
+  fetchLatestBaileysVersion,
+  generateMessageIDV2,
   useMultiFileAuthState,
   WASocket,
 } from "@whiskeysockets/baileys";
+import * as fs from "fs";
 import * as readline from "readline";
-import * as qrcodeTerminal from "qrcode-terminal";
+/* eslint-disable @typescript-eslint/no-var-requires */
+const QRCode = require("qrcode");
+const pino = require("pino");
+/* eslint-enable @typescript-eslint/no-var-requires */
+
+// Baileys logs through pino; keep stdout clean for the JSON-line protocol.
+const logger = pino({ level: "warn" }, pino.destination(2));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -30,16 +50,52 @@ function emit(event: Record<string, unknown>): void {
   process.stdout.write(JSON.stringify(event) + "\n");
 }
 
-function parseArgs(): { authDir: string } {
+interface Args {
+  authDir: string;
+  mode: "self" | "own";
+  allowed: Set<string>;
+}
+
+function digits(value: string): string {
+  return (value || "").replace(/\D/g, "");
+}
+
+function parseArgs(): Args {
   const args = process.argv.slice(2);
-  let authDir = "./auth";
+  const out: Args = { authDir: "./auth", mode: "self", allowed: new Set() };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--auth-dir" && i + 1 < args.length) {
-      authDir = args[i + 1];
-      break;
+    const next = i + 1 < args.length ? args[i + 1] : "";
+    if (args[i] === "--auth-dir" && next) {
+      out.authDir = next;
+      i++;
+    } else if (args[i] === "--mode" && next) {
+      out.mode = next === "own" ? "own" : "self";
+      i++;
+    } else if (args[i] === "--allowed") {
+      for (const n of next.split(",")) {
+        const d = digits(n);
+        if (d) out.allowed.add(d);
+      }
+      i++;
     }
   }
-  return { authDir };
+  return out;
+}
+
+/** Phone number (digits) of a JID, or "" for LID / group / other JIDs. */
+function phoneOf(jid: string | null | undefined): string {
+  if (!jid || !jid.endsWith("@s.whatsapp.net")) return "";
+  return digits(jid.split("@")[0].split(":")[0]);
+}
+
+function extractText(message: any): string {
+  return (
+    message?.conversation ||
+    message?.extendedTextMessage?.text ||
+    message?.ephemeralMessage?.message?.extendedTextMessage?.text ||
+    message?.ephemeralMessage?.message?.conversation ||
+    ""
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -47,56 +103,138 @@ function parseArgs(): { authDir: string } {
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const { authDir } = parseArgs();
+  const { authDir, mode, allowed } = parseArgs();
 
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  // IDs of messages this bridge sent. In "self" mode our own replies land in
+  // the same chat as the user's messages, so they must not be fed back in.
+  const sentIds = new Set<string>();
+  const rememberSent = (id: string) => {
+    sentIds.add(id);
+    if (sentIds.size > 500) {
+      const first = sentIds.values().next().value;
+      if (first) sentIds.delete(first);
+    }
+  };
 
   let sock: WASocket | null = null;
+  let warnedEmptyAllowlist = false;
 
-  function startSocket(): void {
+  function isOwnChat(jid: string): boolean {
+    const me: any = sock?.user;
+    if (!me || !jid) return false;
+    return (
+      (!!me.id && areJidsSameUser(jid, me.id)) ||
+      (!!me.lid && areJidsSameUser(jid, me.lid))
+    );
+  }
+
+  function senderPhones(key: any): string[] {
+    return [
+      key.remoteJid,
+      key.remoteJidAlt,
+      key.participant,
+      key.participantAlt,
+      key.senderPn,
+    ]
+      .map(phoneOf)
+      .filter((p) => !!p);
+  }
+
+  function shouldHandle(msg: any): boolean {
+    const key = msg.key || {};
+    const jid: string = key.remoteJid || "";
+    if (!jid || jid === "status@broadcast" || jid.endsWith("@g.us")) return false;
+    if (key.id && sentIds.has(key.id)) return false;
+
+    if (mode === "self") {
+      // Only the "Message yourself" chat, written by the account owner.
+      return !!key.fromMe && isOwnChat(jid);
+    }
+
+    // "own" mode: dedicated assistant number, allowlisted senders only.
+    if (key.fromMe) return false;
+    if (allowed.size === 0) {
+      if (!warnedEmptyAllowlist) {
+        warnedEmptyAllowlist = true;
+        emit({
+          type: "error",
+          message:
+            "mode=own but no allowed numbers configured; ignoring all messages",
+        });
+      }
+      return false;
+    }
+    return senderPhones(key).some((p) => allowed.has(p));
+  }
+
+  async function startSocket(): Promise<void> {
+    const { state, saveCreds } = await useMultiFileAuthState(authDir);
+
+    // WhatsApp rejects outdated web-client versions (connection closes with
+    // 405 and no QR), so ask for the current one; fall back to the bundled.
+    let version: [number, number, number] | undefined;
+    try {
+      version = (await fetchLatestBaileysVersion()).version;
+    } catch {
+      version = undefined;
+    }
+
     sock = makeWASocket({
       auth: state,
+      logger,
+      ...(version ? { version } : {}),
       printQRInTerminal: false,
+      markOnlineOnConnect: false,
+      syncFullHistory: false,
     });
 
     sock.ev.on("creds.update", saveCreds);
 
-    sock.ev.on("connection.update", (update) => {
+    sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
-        // Show QR in stderr for local debugging and emit structured event.
-        qrcodeTerminal.generate(qr, { small: true }, (code: string) => {
-          process.stderr.write(code + "\n");
-        });
-        emit({ type: "qr", data: qr });
+        let svg = "";
+        try {
+          svg = await QRCode.toString(qr, { type: "svg", margin: 1 });
+        } catch {
+          svg = "";
+        }
+        emit({ type: "qr", data: qr, svg });
       }
 
       if (connection === "close") {
         const statusCode =
           (lastDisconnect?.error as any)?.output?.statusCode ??
-          DisconnectReason.unknown;
+          0;
 
         if (statusCode === DisconnectReason.loggedOut) {
-          emit({ type: "status", status: "disconnected" });
-          emit({ type: "error", message: "Logged out from WhatsApp" });
+          // Unlinked from the phone (or via logout): wipe the stale session
+          // and start over so a fresh QR is offered.
+          emit({ type: "status", status: "logged_out" });
+          fs.rmSync(authDir, { recursive: true, force: true });
+          setTimeout(() => void startSocket(), 1000);
         } else {
-          // Attempt reconnect for transient failures.
+          // Transient failure (or the restart WhatsApp requests right after
+          // pairing): reconnect with the saved credentials.
           emit({ type: "status", status: "disconnected" });
-          startSocket();
+          setTimeout(() => void startSocket(), 2000);
         }
       } else if (connection === "open") {
-        emit({ type: "status", status: "connected" });
+        emit({
+          type: "status",
+          status: "connected",
+          me: phoneOf((sock?.user as any)?.id || ""),
+        });
       }
     });
 
     sock.ev.on("messages.upsert", (m) => {
+      // "append" covers history sync and our own sends; only live messages.
+      if (m.type !== "notify") return;
       for (const msg of m.messages) {
-        if (!msg.message || msg.key.fromMe) continue;
-        const text =
-          msg.message.conversation ||
-          msg.message.extendedTextMessage?.text ||
-          "";
+        if (!msg.message || !shouldHandle(msg)) continue;
+        const text = extractText(msg.message);
         if (!text) continue;
 
         emit({
@@ -110,7 +248,7 @@ async function main(): Promise<void> {
     });
   }
 
-  startSocket();
+  await startSocket();
 
   // -----------------------------------------------------------------------
   // Stdin command processing
@@ -129,9 +267,23 @@ async function main(): Promise<void> {
 
     if (cmd.type === "send" && sock) {
       try {
-        await sock.sendMessage(cmd.jid as string, { text: cmd.text as string });
+        const messageId = generateMessageIDV2(sock.user?.id);
+        rememberSent(messageId);
+        await sock.sendMessage(
+          cmd.jid as string,
+          { text: cmd.text as string },
+          { messageId },
+        );
       } catch (err: any) {
         emit({ type: "error", message: `Send failed: ${err.message}` });
+      }
+    } else if (cmd.type === "logout") {
+      try {
+        // Triggers connection.update(close, loggedOut) -> wipe + new QR.
+        await sock?.logout();
+      } catch {
+        fs.rmSync(authDir, { recursive: true, force: true });
+        sock?.end(undefined);
       }
     } else if (cmd.type === "disconnect") {
       if (sock) {

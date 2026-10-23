@@ -250,10 +250,17 @@ class TestReaderLoop:
         ch._handle_bridge_event({"type": "qr", "data": "qr-code-string"})
         assert ch._last_qr == "qr-code-string"
 
-    def test_parses_error_event(self):
+    def test_parses_fatal_error_event(self):
         ch = WhatsAppBaileysChannel()
-        ch._handle_bridge_event({"type": "error", "message": "something broke"})
+        ch._handle_bridge_event({"type": "error", "message": "Fatal: boom"})
         assert ch.status() == ChannelStatus.ERROR
+
+    def test_non_fatal_error_keeps_connection(self):
+        ch = WhatsAppBaileysChannel()
+        ch._handle_bridge_event({"type": "status", "status": "connected"})
+        ch._handle_bridge_event({"type": "error", "message": "Send failed: x"})
+        assert ch.status() == ChannelStatus.CONNECTED
+        assert ch.pairing_info()["error"] == "Send failed: x"
 
     def test_message_event_publishes_to_bus(self):
         bus = EventBus(record_history=True)
@@ -331,3 +338,121 @@ class TestReaderLoop:
             }
         )
         bad_handler.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Personal-assistant mode, allowlist and pre-built bridge
+# ---------------------------------------------------------------------------
+
+
+def _spawn_args(ch, tmp_path):
+    """Run connect() with a fake bridge and return the spawned argv."""
+    ch._runtime_dir = tmp_path
+    bridge_js = tmp_path / "dist" / "bridge.js"
+    bridge_js.parent.mkdir(parents=True, exist_ok=True)
+    bridge_js.write_text("// bridge")
+    (tmp_path / "node_modules").mkdir(exist_ok=True)
+
+    mock_proc = MagicMock()
+    mock_proc.stdout = StringIO("")
+    mock_proc.stderr = StringIO("")
+    with (
+        patch("shutil.which", return_value="/usr/bin/node"),
+        patch("subprocess.Popen", return_value=mock_proc) as mock_popen,
+    ):
+        ch.connect()
+        argv = mock_popen.call_args[0][0]
+    ch._stop_event.set()
+    ch._process = None
+    return argv
+
+
+class TestModes:
+    def test_default_is_self_mode(self, tmp_path):
+        argv = _spawn_args(WhatsAppBaileysChannel(), tmp_path)
+        assert argv[argv.index("--mode") + 1] == "self"
+        assert "--allowed" not in argv
+
+    def test_own_number_passes_allowlist(self, tmp_path):
+        ch = WhatsAppBaileysChannel(
+            assistant_has_own_number=True,
+            allowed_numbers="+34 600 111 222, 34600333444",
+        )
+        argv = _spawn_args(ch, tmp_path)
+        assert argv[argv.index("--mode") + 1] == "own"
+        assert argv[argv.index("--allowed") + 1] == "34600111222,34600333444"
+
+    def test_allowlist_from_env(self, monkeypatch):
+        monkeypatch.setenv("WHATSAPP_ALLOWED_NUMBERS", "34600111222")
+        ch = WhatsAppBaileysChannel(assistant_has_own_number=True)
+        assert ch._allowed_numbers == ["34600111222"]
+
+    def test_config_kwargs_forward_allowlist(self):
+        from openjarvis.core.config import ChannelConfig
+        from openjarvis.system._channel_kwargs import build_channel_kwargs
+
+        cfg = ChannelConfig()
+        cfg.whatsapp_baileys.assistant_has_own_number = True
+        cfg.whatsapp_baileys.allowed_numbers = "34600111222"
+        kw = build_channel_kwargs(cfg, "whatsapp_baileys")
+        assert kw["allowed_numbers"] == "34600111222"
+        assert kw["assistant_has_own_number"] is True
+
+
+class TestPrebuiltBridge:
+    def test_uses_prebuilt_dir_without_npm(self, tmp_path, monkeypatch):
+        prebuilt = tmp_path / "prebuilt"
+        (prebuilt / "dist").mkdir(parents=True)
+        (prebuilt / "dist" / "bridge.js").write_text("// built")
+        (prebuilt / "node_modules").mkdir()
+        monkeypatch.setenv("OPENJARVIS_BAILEYS_BRIDGE_DIR", str(prebuilt))
+
+        ch = WhatsAppBaileysChannel()
+        ch._runtime_dir = tmp_path / "runtime"
+        with (
+            patch("shutil.which", return_value="/usr/bin/node"),
+            patch("subprocess.run") as mock_run,
+        ):
+            assert ch._ensure_bridge() == prebuilt / "dist" / "bridge.js"
+            mock_run.assert_not_called()
+
+
+class TestPairingState:
+    def test_logged_out_clears_number(self):
+        ch = WhatsAppBaileysChannel()
+        ch._handle_bridge_event(
+            {"type": "status", "status": "connected", "me": "34600111222"}
+        )
+        ch._handle_bridge_event({"type": "status", "status": "logged_out"})
+        info = ch.pairing_info()
+        assert info["connected"] is False
+        assert info["me"] == ""
+
+    def test_logout_without_process(self):
+        assert WhatsAppBaileysChannel().logout() is False
+
+
+class TestRestart:
+    def test_respawns_after_unexpected_exit(self):
+        ch = WhatsAppBaileysChannel()
+        proc = MagicMock()
+        proc.stdout = StringIO("")
+        ch._process = proc
+        ch._supervise = True
+        with (
+            patch("openjarvis.channels.whatsapp_baileys._RESTART_DELAY_S", 0),
+            patch.object(ch, "connect") as mock_connect,
+        ):
+            ch._reader_loop()
+        mock_connect.assert_called_once()
+        assert ch._process is None
+
+    def test_no_respawn_when_stopping(self):
+        ch = WhatsAppBaileysChannel()
+        proc = MagicMock()
+        proc.stdout = StringIO("")
+        ch._process = proc
+        ch._stop_event.set()
+        with patch.object(ch, "connect") as mock_connect:
+            ch._reader_loop()
+        mock_connect.assert_not_called()
