@@ -113,3 +113,37 @@ class TestWireChannelHistory:
 
         assert len(captured) == 1
         assert captured[0] == []
+
+    def test_channel_system_prompt_forwarded(self, tmp_path, minimal_system):
+        """A channel's own ``system_prompt`` string reaches ask()."""
+        from openjarvis.sessions.session import SessionStore
+
+        minimal_system.session_store = SessionStore(db_path=tmp_path / "s.db")
+        captured: list = []
+        minimal_system.ask = lambda q, **kw: captured.append(kw) or {"content": "r"}
+
+        handler_ref: list = []
+        bridge = MagicMock()
+        bridge.on_message = handler_ref.append
+        bridge.system_prompt = "Responde breve."
+        minimal_system.wire_channel(bridge)
+        handler_ref[0](
+            SimpleNamespace(channel="c", conversation_id="1", sender="u", content="x")
+        )
+        assert captured[0]["system_prompt"] == "Responde breve."
+
+    def test_non_string_system_prompt_ignored(self, tmp_path, minimal_system):
+        from openjarvis.sessions.session import SessionStore
+
+        minimal_system.session_store = SessionStore(db_path=tmp_path / "s.db")
+        captured: list = []
+        minimal_system.ask = lambda q, **kw: captured.append(kw) or {"content": "r"}
+
+        handler_ref: list = []
+        bridge = MagicMock()  # .system_prompt is a MagicMock, not a str
+        bridge.on_message = handler_ref.append
+        minimal_system.wire_channel(bridge)
+        handler_ref[0](
+            SimpleNamespace(channel="c", conversation_id="1", sender="u", content="x")
+        )
+        assert captured[0]["system_prompt"] is None

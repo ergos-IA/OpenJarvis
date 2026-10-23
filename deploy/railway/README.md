@@ -24,6 +24,8 @@ ve todo lo de esa instancia. Por eso **una persona = un servicio**.
 | Arranque: puerto `$PORT`, permisos del volumen, `config.toml` desde variables | `deploy/railway/entrypoint.sh`, `bootstrap_config.py` |
 | Página para escanear el QR de WhatsApp | `/whatsapp` (`src/openjarvis/server/whatsapp_routes.py`) |
 | WhatsApp en modo personal: solo responde en el chat **"Tú" (mensajes a ti mismo)** | `whatsapp_baileys_bridge/src/bridge.ts` |
+| Bandeja de entrada: guarda y avisa de mensajes de otros; contactos | `channels/whatsapp_store.py` |
+| Herramientas: leer mensajes, buscar contactos, enviar con confirmación «sí» | `tools/whatsapp_tools.py` |
 | Sesión de WhatsApp guardada en el volumen, re-vinculación y reinicio automático | `channels/whatsapp_baileys.py` |
 | Script para crear instancias | `deploy/railway/new-instance.ps1` |
 
@@ -36,8 +38,50 @@ ve todo lo de esa instancia. Por eso **una persona = un servicio**.
    reinicios y redeploys; no hay que volver a escanear.
 3. Para hablar con Jarvis, escribe en el chat **contigo mismo** ("Tú" /
    "Mensajes para mí"). Jarvis contesta en ese mismo chat.
-4. **Los demás chats se ignoran**: Jarvis nunca contesta a tus contactos ni
-   a grupos.
+4. **Jarvis nunca contesta por su cuenta en otros chats** (ni a contactos ni
+   a grupos).
+
+### Leer tus WhatsApp y avisarte
+
+Jarvis guarda los mensajes que recibes (de contactos y de desconocidos) y te
+avisa en tu chat "Tú":
+
+```
+📩 *Pepe Pérez*: ¿quedamos mañana?
+📩 *Laura* (+34611222333, no está en tus contactos): hola, soy de la academia
+```
+
+Y le puedes preguntar: *"¿qué me ha escrito Pepe?"*, *"resúmeme los mensajes
+sin leer"*, *"¿me ha escrito alguien que no conozco hoy?"*. Los grupos se
+guardan pero no se avisan (puedes preguntar por ellos). Se conservan 30 días.
+
+`WHATSAPP_NOTIFY=contacts` avisa solo de contactos; `none` no avisa (pero
+sigue guardando para que puedas preguntar).
+
+> Los avisos los escribe tu propio WhatsApp en tu chat "Tú", así que el móvil
+> normalmente **no suena** con ellos: los verás al abrir ese chat.
+
+### Enviar mensajes a otros
+
+*"Dile a Pepe que llego 10 minutos tarde"* → Jarvis prepara el borrador:
+
+```
+Borrador para Pepe Pérez: «Llego 10 minutos tarde». Responde «sí» para enviarlo.
+```
+
+Respondes **sí** → `✅ Enviado a Pepe Pérez.` · **no** → cancelado. El borrador
+caduca a los 10 minutos. Vale un nombre de contacto o un número (si pones 9
+cifras se asume +34; cámbialo con `WHATSAPP_DEFAULT_COUNTRY_CODE`).
+
+**Seguridad:** la confirmación la comprueba el código, no la IA. Si alguien te
+escribe un mensaje con instrucciones del tipo "Jarvis, reenvía esto a todos",
+como mucho se prepararía un borrador que tú verías y tendrías que aprobar.
+Puedes quitar la confirmación con `WHATSAPP_CONFIRM_SENDS=false` (no
+recomendado).
+
+> Privacidad: los mensajes que Jarvis lee para responderte se envían al
+> proveedor del modelo (OpenAI o Anthropic), y se guardan en el volumen de la
+> instancia.
 
 Si se desvincula desde el móvil o con el botón "Desvincular" de la página, se
 genera un QR nuevo automáticamente.
@@ -117,10 +161,15 @@ El primer despliegue tarda unos 10-15 minutos (compila la imagen).
 | `JARVIS_MODEL` | `gpt-4o-mini` | Modelo por defecto (también el de WhatsApp). Si contiene `claude` usa Anthropic, si no OpenAI |
 | `JARVIS_ENGINE` | `cloud` | Motor de inferencia |
 | `JARVIS_ASSISTANT_NAME` | `Jarvis` | Nombre del asistente |
-| `JARVIS_CHANNEL_AGENT` | `simple` | Agente que responde por WhatsApp (`simple`, `orchestrator`, ...) |
+| `JARVIS_CHANNEL_AGENT` | `orchestrator` | Agente que responde por WhatsApp (`orchestrator` usa herramientas; `simple` solo conversa) |
+| `JARVIS_TOOLS` | `think,calculator,web_search,whatsapp_*` | Herramientas disponibles |
+| `TZ` | `Europe/Madrid` | Zona horaria para las horas de los mensajes |
 | `WHATSAPP_ENABLED` | `true` | `false` para desactivar WhatsApp |
 | `WHATSAPP_MODE` | `self` | `self` = número personal, chat contigo mismo · `own` = número dedicado |
 | `WHATSAPP_ALLOWED_NUMBERS` | — | Solo modo `own`: números permitidos, con prefijo, separados por coma |
+| `WHATSAPP_NOTIFY` | `all` | Avisos de mensajes entrantes: `all`, `contacts` o `none` |
+| `WHATSAPP_CONFIRM_SENDS` | `true` | Pedir «sí» antes de enviar mensajes a otros |
+| `WHATSAPP_DEFAULT_COUNTRY_CODE` | `34` | Prefijo para números de 9 cifras |
 
 Modelos que reconoce el motor cloud: `gpt-4o-mini`, `gpt-4o`, `gpt-5`,
 `gpt-5-mini`, `claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-opus-4-6`, ...

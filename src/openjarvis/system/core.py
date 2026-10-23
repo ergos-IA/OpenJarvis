@@ -217,6 +217,10 @@ class JarvisSystem:
             )
 
         _system = self  # capture for closure
+        # Channels may carry their own instructions (e.g. WhatsApp etiquette).
+        _channel_prompt = getattr(channel_bridge, "system_prompt", None)
+        if not isinstance(_channel_prompt, str) or not _channel_prompt:
+            _channel_prompt = None
 
         def _on_channel_message(cm) -> None:
             session_key = f"{cm.channel}:{cm.conversation_id}"
@@ -242,6 +246,7 @@ class JarvisSystem:
                         context=False,
                         agent=_system.agent_name,
                         prior_messages=prior_msgs,
+                        system_prompt=_channel_prompt,
                     )
                     reply = result.get("content", "")
                 else:
@@ -249,6 +254,7 @@ class JarvisSystem:
                         cm.content,
                         context=False,
                         prior_messages=prior_msgs,
+                        system_prompt=_channel_prompt,
                     )
                     reply = result.get("content", "")
             except Exception:

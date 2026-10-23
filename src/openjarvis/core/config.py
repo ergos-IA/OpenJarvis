@@ -1389,6 +1389,10 @@ class WhatsAppBaileysChannelConfig:
     # Comma-separated numbers allowed to talk to a dedicated assistant number
     # (only used when assistant_has_own_number is true).
     allowed_numbers: str = ""
+    # Forward other chats' messages to the user's own chat: all|contacts|none.
+    notify: str = "all"
+    # Messages drafted for other people need the user's "sí" before sending.
+    confirm_sends: bool = True
 
 
 @dataclass

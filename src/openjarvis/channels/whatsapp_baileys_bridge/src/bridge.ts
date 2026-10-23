@@ -4,7 +4,7 @@
  * JSON-line protocol on stdio:
  *
  * Input commands (stdin):
- *   {"type":"send","jid":"<jid>","text":"<message>"}
+ *   {"type":"send","jid":"<jid>","text":"<message>","request_id":"<id>"?}
  *   {"type":"logout"}       -- unlink the device, wipe auth, emit a new QR
  *   {"type":"disconnect"}
  *
@@ -13,6 +13,12 @@
  *   {"type":"status","status":"connected"|"disconnected"|"logged_out","me":"<number>"}
  *   {"type":"qr","data":"<qr-string>","svg":"<svg markup>"}
  *   {"type":"error","message":"<description>"}
+ *   {"type":"inbox","chat_jid":..,"sender_jid":..,"phone":..,"push_name":..,
+ *    "text":..,"message_id":..,"ts":..,"is_group":..,"from_me":..}
+ *        -- any other chat's message (stored/notified, never answered)
+ *   {"type":"contact","jid":..,"phone":..,"name":..,"push_name":..}
+ *   {"type":"send_result","request_id":..,"ok":bool,"jid":..,"error":..}
+ *        -- only for sends that carried a request_id
  *
  * Arguments:
  *   --auth-dir <dir>      Baileys multi-file auth state (persist this!)
@@ -96,6 +102,29 @@ function extractText(message: any): string {
     message?.ephemeralMessage?.message?.conversation ||
     ""
   );
+}
+
+/** Text, or a short placeholder (with caption) for media messages. */
+function describeMessage(message: any): string {
+  const m = message?.ephemeralMessage?.message || message?.viewOnceMessage?.message || message;
+  const text = extractText(m);
+  if (text) return text;
+  const media: Array<[string, string]> = [
+    ["imageMessage", "[imagen]"],
+    ["videoMessage", "[vídeo]"],
+    ["audioMessage", "[audio]"],
+    ["documentMessage", "[documento]"],
+    ["stickerMessage", "[sticker]"],
+    ["contactMessage", "[contacto]"],
+    ["locationMessage", "[ubicación]"],
+  ];
+  for (const [field, label] of media) {
+    if (m?.[field]) {
+      const caption = m[field].caption || m[field].fileName || "";
+      return caption ? `${label} ${caption}` : label;
+    }
+  }
+  return "";
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +219,22 @@ async function main(): Promise<void> {
 
     sock.ev.on("creds.update", saveCreds);
 
+    const emitContacts = (contacts: any[]) => {
+      for (const c of contacts || []) {
+        const jid: string = c.id || "";
+        if (!jid || jid.endsWith("@g.us")) continue;
+        emit({
+          type: "contact",
+          jid,
+          phone: phoneOf(jid) || digits(c.phoneNumber || ""),
+          name: c.name || "",
+          push_name: c.notify || c.verifiedName || "",
+        });
+      }
+    };
+    sock.ev.on("contacts.upsert", emitContacts);
+    sock.ev.on("contacts.update", emitContacts as any);
+
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
@@ -233,16 +278,40 @@ async function main(): Promise<void> {
       // "append" covers history sync and our own sends; only live messages.
       if (m.type !== "notify") return;
       for (const msg of m.messages) {
-        if (!msg.message || !shouldHandle(msg)) continue;
-        const text = extractText(msg.message);
-        if (!text) continue;
+        if (!msg.message) continue;
+        if (shouldHandle(msg)) {
+          const text = extractText(msg.message);
+          if (!text) continue;
+          emit({
+            type: "message",
+            jid: msg.key.remoteJid || "",
+            sender: msg.key.participant || msg.key.remoteJid || "",
+            text,
+            message_id: msg.key.id || "",
+          });
+          continue;
+        }
 
+        // Everything else is inbox: stored and maybe notified, never answered.
+        const key: any = msg.key || {};
+        const jid: string = key.remoteJid || "";
+        if (!jid || jid === "status@broadcast" || jid.endsWith("@newsletter")) continue;
+        if (key.id && sentIds.has(key.id)) continue;
+        if (isOwnChat(jid)) continue;
+        const text = describeMessage(msg.message);
+        if (!text) continue;
+        const isGroup = jid.endsWith("@g.us");
         emit({
-          type: "message",
-          jid: msg.key.remoteJid || "",
-          sender: msg.key.participant || msg.key.remoteJid || "",
+          type: "inbox",
+          chat_jid: jid,
+          sender_jid: isGroup ? key.participant || "" : jid,
+          phone: senderPhones(key)[0] || "",
+          push_name: msg.pushName || "",
           text,
-          message_id: msg.key.id || "",
+          message_id: key.id || "",
+          ts: Number(msg.messageTimestamp || 0) || Date.now() / 1000,
+          is_group: isGroup,
+          from_me: !!key.fromMe,
         });
       }
     });
@@ -266,16 +335,42 @@ async function main(): Promise<void> {
     }
 
     if (cmd.type === "send" && sock) {
+      const requestId = (cmd.request_id as string) || "";
+      let jid = cmd.jid as string;
       try {
+        if (requestId && jid.endsWith("@s.whatsapp.net")) {
+          // Explicit sends to a number: make sure it is on WhatsApp.
+          const [found] = (await sock.onWhatsApp(jid)) || [];
+          if (!found?.exists) {
+            emit({
+              type: "send_result",
+              request_id: requestId,
+              ok: false,
+              jid,
+              error: "Ese número no tiene WhatsApp",
+            });
+            return;
+          }
+          jid = found.jid || jid;
+        }
         const messageId = generateMessageIDV2(sock.user?.id);
         rememberSent(messageId);
-        await sock.sendMessage(
-          cmd.jid as string,
-          { text: cmd.text as string },
-          { messageId },
-        );
+        await sock.sendMessage(jid, { text: cmd.text as string }, { messageId });
+        if (requestId) {
+          emit({ type: "send_result", request_id: requestId, ok: true, jid });
+        }
       } catch (err: any) {
-        emit({ type: "error", message: `Send failed: ${err.message}` });
+        if (requestId) {
+          emit({
+            type: "send_result",
+            request_id: requestId,
+            ok: false,
+            jid,
+            error: err.message,
+          });
+        } else {
+          emit({ type: "error", message: `Send failed: ${err.message}` });
+        }
       }
     } else if (cmd.type === "logout") {
       try {

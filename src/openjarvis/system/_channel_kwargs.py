@@ -151,6 +151,9 @@ def _whatsapp_baileys(c: Any) -> Dict[str, Any]:
         kw["assistant_name"] = c.assistant_name
     if getattr(c, "allowed_numbers", ""):
         kw["allowed_numbers"] = c.allowed_numbers
+    if getattr(c, "notify", ""):
+        kw["notify"] = c.notify
+    kw["confirm_sends"] = getattr(c, "confirm_sends", True)
     return kw
 
 

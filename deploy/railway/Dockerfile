@@ -89,7 +89,8 @@ ENV HOME=/home/openjarvis \
     OPENJARVIS_HOME=/data \
     OPENJARVIS_BAILEYS_BRIDGE_DIR=/opt/baileys-bridge \
     OPENJARVIS_NO_UPDATE_CHECK=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    TZ=Europe/Madrid
 
 # The entrypoint starts as root only to chown the mounted volume, then drops
 # to the unprivileged openjarvis user before running the server.
