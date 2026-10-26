@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 from openjarvis.fasttrack import contact as contact_mail
-from openjarvis.fasttrack.admin import USER_PREFIX, normalize_code
+from openjarvis.fasttrack.provisioning import USER_PREFIX, normalize_code
 from openjarvis.fasttrack.railway import RailwayClient, RailwayError
 from openjarvis.server.legal_routes import DOCS, render_legal
 from openjarvis.server.web_session import FailureLimiter, client_ip

@@ -312,10 +312,21 @@ class TestConsole:
         assert deploy is False
         assert variables["JARVIS_ENGINE"] == "cloud"
         assert variables["JARVIS_USER_NAME"] == "Ana Pérez"
-        assert variables["OPENROUTER_API_KEY"] == "${{shared.OPENROUTER_API_KEY}}"
+        # By default the customer connects their own AI: no shared keys.
+        assert "OPENROUTER_API_KEY" not in variables
+        assert variables["LEGAL_COMPANY"] == "${{shared.LEGAL_COMPANY}}"
         assert variables["RAILWAY_DOCKERFILE_PATH"] == "deploy/railway/Dockerfile"
         assert ("volume", "NEW", "/data") in rw.calls
         assert ("connect", "NEW", "ergos-IA/OpenJarvis", "main") in rw.calls
+
+    def test_create_user_with_included_ai(self, console, rw):
+        _login(console)
+        r = console.post(
+            "/api/users", json={"name": "Ana", "ai": "included"}, headers=H
+        )
+        assert r.status_code == 200
+        _, _, variables, _ = next(c for c in rw.calls if c[0] == "vars")
+        assert variables["ANTHROPIC_API_KEY"] == "${{shared.ANTHROPIC_API_KEY}}"
 
     def test_duplicate_names_get_suffix(self, console, rw):
         _login(console)

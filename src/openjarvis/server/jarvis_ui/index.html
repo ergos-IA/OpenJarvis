@@ -414,9 +414,10 @@ footer img { width: 22px; height: 22px; }
   <section id="wizard" class="wizard hidden">
     <ol class="steps" id="steps">
       <li data-s="0"><span class="n">1</span><span class="lbl">Condiciones</span></li>
-      <li data-s="1"><span class="n">2</span><span class="lbl">WhatsApp</span></li>
-      <li data-s="2"><span class="n">3</span><span class="lbl">Correo</span></li>
-      <li data-s="3"><span class="n">4</span><span class="lbl">¡Listo!</span></li>
+      <li data-s="0.5"><span class="n">2</span><span class="lbl">Tu IA</span></li>
+      <li data-s="1"><span class="n">3</span><span class="lbl">WhatsApp</span></li>
+      <li data-s="2"><span class="n">4</span><span class="lbl">Correo</span></li>
+      <li data-s="3"><span class="n">5</span><span class="lbl">¡Listo!</span></li>
     </ol>
 
     <!-- step 0: terms -->
@@ -436,10 +437,52 @@ footer img { width: 22px; height: 22px; }
       </div>
     </div>
 
+    <!-- step 0.5: AI account -->
+    <div class="panel hidden" data-step="0.5">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Paso 2 · Tu IA</div>
+      <h2>Conecta tu inteligencia artificial</h2>
+      <p class="lead">Jarvis piensa con un modelo de IA de <b>tu propia cuenta</b>. Pagas solo lo que usas, directamente al proveedor, y tú controlas el gasto.</p>
+
+      <div id="ai-included" class="hidden">
+        <div class="tip">✅ Tu Jarvis usa la IA incluida por AI Fast Track (<b id="ai-inc-model"></b>). No tienes que hacer nada.</div>
+        <button class="btn-link" id="ai-use-own">Prefiero usar mi propia cuenta</button>
+      </div>
+
+      <div id="ai-own" class="hidden">
+        <div class="tip">✅ Conectado con <b id="ai-own-prov"></b> · <b id="ai-own-model"></b> · clave <span class="kbd" id="ai-own-key"></span></div>
+        <div class="hero-actions" style="justify-content: flex-start">
+          <button class="btn btn-ghost" id="ai-change">Cambiar modelo o clave</button>
+          <button class="btn-danger" id="ai-remove">Desconectar mi cuenta</button>
+        </div>
+      </div>
+
+      <div id="ai-form" class="hidden">
+        <div class="tabs" role="tablist" id="ai-tabs" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+          <button role="tab" data-ai="anthropic">Claude · Anthropic</button>
+          <button role="tab" data-ai="openai">GPT · OpenAI</button>
+          <button role="tab" data-ai="openrouter">Open source · OpenRouter</button>
+        </div>
+        <ol class="howto" id="ai-steps"></ol>
+        <div class="tip" style="background: rgba(255,219,5,.08); color: #fff3a8">💡 <b>Pon un límite de gasto mensual</b> en tu cuenta del proveedor. Con un modelo ligero, el uso normal suele costar <b>menos de 1 € al mes</b>; los modelos avanzados y un uso muy intensivo cuestan más.</div>
+        <div class="field"><label for="ai-model">Modelo</label><select class="input" id="ai-model"></select></div>
+        <div class="field"><label for="ai-key">Tu clave de API</label><input class="input" id="ai-key" type="password" autocomplete="off" spellcheck="false" placeholder="Pega aquí tu clave"></div>
+        <p style="color: var(--t3); font-size: 13px; margin: 0 0 14px">La clave se guarda solo en tu Jarvis, cifrada en tránsito, y nunca se muestra de nuevo.</p>
+        <button class="btn btn-primary" id="ai-save">Conectar mi IA</button>
+        <p class="err hidden" id="ai-err"></p>
+      </div>
+      <p id="ai-wait" class="hidden" style="color: var(--t2); margin-top: 16px"><span class="spinner"></span>&nbsp; Aplicando tu IA… Jarvis se reinicia unos segundos.</p>
+
+      <div class="nav">
+        <button class="btn-link" data-goto="0">← Condiciones</button>
+        <button class="btn btn-primary" id="ai-next" disabled>Siguiente →</button>
+      </div>
+    </div>
+
     <!-- step 1: WhatsApp -->
     <div class="panel hidden" data-step="1">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 2 · WhatsApp</div>
+      <div class="eyebrow">Paso 3 · WhatsApp</div>
 
       <div id="wa-linking">
         <h2>Conecta tu WhatsApp</h2>
@@ -538,7 +581,7 @@ footer img { width: 22px; height: 22px; }
     <!-- step 2: email -->
     <div class="panel hidden" data-step="2">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 3 · Correo (opcional)</div>
+      <div class="eyebrow">Paso 4 · Correo (opcional)</div>
       <h2>Conecta tu correo</h2>
       <p class="lead">Para que Jarvis te avise de correos importantes y los pueda buscar y responder. Puedes conectar uno, los dos o ninguno.</p>
 
@@ -621,7 +664,7 @@ footer img { width: 22px; height: 22px; }
     <!-- step 3: done / status -->
     <div class="panel hidden" data-step="3">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 4 · Sistemas</div>
+      <div class="eyebrow">Paso 5 · Sistemas</div>
       <h2 id="done-title">Jarvis está listo</h2>
       <p class="lead">Este es el estado de tus conexiones. Puedes volver aquí cuando quieras.</p>
       <div class="status-grid">
@@ -749,7 +792,7 @@ footer img { width: 22px; height: 22px; }
   }
 
   // ---------- state ----------
-  var wa = null, mail = null, info = null, step = 0, timer = null, prevConnected = null;
+  var wa = null, mail = null, info = null, ai = null, step = 0, timer = null, prevConnected = null;
 
   function setSysChip() {
     var dot = $("sys-dot"), txt = $("sys-text");
@@ -760,6 +803,7 @@ footer img { width: 22px; height: 22px; }
   function refresh() {
     return Promise.all([
       info ? null : api("GET", "/api/jarvis/info").then(function (s) { info = s; }, function () {}),
+      api("GET", "/api/ai/status").then(function (s) { ai = s; }, function () {}),
       api("GET", "/api/whatsapp/status").then(function (s) { wa = s; }),
       api("GET", "/api/mail/status").then(function (s) { mail = s; }, function () { mail = null; })
     ]).then(render, function () {});
@@ -787,7 +831,8 @@ footer img { width: 22px; height: 22px; }
     render();
   }
   function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
-  function start() { go(!accepted() ? 0 : wa && wa.connected ? 3 : 1); }
+  function aiReady() { return !ai || ai.configured; }
+  function start() { go(!accepted() ? 0 : !aiReady() ? 0.5 : wa && wa.connected ? 3 : 1); }
 
   // ---------- step 0: terms ----------
   function consentReady() { $("c-go").disabled = !($("c-terms").checked && $("c-wa").checked); }
@@ -795,7 +840,7 @@ footer img { width: 22px; height: 22px; }
   $("c-go").onclick = function () {
     var b = this; b.disabled = true; show("c-err", false);
     api("POST", "/api/legal/accept", { version: info.legal_version, terms: true, whatsapp_risk: true }).then(function () {
-      info.legal_accepted = true; toast("Condiciones aceptadas ✓"); go(wa && wa.connected ? 3 : 1);
+      info.legal_accepted = true; toast("Condiciones aceptadas ✓"); go(!aiReady() ? 0.5 : wa && wa.connected ? 3 : 1);
     }, function (e) { $("c-err").textContent = e.message; show("c-err", true); b.disabled = false; });
   };
   $("cta").onclick = start;
@@ -872,6 +917,84 @@ footer img { width: 22px; height: 22px; }
       function (e) { $("m-state").innerHTML = '<span style="color: #ff6b8a">' + e.message.replace(/</g, "&lt;") + "</span>"; })
       .then(function () { b.disabled = false; });
   };
+
+  // ---------- step 0.5: own AI account ----------
+  var AI_GUIDE = {
+    anthropic: [
+      'Crea tu cuenta en <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.',
+      'En <b>Billing</b> añade saldo (5–10 € bastan para empezar) y en <b>Limits</b> fija un <b>límite de gasto mensual</b>.',
+      'En <b>API Keys</b> pulsa <b>Create Key</b>, ponle de nombre <span class="kbd">Jarvis</span> y copia la clave (empieza por <span class="kbd">sk-ant-</span>).',
+      'Elige el modelo y pega la clave aquí abajo.'
+    ],
+    openai: [
+      'Crea tu cuenta en <a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a>.',
+      'En <b>Settings → Billing</b> añade saldo y en <b>Limits</b> fija un <b>presupuesto mensual</b>.',
+      'En <b>API keys</b> pulsa <b>Create new secret key</b>, nómbrala <span class="kbd">Jarvis</span> y cópiala (empieza por <span class="kbd">sk-</span>).',
+      'Elige el modelo y pega la clave aquí abajo.'
+    ],
+    openrouter: [
+      'Crea tu cuenta en <a href="https://openrouter.ai" target="_blank" rel="noopener">openrouter.ai</a>: da acceso a modelos de código abierto (Llama, Qwen, Mistral…).',
+      'En <b>Credits</b> añade saldo; los modelos abiertos cuestan muy poco por uso.',
+      'En <b>Keys</b> pulsa <b>Create Key</b>, nómbrala <span class="kbd">Jarvis</span>, pon un <b>límite de crédito</b> y cópiala (empieza por <span class="kbd">sk-or-</span>).',
+      'Elige el modelo y pega la clave aquí abajo.'
+    ]
+  };
+  var AI_DEFAULT = { anthropic: "claude-haiku-5-5", openai: "gpt-5-mini", openrouter: "openrouter/qwen/qwen3-235b-a22b" };
+  var aiProvider = "anthropic", aiEditing = false, aiWaiting = false;
+  function setAiProvider(prov) {
+    aiProvider = prov;
+    qsa("[data-ai]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-ai") === prov); });
+    $("ai-steps").innerHTML = AI_GUIDE[prov].map(function (t) { return "<li><span>" + t + "</span></li>"; }).join("");
+    var sel = $("ai-model"); sel.innerHTML = "";
+    ((ai && ai.models) || []).filter(function (m) { return m.provider === prov; }).forEach(function (m) {
+      var o = document.createElement("option"); o.value = m.id; o.textContent = m.label + " — " + m.note;
+      if (m.id === AI_DEFAULT[prov]) o.selected = true; sel.appendChild(o);
+    });
+  }
+  qsa("[data-ai]").forEach(function (b) { b.onclick = function () { setAiProvider(b.getAttribute("data-ai")); }; });
+  $("ai-use-own").onclick = function () { aiEditing = true; renderAi(); };
+  $("ai-change").onclick = function () { aiEditing = true; renderAi(); };
+  $("ai-next").onclick = function () { go(wa && wa.connected ? 3 : 1); };
+  $("ai-remove").onclick = function () {
+    if (!confirm("¿Desconectar tu cuenta de IA? Jarvis dejará de responder hasta que conectes otra.")) return;
+    api("DELETE", "/api/ai/config").then(function (s) { ai = s; info = null; waitForAi(false); });
+  };
+  $("ai-save").onclick = function () {
+    var key = $("ai-key").value.trim(), b = this; show("ai-err", false);
+    if (key.length < 20) { $("ai-err").textContent = "Pega la clave completa."; show("ai-err", true); return; }
+    b.disabled = true; b.innerHTML = '<span class="spinner"></span>&nbsp; Comprobando la clave…';
+    api("POST", "/api/ai/config", { provider: aiProvider, api_key: key, model: $("ai-model").value }).then(function (s) {
+      $("ai-key").value = ""; ai = s; info = null; aiEditing = false; waitForAi(true);
+    }, function (e) { $("ai-err").textContent = e.message; show("ai-err", true); })
+      .then(function () { b.disabled = false; b.textContent = "Conectar mi IA"; });
+  };
+  function waitForAi(expectOwn) {
+    // The server restarts to apply the change: poll until it is back.
+    aiWaiting = true; renderAi();
+    var tries = 0;
+    (function poll() {
+      setTimeout(function () {
+        fetch("/api/ai/status", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (s) {
+          if (s && !s.restarting && (s.source === "own") === expectOwn) { ai = s; aiWaiting = false; toast(expectOwn ? "IA conectada ✓" : "Cuenta desconectada"); refresh(); renderAi(); }
+          else if (++tries < 40) poll(); else { aiWaiting = false; renderAi(); }
+        }, function () { if (++tries < 40) poll(); });
+      }, 2500);
+    })();
+  }
+  function renderAi() {
+    if (!ai) return;
+    var own = ai.source === "own", inc = ai.source === "included";
+    show("ai-wait", aiWaiting);
+    show("ai-included", inc && !aiEditing && !aiWaiting);
+    show("ai-own", own && !aiEditing && !aiWaiting);
+    show("ai-form", (aiEditing || ai.source === "none") && !aiWaiting);
+    $("ai-inc-model").textContent = ai.label || "";
+    $("ai-own-prov").textContent = (ai.providers || {})[ai.saved_provider] || ai.provider_label || "";
+    $("ai-own-model").textContent = ai.label || "";
+    $("ai-own-key").textContent = ai.key_hint || "";
+    $("ai-next").disabled = !ai.configured || aiWaiting;
+    if (!$("ai-steps").childElementCount) setAiProvider(ai.saved_provider || "anthropic");
+  }
 
   function renderWhatsApp() {
     if (!wa) return;
@@ -1013,7 +1136,7 @@ footer img { width: 22px; height: 22px; }
       r.classList.toggle("linked", !!wa.connected);
       $("ro-link").textContent = wa.connected ? "Activo" : "Pendiente";
     }
-    renderWhatsApp(); renderMail(); renderStatus();
+    renderAi(); renderWhatsApp(); renderMail(); renderStatus();
   }
 
   // ---------- capability cards: reveal + glow follow ----------
@@ -1049,12 +1172,13 @@ footer img { width: 22px; height: 22px; }
   }
 
   // ?paso=whatsapp|correo|estado opens that wizard step directly.
-  var STEP_NAMES = { condiciones: 0, whatsapp: 1, correo: 2, estado: 3 };
+  var STEP_NAMES = { condiciones: 0, ia: 0.5, whatsapp: 1, correo: 2, estado: 3 };
   var wanted = STEP_NAMES[(new URLSearchParams(location.search).get("paso") || "").toLowerCase()];
   refresh().then(function () {
     greet(); boot(); loop();
     if (wanted !== undefined) go(wanted);
     else if (!accepted()) go(0);
+    else if (!aiReady()) go(0.5);
   });
 
   // ---------- sign out of this browser ----------

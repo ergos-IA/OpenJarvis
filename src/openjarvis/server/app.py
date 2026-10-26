@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from openjarvis.server.ai_routes import router as ai_router
 from openjarvis.server.analytics_routes import (
     configure_analytics,
     stop_analytics,
@@ -492,6 +493,7 @@ def create_app(
     app.include_router(mail_router)
     app.include_router(jarvis_ui_router)
     app.include_router(legal_router)
+    app.include_router(ai_router)
     include_all_routes(app)
 
     # Restore SendBlue channel bindings from database on startup

@@ -40,7 +40,8 @@ else
   RUN_AS=""
 fi
 
-$RUN_AS python3 /usr/local/lib/openjarvis/bootstrap_config.py
-
-exec $RUN_AS jarvis serve --host 0.0.0.0 --port "$PORT" \
-  --engine "$JARVIS_ENGINE" --model "$JARVIS_MODEL"
+# bootstrap_config.py --serve renders config.toml (applying the user's own AI
+# settings from the volume, if any) and execs `jarvis serve`.  The server
+# re-execs the same launcher to apply new AI settings.
+export JARVIS_LAUNCHER=/usr/local/lib/openjarvis/bootstrap_config.py
+exec $RUN_AS python3 "$JARVIS_LAUNCHER" --serve

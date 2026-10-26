@@ -20,10 +20,7 @@ import base64
 import hashlib
 import hmac
 import os
-import re
-import secrets
 import time
-import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -37,13 +34,22 @@ from openjarvis.fasttrack.models import (
     MODELS,
     PROVIDERS,
     describe,
-    engine_for,
-    provider_for,
+)
+from openjarvis.fasttrack.provisioning import (
+    CREDENTIALS as _CREDENTIALS,
+)
+from openjarvis.fasttrack.provisioning import (
+    USER_PREFIX,
+    model_vars,
+    new_access_code,
+    new_api_key,
+    normalize_code,
+    provision_user,
+    slugify,
 )
 from openjarvis.fasttrack.railway import RailwayClient, RailwayError
 from openjarvis.server.web_session import client_ip
 
-USER_PREFIX = "jarvis-"
 _COOKIE = "ft_session"
 _SESSION_S = 12 * 3600
 _UI_DIR = Path(__file__).parent / "admin_ui"
@@ -55,41 +61,6 @@ _ASSETS = {
     "inter.woff2": "font/woff2",
     "jetbrains-mono.woff2": "font/woff2",
 }
-_CREDENTIALS = [p["credential"] for p in PROVIDERS.values()]
-_LEGAL_VARS = [
-    "LEGAL_COMPANY",
-    "LEGAL_NIF",
-    "LEGAL_ADDRESS",
-    "LEGAL_REGISTRY",
-    "LEGAL_EMAIL",
-    "LEGAL_DPO",
-    "LEGAL_JURISDICTION",
-    "LEGAL_HOSTING",
-]
-
-
-def slugify(name: str) -> str:
-    text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    text = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return text[:30].strip("-") or "usuario"
-
-
-def new_api_key() -> str:
-    return "oj_sk_" + secrets.token_urlsafe(32)
-
-
-# No 0/O, 1/I/L: easy to read aloud and type.  12 chars ~ 60 bits.
-_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-
-
-def new_access_code() -> str:
-    """Short personal code for the public site (jarvis.aifasttrack.tech)."""
-    chars = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(12))
-    return "-".join(chars[i : i + 4] for i in range(0, 12, 4))
-
-
-def normalize_code(code: str) -> str:
-    return "".join(ch for ch in code.upper() if ch.isalnum())
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +116,7 @@ class NewUser(BaseModel):
     provider: str = ""  # only needed for model ids outside the catalog
     assistant_name: str = "Jarvis"
     whatsapp: str = "personal"  # personal (linked device) | meta (Business API)
+    ai: str = "own"  # own: the user connects their account · included: ours
 
 
 class ModelChange(BaseModel):
@@ -264,12 +236,15 @@ def create_admin_app(
         base = f"https://{domain}"
         out: Dict[str, Any] = {"online": False}
         try:
-            wa, mail, info = await asyncio.gather(
+            wa, mail, info, ai = await asyncio.gather(
                 client.get(base + "/api/whatsapp/status", headers=headers),
                 client.get(base + "/api/mail/status", headers=headers),
                 client.get(base + "/api/jarvis/info", headers=headers),
+                client.get(base + "/api/ai/status", headers=headers),
                 return_exceptions=True,
             )
+            if isinstance(ai, httpx.Response) and ai.status_code == 200:
+                out["ai_source"] = ai.json().get("source", "")
             if isinstance(info, httpx.Response) and info.status_code == 200:
                 out["legal_accepted"] = bool(info.json().get("legal_accepted"))
             if isinstance(wa, httpx.Response) and wa.status_code == 200:
@@ -341,65 +316,38 @@ def create_admin_app(
     # -- user lifecycle ---------------------------------------------------
 
     def _model_vars(model: str, provider: str = "") -> Dict[str, str]:
-        model = model.strip()
-        if not model:
-            raise HTTPException(400, "Elige un modelo")
-        if provider and provider not in PROVIDERS:
-            raise HTTPException(400, "Proveedor desconocido")
-        provider = provider or provider_for(model)
-        return {"JARVIS_MODEL": model, "JARVIS_ENGINE": engine_for(provider)}
+        try:
+            return model_vars(model, provider)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.post("/api/users")
     async def create_user(req: NewUser, request: Request) -> Dict[str, Any]:
         require(request)
-        name = " ".join(req.name.split())
-        if not name:
+        if not " ".join(req.name.split()):
             raise HTTPException(400, "Escribe el nombre del usuario")
-        overview = await asyncio.to_thread(railway_call, rw.project_overview)
-        taken = {s["name"] for s in overview["services"]}
-        base = USER_PREFIX + slugify(name)
-        service_name, n = base, 2
-        while service_name in taken:
-            service_name, n = f"{base}-{n}", n + 1
-
-        key = new_api_key()
-        access_code = new_access_code()
-        variables = {
-            "PORT": "8000",
-            "RAILWAY_DOCKERFILE_PATH": "deploy/railway/Dockerfile",
-            "OPENJARVIS_API_KEY": key,
-            "JARVIS_ACCESS_CODE": access_code,
-            "JARVIS_ASSISTANT_NAME": req.assistant_name.strip() or "Jarvis",
-            "JARVIS_USER_NAME": name,
-            "JARVIS_USER_EMAIL": req.email.strip(),
-            "WHATSAPP_MODE": "self",
-            "WHATSAPP_PROVIDER": "meta" if req.whatsapp == "meta" else "personal",
-            **_model_vars(req.model, req.provider),
-        }
-        # Provider credentials and the company's legal data come from the
-        # project's shared variables, filled in once for every user.
-        for name in _CREDENTIALS + _LEGAL_VARS:
-            variables[name] = "${{shared.%s}}" % name
-
-        def provision() -> Dict[str, str]:
-            sid = rw.create_service(service_name)
-            rw.set_variables(sid, variables)
-            rw.create_volume(sid, "/data")
-            domain = rw.create_domain(sid, 8000)
-            rw.set_healthcheck(sid, "/health")
-            build_error = ""
-            try:
-                rw.connect_repo(sid, repo, branch)
-            except RailwayError as exc:
-                build_error = str(exc)
-            return {"id": sid, "domain": domain, "build_error": build_error}
-
-        result = await asyncio.to_thread(railway_call, provision)
+        _model_vars(req.model, req.provider)  # validate before creating
+        try:
+            result = await asyncio.to_thread(
+                provision_user,
+                rw,
+                name=req.name,
+                email=req.email,
+                model=req.model,
+                provider=req.provider,
+                whatsapp=req.whatsapp,
+                assistant_name=req.assistant_name,
+                shared_ai=req.ai == "included",
+                repo=repo,
+                branch=branch,
+            )
+        except RailwayError as exc:
+            raise HTTPException(502, f"Railway: {exc}") from exc
         return {
             "id": result["id"],
-            "service": service_name,
-            "link": f"https://{result['domain']}/#key={key}",
-            "access_code": access_code,
+            "service": result["service"],
+            "link": result["link"],
+            "access_code": result["access_code"],
             "build_error": result["build_error"],
         }
 

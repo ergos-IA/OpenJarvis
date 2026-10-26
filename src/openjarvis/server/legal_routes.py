@@ -32,7 +32,7 @@ from openjarvis.server.web_session import client_ip
 router = APIRouter(tags=["legal"])
 
 # Bump when the texts change materially: users are asked to accept again.
-LEGAL_VERSION = "2026-10-26.2"
+LEGAL_VERSION = "2026-10-26.3"
 LEGAL_UPDATED = "26 de octubre de 2026"
 
 _DIR = Path(__file__).parent / "jarvis_ui" / "legal"

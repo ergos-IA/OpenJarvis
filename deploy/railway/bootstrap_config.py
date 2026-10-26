@@ -97,5 +97,62 @@ def main() -> None:
     )
 
 
-if __name__ == "__main__":
+# Variables a user may set from the "Conecta tu IA" wizard step.  They live
+# in <home>/ai.json (written by server/ai_routes.py) and override the
+# service's environment, so a customer's own API key never has to go
+# through Railway.
+_AI_OVERRIDES = (
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "JARVIS_MODEL",
+    "JARVIS_ENGINE",
+)
+
+
+def apply_ai_overrides() -> None:
+    import json
+
+    home = Path(_env("OPENJARVIS_HOME", str(Path.home() / ".openjarvis")))
+    try:
+        data = json.loads((home / "ai.json").read_text(encoding="utf-8"))
+    except Exception:
+        return
+    for name in _AI_OVERRIDES:
+        value = data.get("env", {}).get(name)
+        if isinstance(value, str) and value:
+            os.environ[name] = value
+
+
+def serve() -> None:
+    """Render the config and replace this process with ``jarvis serve``.
+
+    Also how the server restarts itself after the AI settings change
+    (``os.execv`` back into this script), without a container restart.
+    """
+    apply_ai_overrides()
     main()
+    os.execvp(
+        "jarvis",
+        [
+            "jarvis",
+            "serve",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            _env("PORT", "8000"),
+            "--engine",
+            _env("JARVIS_ENGINE", "cloud"),
+            "--model",
+            _env("JARVIS_MODEL", "gpt-4o-mini"),
+        ],
+    )
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--serve" in sys.argv[1:]:
+        serve()
+    else:
+        main()
