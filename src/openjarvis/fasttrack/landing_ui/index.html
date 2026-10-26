@@ -58,8 +58,8 @@ nav.sections a { color: var(--t3); } nav.sections a:hover { color: var(--accent)
 textarea.input { padding: 12px 14px; resize: vertical; min-height: 130px; }
 
 /* ---- hero / reactor ---- */
-.hero { position: relative; padding: 40px 0 96px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-.reactor { position: relative; width: min(680px, 92vw); aspect-ratio: 1; }
+.hero { position: relative; padding: 20px 0 96px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.reactor { position: relative; width: min(460px, 46vh, 84vw); aspect-ratio: 1; }
 .reactor svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .rx { transform-origin: 400px 400px; transform-box: view-box; }
 .rx-a { animation: spin 80s linear infinite; } .rx-b { animation: spin 40s linear infinite reverse; }
@@ -77,16 +77,16 @@ textarea.input { padding: 12px 14px; resize: vertical; min-height: 130px; }
 @keyframes halo { 0%,100% { opacity: .55; } 50% { opacity: .9; } }
 .readout { position: absolute; font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--t3); line-height: 1.7; }
 .readout b { display: block; font-weight: 400; color: var(--t1); }
-.readout.tl { top: 12%; left: -6%; text-align: left; } .readout.tr { top: 12%; right: -6%; text-align: right; }
-.readout.bl { bottom: 12%; left: -6%; text-align: left; } .readout.br { bottom: 12%; right: -6%; text-align: right; }
+.readout.tl { top: 10%; right: 104%; text-align: right; white-space: nowrap; } .readout.tr { top: 10%; left: 104%; text-align: left; white-space: nowrap; }
+.readout.bl { bottom: 10%; right: 104%; text-align: right; white-space: nowrap; } .readout.br { bottom: 10%; left: 104%; text-align: left; white-space: nowrap; }
 @media (max-width: 860px) { .readout { display: none; } }
-.presents { display: flex; align-items: center; gap: 12px; margin-top: 8px; font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--t3); }
+.presents { display: flex; align-items: center; gap: 12px; margin-top: 4px; font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--t3); }
 .presents i { width: 8px; height: 8px; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
-h1 { margin: 18px 0 0; font-weight: 600; font-size: clamp(64px, 12vw, 168px); line-height: .9; letter-spacing: .16em; padding-left: .16em; color: #f4fdff; text-shadow: 0 0 48px var(--glow); }
-.tagline { margin: 22px 0 0; max-width: 680px; font-size: clamp(20px, 2.4vw, 28px); line-height: 1.3; letter-spacing: -.01em; }
+h1 { margin: 10px 0 0; font-weight: 600; font-size: clamp(52px, min(8vw, 11vh), 112px); line-height: .9; letter-spacing: .16em; padding-left: .16em; color: #f4fdff; text-shadow: 0 0 48px var(--glow); }
+.tagline { margin: 14px 0 0; max-width: 680px; font-size: clamp(20px, 2.4vw, 28px); line-height: 1.3; letter-spacing: -.01em; }
 .tagline span { color: var(--t3); }
-.sub { margin: 14px 0 0; max-width: 560px; font-size: 17px; line-height: 1.6; color: var(--t2); }
-.access { margin-top: 36px; width: min(100%, 560px); display: flex; flex-direction: column; gap: 10px; padding: 18px; border: 1px solid var(--line); background: rgba(8,11,13,.88); text-align: left; }
+.sub { margin: 10px 0 0; max-width: 560px; font-size: 17px; line-height: 1.6; color: var(--t2); }
+.access { margin-top: 28px; width: min(100%, 560px); display: flex; flex-direction: column; gap: 10px; padding: 18px; border: 1px solid var(--line); background: rgba(8,11,13,.88); text-align: left; }
 .access .row { display: flex; flex-wrap: wrap; gap: 10px; }
 .access .code { flex: 1 1 260px; min-width: 0; min-height: 52px; font-family: var(--mono); font-size: 20px; letter-spacing: .18em; text-transform: uppercase; }
 .status { margin: 0; min-height: 18px; font-family: var(--mono); font-size: 12px; color: var(--t3); }
@@ -179,15 +179,128 @@ footer .wrap { padding-top: 32px; padding-bottom: 32px; display: flex; flex-wrap
 footer nav { display: flex; flex-wrap: wrap; gap: 22px; margin-left: auto; }
 footer nav a { color: var(--t3); }
 
+/* ================= motion layer ================= */
+.spot { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, -20%), rgba(0,217,255,.07), transparent 60%); }
+.reveal { opacity: 0; transform: translateY(28px); filter: blur(8px);
+  transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1), filter .9s; transition-delay: var(--d, 0s); }
+.reveal.in { opacity: 1; transform: none; filter: none; }
+.eyebrow { position: relative; display: inline-flex; align-items: center; gap: 12px; }
+.eyebrow::after { content: ""; height: 1px; width: 0; background: linear-gradient(90deg, currentColor, transparent); transition: width 1.2s .3s cubic-bezier(.2,.7,.2,1); }
+.in .eyebrow::after, .eyebrow.in::after { width: 120px; }
+.reactor { transition: transform .4s ease-out; will-change: transform; }
+h1.glitch { animation: glitch 1.1s steps(1) 1; }
+@keyframes glitch { 0% { text-shadow: 3px 0 #ff2bd6, -3px 0 var(--accent); clip-path: inset(10% 0 60% 0); }
+  15% { text-shadow: -4px 0 #ff2bd6, 4px 0 var(--accent); clip-path: inset(50% 0 20% 0); }
+  30% { clip-path: inset(0 0 0 0); text-shadow: 0 0 48px var(--glow); } 45% { opacity: .6; } 50% { opacity: 1; } 100% { text-shadow: 0 0 48px var(--glow); } }
+.scroll-cue { margin-top: 26px; width: 22px; height: 34px; border: 1px solid var(--line3); border-radius: 12px; position: relative; }
+.scroll-cue::after { content: ""; position: absolute; left: 50%; top: 7px; width: 2px; height: 7px; margin-left: -1px; background: var(--accent); border-radius: 2px; animation: cue 1.8s ease-in-out infinite; }
+@keyframes cue { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(12px); opacity: 0; } 100% { opacity: 0; } }
+
+/* marquee */
+.marquee { position: relative; overflow: hidden; border-top: 1px solid var(--line2); background: #06080a; }
+.marquee .track { display: flex; width: max-content; animation: marquee 38s linear infinite; }
+.marquee span { font-family: var(--mono); font-size: 13px; letter-spacing: .3em; color: var(--t4); padding: 16px 0; white-space: nowrap; }
+.marquee span b { color: var(--accent); font-weight: 400; margin: 0 28px; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee::before, .marquee::after { content: ""; position: absolute; top: 0; bottom: 0; width: 120px; z-index: 1; pointer-events: none; }
+.marquee::before { left: 0; background: linear-gradient(90deg, #06080a, transparent); }
+.marquee::after { right: 0; background: linear-gradient(-90deg, #06080a, transparent); }
+
+/* capability sweep */
+.cap { position: relative; overflow: hidden; }
+.cap::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(0,217,255,.10), transparent); }
+.cap.in::after { animation: sweep 1.3s var(--d, 0s) cubic-bezier(.2,.7,.2,1) 1; }
+@keyframes sweep { to { left: 110%; } }
+
+/* whatsapp live */
+.msg { display: none; opacity: 1; transform: none; }
+.msg.show { display: block; animation: pop .42s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+.chat.fade .msg { transition: opacity .6s; opacity: 0; }
+.typing { align-self: flex-start; display: none; gap: 4px; padding: 11px 13px; border-radius: 9px; background: #202c33; }
+.typing.show { display: inline-flex; animation: pop .3s ease both; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: #8696a0; animation: bounce 1s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+.chat-head small.live { color: var(--green); }
+
+/* protocol flow */
+.flow { position: relative; }
+.flow-track { position: relative; height: 2px; background: var(--line3); margin-bottom: 0; }
+.flow-bar { position: absolute; left: 0; top: 0; height: 2px; width: 0; background: linear-gradient(90deg, transparent, var(--accent)); box-shadow: 0 0 14px var(--accent); transition: width 1.2s cubic-bezier(.6,0,.2,1); }
+.flow-bar::after { content: ""; position: absolute; right: -6px; top: -5px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 0 18px 4px var(--accent); }
+.steps { border-top: 0; }
+.steps li::before { transition: background .4s, box-shadow .4s, transform .4s; }
+.steps li .ttl, .steps li .txt, .steps li .label { transition: color .5s, opacity .5s; }
+.flow:not(.idle) .steps li:not(.on) .ttl { color: var(--t4); }
+.flow:not(.idle) .steps li:not(.on) .txt { opacity: .45; }
+.steps li.on::before { background: var(--accent); box-shadow: 0 0 0 6px rgba(0,217,255,.12), 0 0 18px var(--accent); transform: scale(1.25); }
+.steps li.on .label { color: var(--accent); }
+.steps li.done::before { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+/* core selector */
+.cores { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 48px; align-items: center; margin-bottom: 56px; }
+.dial { position: relative; width: min(100%, 460px); aspect-ratio: 1; justify-self: center; --c: var(--accent); }
+.dial-ring { position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--line); transition: transform 1s cubic-bezier(.6,0,.2,1); }
+.dial-ring::before { content: ""; position: absolute; inset: 9%; border-radius: 50%; border: 1px dashed var(--line3); }
+.dial-node { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -46px; border-radius: 50%; border: 1px solid var(--line3);
+  background: #080b0d; color: var(--t2); font-family: var(--mono); font-size: 10px; letter-spacing: .12em; cursor: pointer; display: grid; place-items: center; text-align: center; line-height: 1.3;
+  transition: border-color .4s, color .4s, box-shadow .4s, background .4s; padding: 6px; }
+.dial-node:hover { border-color: var(--t3); color: var(--t1); }
+.dial-node.on { border-color: var(--c); color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.03), 0 0 28px -4px var(--c); background: #0b1114; }
+.dial-node .inner { transition: transform 1s cubic-bezier(.6,0,.2,1); }
+.dial-pointer { position: absolute; left: 50%; top: -14px; width: 0; height: 0; margin-left: -8px; border: 8px solid transparent; border-top: 12px solid var(--c); filter: drop-shadow(0 0 6px var(--c)); transition: border-top-color .5s; }
+.dial-core { position: absolute; inset: 30%; border-radius: 50%; display: grid; place-items: center; }
+.dial-core svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.dial-core .spin { transform-origin: 50% 50%; transform-box: fill-box; animation: spin 6s linear infinite; }
+.dial-core .spin.r { animation-duration: 3.5s; animation-direction: reverse; }
+.dial-core .glowball { position: absolute; inset: 22%; border-radius: 50%; background: radial-gradient(circle, #fff 0, var(--c) 45%, transparent 72%); filter: blur(2px); animation: breath 2.6s ease-in-out infinite; transition: background .6s; }
+.dial-core .lbl { position: relative; font-family: var(--mono); font-size: 11px; letter-spacing: .2em; color: #04121a; font-weight: 600; }
+.core-card { display: flex; flex-direction: column; gap: 16px; }
+.core-card .kicker { font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--c, var(--accent)); }
+.core-card .nm { font-size: clamp(34px, 4vw, 52px); font-weight: 500; letter-spacing: -.03em; line-height: 1; }
+.core-card .pv { font-family: var(--mono); font-size: 13px; color: var(--t3); letter-spacing: .08em; }
+.core-card p { margin: 0; font-size: 17px; line-height: 1.6; color: var(--t2); max-width: 460px; }
+.core-card ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.core-card li { display: flex; gap: 12px; font-size: 15px; color: var(--t1); }
+.core-card li::before { content: "▸"; color: var(--c, var(--accent)); }
+.core-card .swap { animation: swap .6s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes swap { from { opacity: 0; transform: translateX(16px); filter: blur(6px); } }
+.core-nav { display: flex; gap: 10px; margin-top: 6px; }
+.core-nav button { width: 44px; height: 44px; border: 1px solid var(--line3); background: transparent; color: var(--t1); cursor: pointer; font-family: var(--mono); }
+.core-nav button:hover { border-color: var(--accent); color: var(--accent); }
+.core-bars { display: flex; gap: 6px; align-items: center; margin-left: 12px; }
+.core-bars i { width: 26px; height: 2px; background: var(--line3); position: relative; overflow: hidden; }
+.core-bars i.on::after { content: ""; position: absolute; inset: 0; background: var(--c, var(--accent)); animation: fill var(--dur, 4.2s) linear forwards; transform-origin: left; }
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.meter { display: inline-flex; gap: 4px; vertical-align: middle; }
+.meter i { width: 14px; height: 6px; background: var(--line3); }
+.meter i.f { background: var(--accent); box-shadow: 0 0 6px rgba(0,217,255,.5); }
+tbody tr { transition: background .3s; } tbody tr.hl { background: rgba(0,217,255,.05); }
+tbody tr.hl th { color: #fff; }
+
+/* security cascade */
+.sec { position: relative; overflow: hidden; }
+.sec::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--green); box-shadow: 0 0 12px var(--green); transform: scaleX(0); transform-origin: left; }
+.sec-grid.in .sec::before { animation: line .7s var(--d, 0s) cubic-bezier(.2,.7,.2,1) forwards; }
+@keyframes line { 60% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: .35; } }
+.sec .k { opacity: .4; transition: opacity .4s var(--d, 0s); } .sec-grid.in .sec .k { opacity: 1; }
+
 @media (prefers-reduced-motion: reduce) {
-  .rx-a, .rx-b, .rx-c, .rx-d, .rx-e, .rx-core, .rx-wave, .rx-beam, .rx-flick, .rx-halo { animation: none; }
-  .msg, .play .msg { animation: none; opacity: 1; transform: none; }
+  .rx-a, .rx-b, .rx-c, .rx-d, .rx-e, .rx-core, .rx-wave, .rx-beam, .rx-flick, .rx-halo, .marquee .track, h1.glitch, .scroll-cue::after,
+  .dial-core .spin, .dial-core .glowball { animation: none; }
+  .reveal { opacity: 1; transform: none; filter: none; transition: none; }
+  .msg { display: block; } .typing { display: none !important; }
+  .dial-ring, .dial-node .inner { transition: none; }
 }
 </style>
 </head>
 <body>
 <div class="bg-grid" aria-hidden="true"></div>
 <div class="bg-glow" aria-hidden="true"></div>
+<div class="spot" aria-hidden="true"></div>
 
 <header>
   <div class="wrap">
@@ -273,7 +386,7 @@ footer nav a { color: var(--t3); }
   </div>
 
   <div class="presents"><i></i>AI FAST TRACK PRESENTA</div>
-  <h1 id="hero-title">JARVIS</h1>
+  <h1 id="hero-title" class="glitch">JARVIS</h1>
   <p class="tagline">Inteligencia personal. <span>Dentro de tu WhatsApp.</span></p>
   <p class="sub">Lee lo que te llega, te avisa de lo que importa, responde por ti cuando se lo pides —solo con tu «sí»— y recuerda lo que no puedes olvidar.</p>
 
@@ -289,7 +402,15 @@ footer nav a { color: var(--t3); }
     <a href="#contacto">QUIERO MI JARVIS →</a>
     <span>IA · PUEDE COMETER ERRORES</span>
   </div>
+  <a href="#sistema" class="scroll-cue" aria-label="Bajar a las funciones"></a>
 </section>
+
+<div class="marquee" aria-hidden="true">
+  <div class="track">
+    <span>LEE<b>/</b>AVISA<b>/</b>RESPONDE<b>/</b>CONFIRMA<b>/</b>PROGRAMA<b>/</b>RECUERDA<b>/</b>BUSCA<b>/</b>RESUME<b>/</b>OUTLOOK<b>/</b>GMAIL<b>/</b>WHATSAPP<b>/</b></span>
+    <span>LEE<b>/</b>AVISA<b>/</b>RESPONDE<b>/</b>CONFIRMA<b>/</b>PROGRAMA<b>/</b>RECUERDA<b>/</b>BUSCA<b>/</b>RESUME<b>/</b>OUTLOOK<b>/</b>GMAIL<b>/</b>WHATSAPP<b>/</b></span>
+  </div>
+</div>
 
 <section class="strip" aria-label="Principios">
   <div class="wrap">
@@ -301,42 +422,43 @@ footer nav a { color: var(--t3); }
 </section>
 
 <section class="wrap section" id="sistema" aria-labelledby="sys-title">
-  <div class="head-split">
+  <div class="head-split reveal">
     <div class="stack"><span class="eyebrow">[01] SISTEMA</span><h2 id="sys-title">Seis funciones.<br>Una conversación.</h2></div>
     <p class="lead">Le hablas en tu chat «Tú» de WhatsApp, como si fuera una nota. Jarvis decide qué herramienta usar y te responde ahí mismo.</p>
   </div>
   <div class="rows" role="list">
-    <div class="cap" role="listitem"><div class="t"><span class="idx">01</span><span class="name">Conversa</span></div><span class="desc">Dudas, cálculos, redacción y búsquedas en internet, en lenguaje natural.</span><code><b>&gt;</b> ¿Qué tiempo hará el sábado en Valencia?</code></div>
-    <div class="cap" role="listitem"><div class="t"><span class="idx">02</span><span class="name">Vigila</span></div><span class="desc">Te avisa de WhatsApp —también de desconocidos— y de correos importantes.</span><code><b>&gt;</b> ¿Qué tengo sin leer de hoy?</code></div>
-    <div class="cap" role="listitem"><div class="t"><span class="idx">03</span><span class="name">Responde</span></div><span class="desc">Redacta WhatsApp y correos a tus contactos. Solo los envía si dices «sí».</span><code><b>&gt;</b> Dile a Laura que llego 10 min tarde</code></div>
-    <div class="cap" role="listitem"><div class="t"><span class="idx">04</span><span class="name">Correo</span></div><span class="desc">Outlook / Microsoft 365 y Gmail: busca, resume y prepara respuestas.</span><code><b>&gt;</b> Busca la factura de la luz y dime el importe</code></div>
-    <div class="cap" role="listitem"><div class="t"><span class="idx">05</span><span class="name">Programa</span></div><span class="desc">Recordatorios a su hora y tareas periódicas que te entrega por WhatsApp.</span><code><b>&gt;</b> Cada día a las 8, resúmeme lo pendiente</code></div>
-    <div class="cap" role="listitem"><div class="t"><span class="idx">06</span><span class="name">Recuerda</span></div><span class="desc">Guarda tus datos y preferencias y los tiene en cuenta siempre.</span><code><b>&gt;</b> Acuérdate de que prefiero respuestas cortas</code></div>
+    <div class="cap reveal" role="listitem"><div class="t"><span class="idx">01</span><span class="name">Conversa</span></div><span class="desc">Dudas, cálculos, redacción y búsquedas en internet, en lenguaje natural.</span><code><b>&gt;</b> ¿Qué tiempo hará el sábado en Valencia?</code></div>
+    <div class="cap reveal" role="listitem"><div class="t"><span class="idx">02</span><span class="name">Vigila</span></div><span class="desc">Te avisa de WhatsApp —también de desconocidos— y de correos importantes.</span><code><b>&gt;</b> ¿Qué tengo sin leer de hoy?</code></div>
+    <div class="cap reveal" role="listitem"><div class="t"><span class="idx">03</span><span class="name">Responde</span></div><span class="desc">Redacta WhatsApp y correos a tus contactos. Solo los envía si dices «sí».</span><code><b>&gt;</b> Dile a Laura que llego 10 min tarde</code></div>
+    <div class="cap reveal" role="listitem"><div class="t"><span class="idx">04</span><span class="name">Correo</span></div><span class="desc">Outlook / Microsoft 365 y Gmail: busca, resume y prepara respuestas.</span><code><b>&gt;</b> Busca la factura de la luz y dime el importe</code></div>
+    <div class="cap reveal" role="listitem"><div class="t"><span class="idx">05</span><span class="name">Programa</span></div><span class="desc">Recordatorios a su hora y tareas periódicas que te entrega por WhatsApp.</span><code><b>&gt;</b> Cada día a las 8, resúmeme lo pendiente</code></div>
+    <div class="cap reveal" role="listitem"><div class="t"><span class="idx">06</span><span class="name">Recuerda</span></div><span class="desc">Guarda tus datos y preferencias y los tiene en cuenta siempre.</span><code><b>&gt;</b> Acuérdate de que prefiero respuestas cortas</code></div>
   </div>
 </section>
 
 <section class="wrap section demo" id="demo" aria-labelledby="demo-title">
-  <div class="stack">
+  <div class="stack reveal">
     <span class="eyebrow">[02] EN ACCIÓN</span>
     <h2 id="demo-title">Tú decides.<br>Jarvis ejecuta.</h2>
     <p class="lead">Te llega un mensaje importante, Jarvis te avisa, le pides que conteste y prepara el borrador. Solo se envía con tu «sí».</p>
     <p class="lead">Si un mensaje o un correo intenta darle órdenes, Jarvis lo trata como información, nunca como instrucción.</p>
   </div>
-  <div class="phone-wrap">
+  <div class="phone-wrap reveal" style="--d:.15s">
     <div class="phone" role="img" aria-label="Ejemplo de conversación con Jarvis en WhatsApp">
       <div class="screen">
-        <div class="chat-head"><span class="av">TÚ</span><span class="who">Tú (mensajes para ti)<small>Jarvis activo</small></span></div>
+        <div class="chat-head"><span class="av">TÚ</span><span class="who">Tú (mensajes para ti)<small id="chat-state">Jarvis activo</small></span></div>
         <div class="chat" id="chat">
-          <div class="msg bot" style="animation-delay:.4s">Laura (cliente): ¿podemos mover la reunión de mañana a las 12?<small>09:41</small></div>
-          <div class="msg me" style="animation-delay:1.3s">Dile que perfecto, a las 12 en la oficina<small>09:42 ✓✓</small></div>
-          <div class="msg bot" style="animation-delay:2.2s">Borrador para Laura:
+          <div class="msg bot">Laura (cliente): ¿podemos mover la reunión de mañana a las 12?<small>09:41</small></div>
+          <div class="msg me">Dile que perfecto, a las 12 en la oficina<small>09:42 ✓✓</small></div>
+          <div class="msg bot">Borrador para Laura:
 «¡Perfecto! Nos vemos mañana a las 12 en la oficina.»
 
 ¿Lo envío? Responde sí o no.<small>09:42</small></div>
-          <div class="msg me" style="animation-delay:3.1s">sí<small>09:42 ✓✓</small></div>
-          <div class="msg bot" style="animation-delay:4s">Enviado a Laura.<small>09:42</small></div>
-          <div class="msg me" style="animation-delay:4.9s">Recuérdame mañana a las 11:30 salir hacia allí<small>09:43 ✓✓</small></div>
-          <div class="msg bot" style="animation-delay:5.8s">Hecho. Te aviso mañana a las 11:30.<small>09:43</small></div>
+          <div class="msg me">sí<small>09:42 ✓✓</small></div>
+          <div class="msg bot">Enviado a Laura.<small>09:42</small></div>
+          <div class="msg me">Recuérdame mañana a las 11:30 salir hacia allí<small>09:43 ✓✓</small></div>
+          <div class="msg bot">Hecho. Te aviso mañana a las 11:30.<small>09:43</small></div>
+          <div class="typing" id="typing" aria-hidden="true"><i></i><i></i><i></i></div>
         </div>
       </div>
     </div>
@@ -344,36 +466,69 @@ footer nav a { color: var(--t3); }
 </section>
 
 <section class="wrap section" aria-labelledby="proto-title">
-  <div class="stack" style="margin-bottom: 64px"><span class="eyebrow">PROTOCOLO</span><h2 id="proto-title">Operativo en minutos.</h2></div>
-  <ol class="steps">
-    <li class="a"><span class="label">T+0</span><span class="ttl">Recibes tu código</span><span class="txt">Cada persona tiene su propio Jarvis, privado y aislado.</span></li>
-    <li><span class="label">T+1</span><span class="ttl">Aceptas condiciones</span><span class="txt">Lees lo esencial y lo confirmas en un paso.</span></li>
-    <li><span class="label">T+2</span><span class="ttl">Vinculas WhatsApp</span><span class="txt">Con un QR o un código de 8 letras desde el móvil.</span></li>
-    <li class="y"><span class="label">T+3</span><span class="ttl">Le hablas</span><span class="txt">En tu chat «Tú». Correo opcional cuando quieras.</span></li>
-  </ol>
+  <div class="stack reveal" style="margin-bottom: 64px"><span class="eyebrow">PROTOCOLO</span><h2 id="proto-title">Operativo en minutos.</h2></div>
+  <div class="flow idle reveal" id="flow">
+    <div class="flow-track"><div class="flow-bar" id="flow-bar"></div></div>
+    <ol class="steps">
+      <li><span class="label">T+0</span><span class="ttl">Recibes tu código</span><span class="txt">Cada persona tiene su propio Jarvis, privado y aislado.</span></li>
+      <li><span class="label">T+1</span><span class="ttl">Aceptas condiciones</span><span class="txt">Lees lo esencial y lo confirmas en un paso.</span></li>
+      <li><span class="label">T+2</span><span class="ttl">Vinculas WhatsApp</span><span class="txt">Con un QR o un código de 8 letras desde el móvil.</span></li>
+      <li><span class="label">T+3</span><span class="ttl">Le hablas</span><span class="txt">En tu chat «Tú». Correo opcional cuando quieras.</span></li>
+    </ol>
+  </div>
 </section>
 
-<section class="wrap section" aria-labelledby="models-title">
-  <div class="head-split" style="margin-bottom: 48px">
+<section class="wrap section" id="modelos" aria-labelledby="models-title">
+  <div class="head-split reveal" style="margin-bottom: 40px">
     <div class="stack"><span class="eyebrow">MODELOS</span><h2 id="models-title">Elige el núcleo.</h2></div>
     <p class="lead">Cada Jarvis funciona con el modelo que mejor encaje: comercial, de código abierto o en tu propia infraestructura.</p>
   </div>
-  <div class="table-box">
+
+  <div class="cores reveal" id="cores">
+    <div class="dial" id="dial">
+      <span class="dial-pointer" aria-hidden="true"></span>
+      <div class="dial-ring" id="dial-ring">
+        <button class="dial-node" data-i="0" aria-label="Claude"><span class="inner">CLAUDE</span></button>
+        <button class="dial-node" data-i="1" aria-label="GPT"><span class="inner">GPT</span></button>
+        <button class="dial-node" data-i="2" aria-label="Open source"><span class="inner">OPEN<br>SOURCE</span></button>
+        <button class="dial-node" data-i="3" aria-label="Servidor propio"><span class="inner">SERVIDOR<br>PROPIO</span></button>
+      </div>
+      <div class="dial-core" aria-hidden="true">
+        <svg viewBox="0 0 100 100">
+          <circle class="spin" cx="50" cy="50" r="48" fill="none" style="stroke: var(--c)" stroke-width="2" stroke-dasharray="40 14 6 14" opacity=".9"/>
+          <circle class="spin r" cx="50" cy="50" r="40" fill="none" style="stroke: var(--c)" stroke-width="5" stroke-dasharray="2 6" opacity=".7"/>
+          <polygon points="50,24 72,37 72,63 50,76 28,63 28,37" fill="none" stroke="#e9fdff" stroke-width="1.2"/>
+        </svg>
+        <span class="glowball"></span>
+      </div>
+    </div>
+    <div class="core-card" id="core-card" aria-live="polite">
+      <div class="swap" id="core-body"></div>
+      <div class="core-nav">
+        <button id="core-prev" aria-label="Núcleo anterior">←</button>
+        <button id="core-next" aria-label="Núcleo siguiente">→</button>
+        <span class="core-bars" id="core-bars"><i></i><i></i><i></i><i></i></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-box reveal">
     <table>
-      <thead><tr><th scope="col">NÚCLEO</th><th scope="col">PROVEEDOR</th><th scope="col">PERFIL</th><th scope="col">TIPO</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">Claude</th><td>Anthropic</td><td>Máxima fiabilidad usando herramientas</td><td><span class="tag y">RECOMENDADO</span></td></tr>
-        <tr><th scope="row">GPT</th><td>OpenAI</td><td>Rápido y versátil</td><td><span class="tag">COMERCIAL</span></td></tr>
-        <tr><th scope="row">Llama · Qwen · Mistral</th><td>Vía OpenRouter</td><td>Modelos de pesos abiertos</td><td><span class="tag a">OPEN SOURCE</span></td></tr>
-        <tr><th scope="row">Servidor propio</th><td>Tu infraestructura</td><td>Nada sale de tu entorno</td><td><span class="tag">A MEDIDA</span></td></tr>
+      <thead><tr><th scope="col">COMPARATIVA</th><th scope="col">PROVEEDOR</th><th scope="col">FIABILIDAD CON HERRAMIENTAS</th><th scope="col">COSTE</th><th scope="col">CONTROL DE DATOS</th><th scope="col">TIPO</th></tr></thead>
+      <tbody id="cmp">
+        <tr><th scope="row">Claude</th><td>Anthropic</td><td><span class="meter" aria-label="Muy alta"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></td><td><span class="meter" aria-label="Medio-alto"><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></td><td><span class="meter" aria-label="Estándar"><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="tag y">RECOMENDADO</span></td></tr>
+        <tr><th scope="row">GPT</th><td>OpenAI</td><td><span class="meter" aria-label="Alta"><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></td><td><span class="meter" aria-label="Medio"><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="meter" aria-label="Estándar"><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="tag">COMERCIAL</span></td></tr>
+        <tr><th scope="row">Llama · Qwen · Mistral</th><td>Vía OpenRouter</td><td><span class="meter" aria-label="Media"><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="meter" aria-label="Bajo"><i class="f"></i><i></i><i></i><i></i></span></td><td><span class="meter" aria-label="Estándar"><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="tag a">OPEN SOURCE</span></td></tr>
+        <tr><th scope="row">Servidor propio</th><td>Tu infraestructura</td><td><span class="meter" aria-label="Según el modelo"><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="meter" aria-label="Fijo, según servidor"><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></td><td><span class="meter" aria-label="Máximo"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></td><td><span class="tag">A MEDIDA</span></td></tr>
       </tbody>
     </table>
   </div>
+  <p class="notes" style="margin-top: 14px">Valoración orientativa. El coste real depende del uso; la fiabilidad, del modelo concreto elegido.</p>
 </section>
 
 <section class="wrap section" id="seguridad" aria-labelledby="sec-title">
-  <div class="stack" style="margin-bottom: 48px"><span class="eyebrow">[03] SEGURIDAD</span><h2 id="sec-title">Privado por diseño.</h2></div>
-  <div class="sec-grid">
+  <div class="stack reveal" style="margin-bottom: 48px"><span class="eyebrow">[03] SEGURIDAD</span><h2 id="sec-title">Privado por diseño.</h2></div>
+  <div class="sec-grid" id="sec-grid">
     <div class="sec"><span class="k">● AISLADO</span><span class="ttl">Una instancia por persona</span><span class="txt">Datos, sesión y memoria separados por usuario.</span></div>
     <div class="sec"><span class="k">● ACCESO</span><span class="ttl">Código personal</span><span class="txt">Sesión segura y bloqueo automático de intentos abusivos.</span></div>
     <div class="sec"><span class="k">● CONTROL</span><span class="ttl">Confirmación humana</span><span class="txt">Ningún mensaje ni correo sale sin tu «sí» explícito.</span></div>
@@ -386,7 +541,7 @@ footer nav a { color: var(--t3); }
 </section>
 
 <section class="wrap section contact" id="contacto" aria-labelledby="contact-title">
-  <div class="stack">
+  <div class="stack reveal">
     <span class="eyebrow">[04] CONTACTO</span>
     <h2 id="contact-title">¿Quieres tu<br>Jarvis?</h2>
     <p class="lead">Cuéntanos para quién es y cómo lo usarías. Te respondemos desde AI Fast Track con una propuesta.</p>
@@ -395,7 +550,7 @@ footer nav a { color: var(--t3); }
       <a href="mailto:hola@aifasttrack.tech" style="font-size: 16px">hola@aifasttrack.tech</a>
     </div>
   </div>
-  <form class="cform" id="contact-form" novalidate>
+  <form class="cform reveal" id="contact-form" novalidate style="--d:.12s">
     <div class="fields">
       <div class="field"><label for="c-name">NOMBRE *</label><input id="c-name" name="name" class="input" autocomplete="name" required maxlength="120"></div>
       <div class="field"><label for="c-email">EMAIL *</label><input id="c-email" name="email" type="email" class="input" autocomplete="email" required maxlength="200"></div>
@@ -413,8 +568,8 @@ footer nav a { color: var(--t3); }
 </section>
 
 <section class="wrap section" style="padding-bottom: 120px" aria-labelledby="notice-title">
-  <div class="stack" style="margin-bottom: 40px"><span class="eyebrow" style="color: var(--yellow)">AVISOS</span><h2 id="notice-title" style="font-size: clamp(30px, 3.6vw, 44px)">Lo que debes saber.</h2></div>
-  <ol class="notices">
+  <div class="stack reveal" style="margin-bottom: 40px"><span class="eyebrow" style="color: var(--yellow)">AVISOS</span><h2 id="notice-title" style="font-size: clamp(30px, 3.6vw, 44px)">Lo que debes saber.</h2></div>
+  <ol class="notices reveal">
     <li><span class="ttl"><span>A</span>Es una inteligencia artificial</span><span class="txt">Puede equivocarse. No es asesoramiento profesional: verifica lo importante.</span></li>
     <li><span class="ttl"><span>B</span>WhatsApp no oficial</span><span class="txt">Se conecta como dispositivo vinculado mediante software no oficial. No es un servicio de Meta, que puede limitar o bloquear la cuenta o la conexión.</span></li>
     <li><span class="ttl"><span>C</span>Servicios de terceros</span><span class="txt">Depende de WhatsApp, Google, Microsoft y proveedores de IA y alojamiento, que pueden cambiar o retirar sus servicios.</span></li>
@@ -447,11 +602,156 @@ footer nav a { color: var(--t3); }
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); });
   }
 
-  // ---------- chat demo plays when visible ----------
-  var chat = $("chat");
-  if ("IntersectionObserver" in window) {
-    new IntersectionObserver(function (es, o) { if (es[0].isIntersecting) { chat.classList.add("play"); o.disconnect(); } }, { threshold: .3 }).observe(chat);
-  } else { chat.classList.add("play"); }
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var finePointer = window.matchMedia("(pointer: fine)").matches;
+  function onVisible(el, cb, threshold, once) {
+    if (!("IntersectionObserver" in window)) { cb(true); return; }
+    new IntersectionObserver(function (es, o) {
+      es.forEach(function (e) { cb(e.isIntersecting); if (e.isIntersecting && once) o.disconnect(); });
+    }, { threshold: threshold || .25 }).observe(el);
+  }
+
+  // ---------- reveal on scroll, staggered ----------
+  var reveals = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+  if (reduced || !("IntersectionObserver" in window)) reveals.forEach(function (el) { el.classList.add("in"); });
+  else {
+    var ro = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); ro.unobserve(e.target); } });
+    }, { threshold: .14, rootMargin: "0px 0px -6% 0px" });
+    document.querySelectorAll(".rows .cap").forEach(function (el, i) { el.style.setProperty("--d", (i * .08) + "s"); });
+    reveals.forEach(function (el) { ro.observe(el); });
+  }
+
+  // ---------- cursor spotlight + reactor parallax ----------
+  var reactor = document.querySelector(".reactor");
+  if (finePointer && !reduced) {
+    var raf = 0, mx = 0, my = 0;
+    window.addEventListener("pointermove", function (e) {
+      mx = e.clientX; my = e.clientY;
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = 0;
+        document.documentElement.style.setProperty("--mx", mx + "px");
+        document.documentElement.style.setProperty("--my", my + "px");
+        var r = reactor.getBoundingClientRect();
+        if (r.bottom > 0) {
+          var dx = (mx - (r.left + r.width / 2)) / innerWidth, dy = (my - (r.top + r.height / 2)) / innerHeight;
+          reactor.style.transform = "perspective(900px) rotateY(" + (dx * 14) + "deg) rotateX(" + (-dy * 14) + "deg)";
+        }
+      });
+    }, { passive: true });
+  }
+
+  // ---------- live WhatsApp conversation (loops while visible) ----------
+  var chat = $("chat"), typing = $("typing"), chatState = $("chat-state");
+  var msgs = Array.prototype.slice.call(chat.querySelectorAll(".msg"));
+  var chatTimer = 0, chatVisible = false, chatRunning = false;
+  function wait(ms) { return new Promise(function (r) { chatTimer = setTimeout(r, ms); }); }
+  function runChat() {
+    if (chatRunning) return; chatRunning = true;
+    msgs.forEach(function (m) { m.classList.remove("show"); });
+    chat.classList.remove("fade");
+    var i = 0;
+    (function next() {
+      if (!chatVisible) { chatRunning = false; return; }
+      if (i >= msgs.length) {
+        wait(4500).then(function () { chat.classList.add("fade"); return wait(700); })
+          .then(function () { chatRunning = false; if (chatVisible) runChat(); });
+        return;
+      }
+      var m = msgs[i++];
+      if (m.classList.contains("bot")) {
+        chat.insertBefore(typing, m);  // dots appear where the reply will
+        typing.classList.add("show"); chatState.textContent = "escribiendo…"; chatState.classList.add("live");
+        wait(m.textContent.length > 60 ? 1500 : 900).then(function () {
+          typing.classList.remove("show"); chatState.textContent = "Jarvis activo"; chatState.classList.remove("live");
+          m.classList.add("show"); return wait(650);
+        }).then(next);
+      } else {
+        wait(700).then(function () { m.classList.add("show"); return wait(500); }).then(next);
+      }
+    })();
+  }
+  if (reduced) msgs.forEach(function (m) { m.classList.add("show"); });
+  else onVisible(chat, function (v) { chatVisible = v; if (v) runChat(); }, .35);
+
+  // ---------- protocol flow ----------
+  var flow = $("flow"), steps = flow.querySelectorAll(".steps li"), bar = $("flow-bar"), flowTimer = 0, flowIdx = -1;
+  function flowStep() {
+    flowIdx = (flowIdx + 1) % (steps.length + 1);
+    if (flowIdx === steps.length) {           // pause on "all done", then restart
+      flowTimer = setTimeout(function () {
+        steps.forEach(function (li) { li.classList.remove("on", "done"); }); bar.style.width = "0";
+        flowTimer = setTimeout(flowStep, 900);
+      }, 1800);
+      return;
+    }
+    steps.forEach(function (li, i) { li.classList.toggle("on", i === flowIdx); li.classList.toggle("done", i < flowIdx); });
+    var li = steps[flowIdx];
+    bar.style.width = (li.offsetLeft + 4) + "px";
+    if (flowIdx === steps.length - 1) bar.style.width = "100%";
+    flowTimer = setTimeout(flowStep, 1700);
+  }
+  if (!reduced) onVisible(flow, function (v) {
+    clearTimeout(flowTimer);
+    if (v) { flow.classList.remove("idle"); flowIdx = -1; flowStep(); }
+  }, .4);
+
+  // ---------- core selector (rotary) ----------
+  var CORES = [
+    { name: "Claude", pv: "ANTHROPIC", color: "#00d9ff", kicker: "NÚCLEO RECOMENDADO",
+      text: "El más fiable siguiendo instrucciones y usando herramientas: leer, decidir, preparar el borrador y esperar tu «sí».",
+      pts: ["Ideal para correo, WhatsApp y tareas encadenadas", "Respuestas cuidadas y en tu tono", "Versiones rápidas y económicas disponibles"] },
+    { name: "GPT", pv: "OPENAI", color: "#7c9cff", kicker: "NÚCLEO COMERCIAL",
+      text: "Los modelos más conocidos del mercado, rápidos y versátiles para el día a día.",
+      pts: ["Muy buena velocidad de respuesta", "Versiones ligeras para bajo coste", "Amplio conocimiento general"] },
+    { name: "Open source", pv: "LLAMA · QWEN · MISTRAL", color: "#ffdb05", kicker: "NÚCLEO ABIERTO",
+      text: "Modelos de pesos abiertos servidos por proveedores especializados. Más baratos y sin dependencia de un único fabricante.",
+      pts: ["Coste por uso muy bajo", "Opción europea con Mistral", "Ideal para tareas sencillas y volumen"] },
+    { name: "Servidor propio", pv: "TU INFRAESTRUCTURA", color: "#22c55e", kicker: "NÚCLEO A MEDIDA",
+      text: "Jarvis conectado a un modelo instalado en vuestros servidores. Las conversaciones no salen de tu entorno.",
+      pts: ["Máximo control de los datos", "Coste fijo según el servidor", "Proyecto a medida con AI Fast Track"] }
+  ];
+  var dial = $("dial"), ring = $("dial-ring"), nodes = ring.querySelectorAll(".dial-node"), body = $("core-body"),
+      bars = $("core-bars").children, rows = $("cmp").children, cores = $("cores"), coreIdx = 0, coreTimer = 0, corePaused = false, coreVisible = false;
+  var R = 40; // node orbit radius, % of the dial
+  nodes.forEach(function (n, i) {
+    var a = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+    n.style.left = (50 + Math.cos(a) * R) + "%";
+    n.style.top = (50 + Math.sin(a) * R) + "%";
+    n.addEventListener("click", function () { selectCore(i, true); });
+  });
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function selectCore(i, user) {
+    coreIdx = (i + CORES.length) % CORES.length;
+    var c = CORES[coreIdx], rot = -coreIdx * (360 / CORES.length);
+    ring.style.transform = "rotate(" + rot + "deg)";
+    nodes.forEach(function (n, j) { n.classList.toggle("on", j === coreIdx); n.querySelector(".inner").style.transform = "rotate(" + (-rot) + "deg)"; });
+    dial.style.setProperty("--c", c.color); $("core-card").style.setProperty("--c", c.color);
+    body.classList.remove("swap"); void body.offsetWidth; body.classList.add("swap");
+    body.innerHTML = '<div class="kicker">' + esc(c.kicker) + '</div><div class="nm">' + esc(c.name) + '</div><div class="pv">' + esc(c.pv) +
+      '</div><p>' + esc(c.text) + '</p><ul>' + c.pts.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>";
+    Array.prototype.forEach.call(bars, function (b, j) { b.classList.toggle("on", j === coreIdx); });
+    Array.prototype.forEach.call(rows, function (r, j) { r.classList.toggle("hl", j === coreIdx); });
+    if (user) corePaused = true;
+    scheduleCore();
+  }
+  function scheduleCore() {
+    clearTimeout(coreTimer);
+    if (reduced || corePaused || !coreVisible) return;
+    coreTimer = setTimeout(function () { selectCore(coreIdx + 1, false); }, 4200);
+  }
+  $("core-prev").onclick = function () { selectCore(coreIdx - 1, true); };
+  $("core-next").onclick = function () { selectCore(coreIdx + 1, true); };
+  cores.addEventListener("mouseenter", function () { clearTimeout(coreTimer); });
+  cores.addEventListener("mouseleave", function () { if (!corePaused) scheduleCore(); });
+  selectCore(0, false);
+  onVisible(cores, function (v) { coreVisible = v; if (v) scheduleCore(); else clearTimeout(coreTimer); }, .3);
+
+  // ---------- security cascade ----------
+  var sg = $("sec-grid");
+  sg.querySelectorAll(".sec").forEach(function (el, i) { el.style.setProperty("--d", (i * .12) + "s"); });
+  if (reduced) sg.classList.add("in"); else onVisible(sg, function (v) { if (v) sg.classList.add("in"); }, .2, true);
 
   // ---------- access code ----------
   var code = $("code"), codeStatus = $("code-status");
