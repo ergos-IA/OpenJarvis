@@ -28,7 +28,8 @@ import tomlkit
 _TOOLS = (
     "think,calculator,web_search,"
     "whatsapp_read_messages,whatsapp_find_contact,whatsapp_send_message,"
-    "email_list,email_read,email_send"
+    "email_list,email_read,email_send,"
+    "reminder_create,reminder_list,reminder_cancel,remember_fact,forget_fact"
 )
 
 

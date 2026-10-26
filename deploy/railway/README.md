@@ -132,6 +132,22 @@ La contraseña de Gmail y el acceso de Outlook se guardan en el volumen de la
 instancia (`/data/mail`). Lo que Jarvis lee de un correo para contestarte se
 envía al proveedor del modelo (OpenAI / Anthropic).
 
+## Recordatorios, tareas programadas y memoria
+
+- **Recordatorios**: «recuérdame mañana a las 9 llamar a Pepe», «cada lunes a
+  las 8 recuérdame la reunión». Llegan a tu chat «Tú» como
+  `⏰ Recordatorio: …`. «¿Qué recordatorios tengo?», «cancela el 3».
+- **Tareas programadas**: «cada día a las 8 resúmeme los correos y WhatsApp
+  sin leer». A esa hora Jarvis hace la tarea (con las mismas herramientas que
+  en el chat) y te envía el resultado. Si la tarea prepara un envío, sigue
+  necesitando tu «sí».
+- **Memoria**: «acuérdate de que mi mujer se llama Ana», «prefiero respuestas
+  cortas». Se tiene en cuenta en todas las conversaciones; «olvida lo de…»
+  lo borra. Máximo 60 datos.
+
+Se guardan en `/data/personal.db`. Las horas son las de `TZ`. Si WhatsApp no
+está conectado a esa hora, el recordatorio se entrega en cuanto vuelva.
+
 ## Primera vez: preparar el proyecto en Railway
 
 1. Entra en [railway.com](https://railway.com) y crea un proyecto vacío
@@ -199,7 +215,7 @@ El primer despliegue tarda unos 10-15 minutos (compila la imagen).
 | `JARVIS_ENGINE` | `cloud` | Motor de inferencia |
 | `JARVIS_ASSISTANT_NAME` | `Jarvis` | Nombre del asistente |
 | `JARVIS_CHANNEL_AGENT` | `orchestrator` | Agente que responde por WhatsApp (`orchestrator` usa herramientas; `simple` solo conversa) |
-| `JARVIS_TOOLS` | `think,calculator,web_search,whatsapp_*,email_*` | Herramientas disponibles |
+| `JARVIS_TOOLS` | `think,calculator,web_search,whatsapp_*,email_*,reminder_*,remember_fact,forget_fact` | Herramientas disponibles |
 | `TZ` | `Europe/Madrid` | Zona horaria para las horas de los mensajes |
 | `WHATSAPP_ENABLED` | `true` | `false` para desactivar WhatsApp |
 | `WHATSAPP_MODE` | `self` | `self` = número personal, chat contigo mismo · `own` = número dedicado |

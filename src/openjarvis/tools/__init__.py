@@ -88,6 +88,11 @@ except ImportError:
     pass
 
 try:
+    import openjarvis.tools.personal_tools  # noqa: F401
+except ImportError:
+    pass
+
+try:
     import openjarvis.tools.http_request  # noqa: F401
 except ImportError:
     pass

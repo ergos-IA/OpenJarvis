@@ -17,6 +17,14 @@ from fastapi.responses import HTMLResponse
 router = APIRouter(tags=["whatsapp"])
 
 
+@router.on_event("startup")
+async def _start_reminders() -> None:
+    # Reminders and scheduled tasks are delivered to the WhatsApp chat.
+    from openjarvis.personal.reminders import get_reminder_service
+
+    get_reminder_service().start()
+
+
 def _baileys_channel(request: Request) -> Optional[Any]:
     bridge = getattr(request.app.state, "channel_bridge", None)
     if bridge is None:

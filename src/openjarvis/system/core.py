@@ -217,12 +217,33 @@ class JarvisSystem:
             )
 
         _system = self  # capture for closure
-        # Channels may carry their own instructions (e.g. WhatsApp etiquette).
-        _channel_prompt = getattr(channel_bridge, "system_prompt", None)
-        if not isinstance(_channel_prompt, str) or not _channel_prompt:
-            _channel_prompt = None
+
+        def _channel_prompt_now() -> Optional[str]:
+            # Channels may carry their own instructions (e.g. WhatsApp
+            # etiquette); read per message, they can include the time.
+            prompt = getattr(channel_bridge, "system_prompt", None)
+            return prompt if isinstance(prompt, str) and prompt else None
+
+        def _run_task(prompt: str) -> str:
+            """Run *prompt* with the channel's agent and tools, no history."""
+            if _system.agent_name and _system.agent_name != "none":
+                result = _system.ask(
+                    prompt,
+                    context=False,
+                    agent=_system.agent_name,
+                    system_prompt=_channel_prompt_now(),
+                )
+            else:
+                result = _system.ask(
+                    prompt, context=False, system_prompt=_channel_prompt_now()
+                )
+            return result.get("content", "")
+
+        if hasattr(channel_bridge, "task_runner"):
+            channel_bridge.task_runner = _run_task
 
         def _on_channel_message(cm) -> None:
+            _channel_prompt = _channel_prompt_now()
             session_key = f"{cm.channel}:{cm.conversation_id}"
             session = _system.session_store.get_or_create(
                 session_key,
