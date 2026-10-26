@@ -241,6 +241,9 @@ class JarvisSystem:
 
         if hasattr(channel_bridge, "task_runner"):
             channel_bridge.task_runner = _run_task
+            attach = getattr(channel_bridge, "attach_system", None)
+            if callable(attach):
+                attach(_system)
 
         def _on_channel_message(cm) -> None:
             _channel_prompt = _channel_prompt_now()

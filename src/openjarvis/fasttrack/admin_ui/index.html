@@ -167,10 +167,12 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
           <label class="mopt"><input type="radio" name="n-wa" value="meta"><div><b>WhatsApp Business oficial (API de Meta)</b><span>Jarvis con número de empresa propio. Ese número no puede usarse a la vez en la app del móvil. Requiere app de Meta.</span></div></label>
         </div>
       </div>
-      <div class="field"><label>IA</label>
+      <div class="field"><label>Plan</label>
         <div class="models">
-          <label class="mopt"><input type="radio" name="n-ai" value="own" checked><div><b>La conecta el cliente (recomendado)</b><span>En su asistente conecta su cuenta de Anthropic, OpenAI u OpenRouter y paga su uso. Sin riesgo para tu margen.</span></div></label>
-          <label class="mopt"><input type="radio" name="n-ai" value="included"><div><b>Incluida (claves de AI Fast Track)</b><span>Usa las claves compartidas del proyecto con el modelo de abajo. El coste corre de tu cuenta.</span></div></label>
+          <label class="mopt"><input type="radio" name="n-plan" value="own" checked><div><b>Conecta tu IA · 9,90 €/mes</b><span>El cliente conecta su cuenta de IA y paga su uso. Sin riesgo para tu margen.</span></div></label>
+          <label class="mopt"><input type="radio" name="n-plan" value="esencial"><div><b>Esencial · 16,90 €/mes</b><span>IA incluida (Haiku / GPT ligero), 400 créditos/mes. Al agotarse, se pausa.</span></div></label>
+          <label class="mopt"><input type="radio" name="n-plan" value="pro"><div><b>Pro · 39,90 €/mes</b><span>IA incluida (Sonnet / GPT), 1.500 créditos/mes. Al agotarse, baja a Haiku.</span></div></label>
+          <label class="mopt"><input type="radio" name="n-plan" value="staff"><div><b>Interno (sin límite)</b><span>Claves de AI Fast Track sin contador de créditos. Solo para el equipo.</span></div></label>
         </div>
       </div>
       <div class="field"><label>Modelo de IA</label><div class="models" id="n-models"></div></div>
@@ -285,6 +287,13 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
       var d = DEPLOY[u.deploy_status] || ["warn", u.deploy_status];
       var initials = (u.name || "?").split(/\s+/).map(function (w) { return w[0]; }).join("").slice(0, 2).toUpperCase();
       var wa = u.online ? (u.whatsapp ? '<span class="chip"><span class="dot ok"></span>WhatsApp +' + esc(u.phone) + "</span>" : '<span class="chip"><span class="dot warn"></span>WhatsApp sin vincular</span>') : "";
+      var cr = u.credits || null, creditChip = "";
+      if (cr && cr.included_ai) {
+        var cdot = cr.exhausted ? "bad" : (cr.percent >= 80 ? "warn" : "ok");
+        creditChip = '<span class="chip"><span class="dot ' + cdot + '"></span>' + esc(cr.plan_label) + " · " + esc(cr.remaining) + " créditos</span>";
+      } else if (cr) {
+        creditChip = '<span class="chip">' + esc(cr.plan_label) + "</span>";
+      }
       var aiChip = u.online ? (u.ai_source === "own" ? '<span class="chip"><span class="dot ok"></span>IA propia</span>' : u.ai_source === "included" ? '<span class="chip"><span class="dot warn"></span>IA incluida</span>' : '<span class="chip"><span class="dot bad"></span>Sin IA conectada</span>') : "";
       var waKind = u.whatsapp_provider === "meta" ? '<span class="chip os">WhatsApp Business API</span>' : "";
       var legal = u.online ? (u.legal_accepted ? '<span class="chip"><span class="dot ok"></span>Condiciones aceptadas</span>' : '<span class="chip"><span class="dot warn"></span>Condiciones pendientes</span>') : "";
@@ -292,12 +301,13 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
       return '<div class="user">' +
         '<div class="row"><div class="av">' + esc(initials) + '</div><div class="who"><b>' + esc(u.name) + "</b><span>" + esc(u.email || u.service) + "</span></div></div>" +
         '<div class="model"><b>' + esc(u.model.label) + "</b><span>" + esc(u.model.provider_label) + (u.assistant !== "Jarvis" ? " · asistente «" + esc(u.assistant) + "»" : "") + "</span></div>" +
-        '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + waKind + aiChip + wa + mail + legal + "</div>" +
+        '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + waKind + creditChip + aiChip + wa + mail + legal + "</div>" +
         '<div class="actions">' +
           (u.access_code ? '<button class="btn btn-ghost btn-sm" data-act="code" data-i="' + i + '" title="' + esc(u.access_code) + '">Copiar código</button>' : "") +
           (u.link ? '<button class="btn btn-ghost btn-sm" data-act="copy" data-i="' + i + '">Copiar enlace</button>' : "") +
           '<button class="btn btn-ghost btn-sm" data-act="model" data-i="' + i + '">Modelo</button>' +
           '<button class="btn btn-ghost btn-sm" data-act="rotate" data-i="' + i + '" title="Invalida el enlace y el código anteriores">Nuevo acceso</button>' +
+          (cr && cr.included_ai ? '<button class="btn btn-ghost btn-sm" data-act="topup" data-i="' + i + '">Recarga +300</button>' : "") +
           '<button class="btn btn-ghost btn-sm" data-act="redeploy" data-i="' + i + '">Redesplegar</button>' +
           '<button class="btn btn-danger btn-sm" data-act="delete" data-i="' + i + '">Baja</button>' +
         "</div></div>";
@@ -313,6 +323,10 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
     if (act === "rotate") {
       if (!confirm("¿Generar un enlace nuevo para " + u.name + "? El anterior dejará de funcionar y Jarvis se reinicia (1-2 min).")) return;
       api("POST", "/api/users/" + u.id + "/rotate-key").then(function (r) { copy(r.link); toast("Enlace nuevo copiado ✓ · código " + r.access_code); load(); }, function (x) { toast(x.message); });
+    }
+    if (act === "topup") {
+      if (!confirm("¿Añadir 300 créditos a " + u.name + "? (recarga de 4,90 €)")) return;
+      api("POST", "/api/users/" + u.id + "/topup").then(function () { toast("Recarga añadida ✓"); load(); }, function (x) { toast(x.message); });
     }
     if (act === "redeploy") api("POST", "/api/users/" + u.id + "/redeploy").then(function () { toast("Redespliegue lanzado"); setTimeout(load, 1500); }, function (x) { toast(x.message); });
     if (act === "delete") { $("del-title").textContent = "Eliminar a " + u.name; $("del-word").textContent = u.service.replace(/^jarvis-/, ""); $("del-confirm").value = ""; err("del-err", ""); show("m-del", true); }
@@ -344,8 +358,9 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
     if (!name) { err("n-err", "Escribe el nombre."); return; }
     if (!picked("n-models")) { err("n-err", "Elige un modelo (falta configurar alguna clave)."); return; }
     b.disabled = true; b.innerHTML = '<span class="spinner"></span> Creando…'; err("n-err", "");
-    var waSel = document.querySelector('input[name="n-wa"]:checked'), aiSel = document.querySelector('input[name="n-ai"]:checked');
-    api("POST", "/api/users", { name: name, email: $("n-email").value.trim(), assistant_name: $("n-asst").value.trim(), model: picked("n-models"), whatsapp: waSel ? waSel.value : "personal", ai: aiSel ? aiSel.value : "own" })
+    var waSel = document.querySelector('input[name="n-wa"]:checked'), planSel = document.querySelector('input[name="n-plan"]:checked');
+    var planVal = planSel ? planSel.value : "own";
+    api("POST", "/api/users", { name: name, email: $("n-email").value.trim(), assistant_name: $("n-asst").value.trim(), model: picked("n-models"), whatsapp: waSel ? waSel.value : "personal", plan: planVal === "staff" ? "own" : planVal, ai: planVal === "staff" ? "included" : "own" })
       .then(function (r) {
         show("new-form", false); show("new-done", true);
         $("d-title").textContent = "Jarvis de " + name + " creado";

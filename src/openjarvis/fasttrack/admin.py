@@ -35,6 +35,7 @@ from openjarvis.fasttrack.models import (
     PROVIDERS,
     describe,
 )
+from openjarvis.fasttrack.plans import PLANS, TOPUP_CREDITS
 from openjarvis.fasttrack.provisioning import (
     CREDENTIALS as _CREDENTIALS,
 )
@@ -117,6 +118,7 @@ class NewUser(BaseModel):
     assistant_name: str = "Jarvis"
     whatsapp: str = "personal"  # personal (linked device) | meta (Business API)
     ai: str = "own"  # own: the user connects their account · included: ours
+    plan: str = "own"  # own (9,90 €, their AI) | esencial | pro (AI included)
 
 
 class ModelChange(BaseModel):
@@ -244,7 +246,9 @@ def create_admin_app(
                 return_exceptions=True,
             )
             if isinstance(ai, httpx.Response) and ai.status_code == 200:
-                out["ai_source"] = ai.json().get("source", "")
+                ai_data = ai.json()
+                out["ai_source"] = ai_data.get("source", "")
+                out["credits"] = ai_data.get("credits")
             if isinstance(info, httpx.Response) and info.status_code == 200:
                 out["legal_accepted"] = bool(info.json().get("legal_accepted"))
             if isinstance(wa, httpx.Response) and wa.status_code == 200:
@@ -310,6 +314,7 @@ def create_admin_app(
             "credentials": {c: bool(shared.get(c)) for c in _CREDENTIALS},
             "providers": PROVIDERS,
             "models": MODELS,
+            "plans": PLANS,
             "users": users,
         }
 
@@ -327,17 +332,23 @@ def create_admin_app(
         if not " ".join(req.name.split()):
             raise HTTPException(400, "Escribe el nombre del usuario")
         _model_vars(req.model, req.provider)  # validate before creating
+        plan_key = req.plan if req.plan in PLANS else "own"
+        included = PLANS[plan_key]["included_ai"]
+        model = req.model
+        if included and model not in (PLANS[plan_key]["models"] or []):
+            model = PLANS[plan_key]["models"][0]
         try:
             result = await asyncio.to_thread(
                 provision_user,
                 rw,
                 name=req.name,
                 email=req.email,
-                model=req.model,
+                model=model,
                 provider=req.provider,
                 whatsapp=req.whatsapp,
                 assistant_name=req.assistant_name,
-                shared_ai=req.ai == "included",
+                shared_ai=included or req.ai == "included",
+                extra_vars={"JARVIS_PLAN": plan_key},
                 repo=repo,
                 branch=branch,
             )
@@ -384,6 +395,35 @@ def create_admin_app(
             "link": f"https://{domain}/#key={key}",
             "access_code": access_code,
         }
+
+    @app.post("/api/users/{service_id}/topup")
+    async def topup(service_id: str, request: Request) -> Dict[str, Any]:
+        require(request)
+        await asyncio.to_thread(guard, service_id)
+        token = os.environ.get("FASTTRACK_ADMIN_TOKEN", "")
+        if not token:
+            raise HTTPException(503, "Falta FASTTRACK_ADMIN_TOKEN en la consola")
+        variables, domain = await asyncio.gather(
+            asyncio.to_thread(railway_call, rw.variables, service_id),
+            asyncio.to_thread(railway_call, rw.domain, service_id),
+        )
+        api_key = variables.get("OPENJARVIS_API_KEY", "")
+        try:
+            resp = await client.post(
+                f"https://{domain}/api/credits/topup",
+                json={"credits": TOPUP_CREDITS},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "X-FastTrack-Admin": token,
+                },
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(502, f"Su Jarvis no responde: {exc}") from exc
+        if resp.status_code != 200:
+            raise HTTPException(
+                502, f"Su Jarvis rechazó la recarga ({resp.status_code})"
+            )
+        return resp.json()
 
     @app.post("/api/users/{service_id}/redeploy")
     async def redeploy(service_id: str, request: Request) -> Dict[str, Any]:

@@ -287,7 +287,14 @@ tbody tr.hl th { color: #fff; }
 .billing button.on { color: var(--bg); }
 .billing .pill { position: absolute; top: 4px; bottom: 4px; left: 4px; background: var(--accent); box-shadow: 0 0 18px rgba(0,217,255,.45); transition: transform .45s cubic-bezier(.6,0,.2,1), width .45s cubic-bezier(.6,0,.2,1); }
 .billing .save { margin-left: 8px; padding: 2px 6px; background: var(--yellow); color: var(--bg); font-size: 10px; letter-spacing: .08em; }
-.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 0; border: 1px solid var(--line); }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 0; border: 1px solid var(--line); }
+.plan .pill-tag { position: absolute; top: 18px; right: 18px; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; padding: 4px 8px; background: var(--yellow); color: var(--bg); }
+.extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); border: 1px solid var(--line); border-top: 0; }
+.extra { padding: 22px clamp(20px, 3vw, 32px); display: flex; flex-direction: column; gap: 6px; }
+.extra + .extra { border-left: 1px solid var(--line); }
+@media (max-width: 760px) { .extra + .extra { border-left: 0; border-top: 1px solid var(--line); } }
+.extra b { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
+.extra span { color: var(--t2); font-size: 14px; }
 .plan { position: relative; padding: clamp(24px, 4vw, 40px); display: flex; flex-direction: column; gap: 18px; overflow: hidden; }
 .plan + .plan { border-left: 1px solid var(--line); }
 @media (max-width: 760px) { .plan + .plan { border-left: 0; border-top: 1px solid var(--line); } }
@@ -572,8 +579,8 @@ tbody tr.hl th { color: #fff; }
 
 <section class="wrap section" id="precios" aria-labelledby="price-title">
   <div class="head-split reveal" style="margin-bottom: 40px">
-    <div class="stack"><span class="eyebrow">[04] PRECIOS</span><h2 id="price-title">Un precio. Todo incluido.</h2></div>
-    <p class="lead">Todas las funciones, sin letra pequeña. Empieza gratis el primer mes y decide después.</p>
+    <div class="stack"><span class="eyebrow">[04] PRECIOS</span><h2 id="price-title">Elige cómo pagar la IA.</h2></div>
+    <p class="lead">Todas las funciones en todos los planes. Conecta tu propia IA, o déjanos incluirla con créditos claros. El primer mes, gratis.</p>
   </div>
   <div class="reveal">
     <div class="billing" role="group" aria-label="Periodo de facturación">
@@ -583,36 +590,54 @@ tbody tr.hl th { color: #fff; }
     </div>
   </div>
   <div class="plans reveal">
-    <div class="plan main">
-      <span class="tagline2">JARVIS PERSONAL</span>
-      <div class="price"><span class="amount" id="price-amount">9,90 €</span><span class="per" id="price-per">/ mes</span></div>
-      <span class="equiv" id="price-equiv">Sin permanencia. Cancela cuando quieras.</span>
+    <div class="plan">
+      <span class="tagline2">CONECTA TU IA</span>
+      <div class="price"><span class="amount" data-price="own">9,90 €</span><span class="per" data-per>/ mes</span></div>
+      <span class="equiv" data-equiv="own"></span>
       <span class="free"><i></i>PRIMER MES GRATIS</span>
       <ul>
-        <li>Tu propio Jarvis, privado y aislado</li>
-        <li>WhatsApp: avisos, resúmenes y respuestas con tu «sí»</li>
-        <li>Correo Outlook / Microsoft 365 y Gmail</li>
-        <li>Recordatorios, tareas programadas y memoria</li>
-        <li>Búsqueda en internet</li>
-        <li>Tu propia IA: conecta tu cuenta de Claude, GPT u open source</li>
+        <li>Todas las funciones de Jarvis</li>
+        <li>Usa tu propia cuenta de Claude, GPT u open source</li>
+        <li>Pagas la IA directamente al proveedor (normalmente &lt; 1 €/mes con un modelo ligero)</li>
+        <li>Cambia de modelo cuando quieras</li>
+        <li>Tutorial paso a paso incluido</li>
       </ul>
-      <a href="#contacto" class="btn" data-plan>EMPEZAR GRATIS →</a>
-      <span class="equiv">¿Para un equipo? <b style="color: var(--t1); font-weight: 500">8,90 € por usuario y mes</b>. <a href="#contacto" data-team style="border-bottom: 1px solid var(--accent)">Pide propuesta</a></span>
+      <a href="#contacto" class="btn" data-plan="own">EMPEZAR GRATIS →</a>
+    </div>
+    <div class="plan main">
+      <span class="pill-tag">IA INCLUIDA</span>
+      <span class="tagline2">ESENCIAL</span>
+      <div class="price"><span class="amount" data-price="esencial">16,90 €</span><span class="per" data-per>/ mes</span></div>
+      <span class="equiv" data-equiv="esencial"></span>
+      <span class="free"><i></i>PRIMER MES GRATIS</span>
+      <ul>
+        <li>Todo lo de «Conecta tu IA», sin crear cuentas</li>
+        <li>IA incluida: Claude Haiku o GPT ligero</li>
+        <li>400 créditos al mes (≈ 1.000 mensajes)</li>
+        <li>Aviso al 80 % y recargas cuando quieras</li>
+      </ul>
+      <a href="#contacto" class="btn" data-plan="esencial">EMPEZAR GRATIS →</a>
     </div>
     <div class="plan">
-      <span class="tagline2" style="color: var(--yellow)">OPCIONAL · PAGO ÚNICO</span>
-      <div class="price"><span class="addon-amount">49 €</span><span class="per">alta asistida</span></div>
-      <span class="equiv">Lo dejamos todo funcionando por ti.</span>
+      <span class="tagline2">PRO</span>
+      <div class="price"><span class="amount" data-price="pro">39,90 €</span><span class="per" data-per>/ mes</span></div>
+      <span class="equiv" data-equiv="pro"></span>
+      <span class="free"><i></i>PRIMER MES GRATIS</span>
       <ul>
-        <li>Sesión guiada para vincular WhatsApp</li>
-        <li>Conexión de tu correo (Outlook o Gmail)</li>
-        <li>Configuración de avisos, recordatorios y memoria</li>
-        <li>Primeros pasos y buenas prácticas</li>
+        <li>Los modelos avanzados: Claude Sonnet o GPT</li>
+        <li>1.500 créditos al mes (≈ 500 mensajes avanzados)</li>
+        <li>Si se agotan, sigue en modo ahorro sin cortes</li>
+        <li>Ideal para correo intenso y tareas encadenadas</li>
       </ul>
-      <a href="#contacto" class="ghost" data-assisted style="align-self: flex-start">QUIERO ALTA ASISTIDA →</a>
+      <a href="#contacto" class="btn" data-plan="pro">EMPEZAR GRATIS →</a>
     </div>
   </div>
-  <p class="price-notes reveal">Precios por usuario con IVA incluido. El primer mes es gratuito; después se renueva al precio elegido salvo que canceles antes. <b style="color: var(--t1); font-weight: 500">La inteligencia artificial la conectas con tu propia cuenta</b> (Anthropic, OpenAI u OpenRouter) y pagas tu uso directamente al proveedor: con un modelo ligero, el uso normal suele costar menos de 1 € al mes, y tú fijas el límite de gasto. Te guiamos paso a paso. En el modo WhatsApp Business oficial, las tarifas de mensajería de Meta se facturan aparte.</p>
+  <div class="extras reveal">
+    <div class="extra"><span class="tagline2" style="color: var(--yellow)">RECARGA</span><b>4,90 €</b><span>+300 créditos que no caducan a fin de mes.</span></div>
+    <div class="extra"><span class="tagline2" style="color: var(--yellow)">ALTA ASISTIDA</span><b>49 €</b><span>Te lo dejamos todo funcionando. <a href="#contacto" data-assisted style="border-bottom: 1px solid var(--accent)">Pedirla</a></span></div>
+    <div class="extra"><span class="tagline2" style="color: var(--yellow)">EQUIPOS</span><b>8,90 €</b><span>por usuario y mes con tu IA. <a href="#contacto" data-team style="border-bottom: 1px solid var(--accent)">Pide propuesta</a></span></div>
+  </div>
+  <p class="price-notes reveal">Precios por usuario con IVA incluido. El primer mes es gratuito y puedes cancelar antes de que se cobre; sin permanencia. 1 crédito equivale a 1 céntimo de uso real de IA, así que los mensajes que cubre dependen de su longitud. En «Conecta tu IA» pagas tu consumo directamente al proveedor y tú fijas el límite de gasto. En el modo WhatsApp Business oficial, las tarifas de mensajería de Meta se facturan aparte.</p>
 </section>
 
 <section class="wrap section contact" id="contacto" aria-labelledby="contact-title">
@@ -825,8 +850,9 @@ tbody tr.hl th { color: #fff; }
 
   // ---------- pricing toggle ----------
   var PRICES = {
-    month: { amount: "9,90 €", per: "/ mes", equiv: "Sin permanencia. Cancela cuando quieras." },
-    year: { amount: "99 €", per: "/ año", equiv: "Equivale a 8,25 €/mes · ahorras 19,80 € al año." }
+    own: { month: "9,90 €", year: "99 €", yearEq: "8,25 €/mes · ahorras 19,80 €" },
+    esencial: { month: "16,90 €", year: "169 €", yearEq: "14,08 €/mes · ahorras 33,80 €" },
+    pro: { month: "39,90 €", year: "399 €", yearEq: "33,25 €/mes · ahorras 79,80 €" }
   };
   var pill = $("pill"), billBtns = document.querySelectorAll("[data-bill]"), billing = "month";
   function setBilling(kind) {
@@ -836,17 +862,25 @@ tbody tr.hl th { color: #fff; }
       b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
       if (on) { pill.style.width = b.offsetWidth + "px"; pill.style.transform = "translateX(" + (b.offsetLeft - 4) + "px)"; }
     });
-    var p = PRICES[kind], amt = $("price-amount");
-    amt.textContent = p.amount; $("price-per").textContent = p.per; $("price-equiv").textContent = p.equiv;
-    amt.classList.remove("flip"); void amt.offsetWidth; amt.classList.add("flip");
+    Object.keys(PRICES).forEach(function (k) {
+      var amt = document.querySelector('[data-price="' + k + '"]');
+      amt.textContent = PRICES[k][kind];
+      amt.classList.remove("flip"); void amt.offsetWidth; amt.classList.add("flip");
+      document.querySelector('[data-equiv="' + k + '"]').textContent = kind === "year" ? "Equivale a " + PRICES[k].yearEq + " al año." : "Sin permanencia. Cancela cuando quieras.";
+    });
+    document.querySelectorAll("[data-per]").forEach(function (el) { el.textContent = kind === "year" ? "/ año" : "/ mes"; });
   }
   billBtns.forEach(function (b) { b.addEventListener("click", function () { setBilling(b.getAttribute("data-bill")); }); });
   setBilling("month");
   addEventListener("resize", function () { setBilling(billing); });
   // Plan buttons pre-fill the contact message.
   function prefill(text) { var m = $("c-msg"); if (m && !m.value.trim()) m.value = text; }
-  document.querySelector("[data-plan]").addEventListener("click", function () {
-    prefill("Quiero empezar el mes gratis de Jarvis (plan " + (billing === "year" ? "anual, 99 €/año" : "mensual, 9,90 €/mes") + ").");
+  var PLAN_NAMES = { own: "Conecta tu IA", esencial: "Esencial", pro: "Pro" };
+  document.querySelectorAll("[data-plan]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var k = b.getAttribute("data-plan");
+      prefill("Quiero empezar el mes gratis de Jarvis, plan " + PLAN_NAMES[k] + " (" + (billing === "year" ? PRICES[k].year + "/año" : PRICES[k].month + "/mes") + ").");
+    });
   });
   document.querySelector("[data-team]").addEventListener("click", function () {
     prefill("Queremos Jarvis para un equipo de [N] personas (8,90 € por usuario y mes).");

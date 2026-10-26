@@ -26,10 +26,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from openjarvis.core.paths import get_config_dir
+from openjarvis.fasttrack.credits import get_meter
 from openjarvis.fasttrack.models import MODELS, PROVIDERS, describe
 
 logger = logging.getLogger(__name__)
@@ -73,8 +74,18 @@ def ai_status() -> Dict[str, Any]:
     pending = bool(saved.get("provider")) and (
         saved.get("env", {}).get("JARVIS_MODEL") != model
     )
+    credits = get_meter().status()
+    allowed = credits["models"]
+    if source == "own":
+        choices = [m for m in MODELS if m["provider"] == saved.get("provider")]
+    elif allowed:
+        choices = [m for m in MODELS if m["id"] in allowed]
+    else:
+        choices = []
     return {
         **info,
+        "credits": credits,
+        "model_choices": choices,
         "source": source,  # own: the user's account · included: ours · none
         "configured": source != "none",
         "restarting": pending,
@@ -184,6 +195,52 @@ async def set_ai_config(req: AIConfig) -> Dict[str, Any]:
     )
     restarting = restart_server()
     return {**ai_status(), "restarting": restarting}
+
+
+class ModelChoice(BaseModel):
+    model: str
+
+
+@router.post("/api/ai/model")
+async def change_model(req: ModelChoice) -> Dict[str, Any]:
+    """Switch model: free with your own AI account, once a day otherwise."""
+    status = ai_status()
+    model = req.model.strip()
+    if model not in {m["id"] for m in status["model_choices"]}:
+        raise HTTPException(400, "Ese modelo no está disponible en tu plan")
+    meter = get_meter()
+    if status["source"] != "own" and not meter.can_change_model():
+        hours = max(1, round(status["credits"]["model_change_in_s"] / 3600))
+        raise HTTPException(
+            429, f"Puedes cambiar de modelo una vez al día (en ~{hours} h)."
+        )
+    saved = _saved()
+    env = dict(saved.get("env") or {})
+    env.update(JARVIS_MODEL=model, JARVIS_ENGINE="cloud")
+    _write({**saved, "env": env})
+    if status["source"] != "own":
+        meter.mark_model_changed()
+    restarting = restart_server()
+    return {**ai_status(), "restarting": restarting}
+
+
+class TopUp(BaseModel):
+    credits: float
+
+
+@router.post("/api/credits/topup")
+async def credits_topup(req: TopUp, request: Request) -> Dict[str, Any]:
+    """Add credits (console / billing only: needs the internal admin token)."""
+    token = os.environ.get("FASTTRACK_ADMIN_TOKEN", "")
+    import hmac
+
+    if not token or not hmac.compare_digest(
+        request.headers.get("x-fasttrack-admin", ""), token
+    ):
+        raise HTTPException(403, "Solo AI Fast Track puede añadir créditos")
+    if not 0 < req.credits <= 100000:
+        raise HTTPException(400, "Cantidad no válida")
+    return get_meter().add_topup(req.credits)
 
 
 @router.delete("/api/ai/config")

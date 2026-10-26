@@ -23,6 +23,11 @@ from openjarvis.personal.store import PersonalStore
 logger = logging.getLogger(__name__)
 
 _POLL_S = 30
+# Per-instance limits: tasks run the AI, so keep them bounded.
+MAX_ACTIVE_TASKS = 10
+MAX_ACTIVE_REMINDERS = 100
+MIN_TASK_INTERVAL_S = 30 * 60
+MAX_TASK_RUNS_PER_DAY = 48
 REPEATS = ("daily", "weekdays", "weekly", "monthly")
 _DAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 
@@ -150,6 +155,7 @@ class ReminderService:
             raise ValueError("Falta el texto del recordatorio")
         first = parse_when(when)
         cron = repeat_to_cron(repeat, first)
+        self._check_limits(is_task, cron, first)
         if first < time.time() - 60:
             if not cron:
                 raise ValueError(
@@ -158,6 +164,38 @@ class ReminderService:
             first = next_cron_run(cron, time.time())
         rid = self.store.add_reminder(text, first, cron=cron, is_task=is_task)
         return self.store.get_reminder(rid) or {}
+
+    def _check_limits(self, is_task: bool, cron: str, first: float) -> None:
+        active = self.store.active_reminders()
+        if is_task:
+            if sum(1 for r in active if r["is_task"]) >= MAX_ACTIVE_TASKS:
+                raise ValueError(
+                    f"Ya tienes {MAX_ACTIVE_TASKS} tareas programadas activas; "
+                    "cancela alguna antes de crear otra"
+                )
+            if cron:
+                start = max(first, time.time())
+                runs = [start]
+                while len(runs) <= MAX_TASK_RUNS_PER_DAY + 1:
+                    runs.append(next_cron_run(cron, runs[-1]))
+                    if runs[-1] - start > 24 * 3600:
+                        break
+                gaps = [b - a for a, b in zip(runs[1:], runs[2:])]
+                if gaps and min(gaps) < MIN_TASK_INTERVAL_S:
+                    raise ValueError(
+                        "Una tarea programada no puede repetirse más de una vez "
+                        "cada 30 minutos"
+                    )
+                per_day = sum(1 for t in runs[1:] if t - start <= 24 * 3600)
+                if per_day > MAX_TASK_RUNS_PER_DAY:
+                    raise ValueError(
+                        "Una tarea no puede ejecutarse más de "
+                        f"{MAX_TASK_RUNS_PER_DAY} veces al día"
+                    )
+        elif sum(1 for r in active if not r["is_task"]) >= MAX_ACTIVE_REMINDERS:
+            raise ValueError(
+                f"Has llegado al máximo de {MAX_ACTIVE_REMINDERS} recordatorios activos"
+            )
 
     def cancel(self, reminder_id: int) -> bool:
         item = self.store.get_reminder(reminder_id)
@@ -204,6 +242,16 @@ class ReminderService:
         runner = self._task_runner or _channel_task_runner()
         if runner is None:
             return None
+        try:
+            from openjarvis.fasttrack.credits import get_meter
+
+            if get_meter().blocked_reply():
+                return (
+                    f"🗓️ *{item['text']}*{late}\n\n"
+                    "No la he hecho: sin créditos de IA este mes."
+                )
+        except Exception:
+            pass
         try:
             result = runner(
                 "Tarea programada por el usuario; hazla ahora y responde con el "

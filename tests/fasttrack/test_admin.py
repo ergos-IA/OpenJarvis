@@ -328,6 +328,21 @@ class TestConsole:
         _, _, variables, _ = next(c for c in rw.calls if c[0] == "vars")
         assert variables["ANTHROPIC_API_KEY"] == "${{shared.ANTHROPIC_API_KEY}}"
 
+    def test_create_pro_plan(self, console, rw):
+        _login(console)
+        r = console.post(
+            "/api/users",
+            json={"name": "Eva", "plan": "pro", "model": "claude-haiku-5-5"},
+            headers=H,
+        )
+        assert r.status_code == 200
+        _, _, variables, _ = next(c for c in rw.calls if c[0] == "vars")
+        assert variables["JARVIS_PLAN"] == "pro"
+        assert (
+            variables["ANTHROPIC_API_KEY"] == "${{shared.ANTHROPIC_API_KEY}}"
+        )  # AI included
+        assert variables["FASTTRACK_ADMIN_TOKEN"] == "${{shared.FASTTRACK_ADMIN_TOKEN}}"
+
     def test_duplicate_names_get_suffix(self, console, rw):
         _login(console)
         r = console.post("/api/users", json={"name": "Ana"}, headers=H)

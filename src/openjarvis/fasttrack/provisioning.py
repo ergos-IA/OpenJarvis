@@ -111,6 +111,8 @@ def provision_user(
     }
     # Provider credentials and the company's legal data come from the
     # project's shared variables, filled in once for every user.
+    # Internal token the console/billing use to add credits to an instance.
+    variables.setdefault("FASTTRACK_ADMIN_TOKEN", "${{shared.FASTTRACK_ADMIN_TOKEN}}")
     for var in (CREDENTIALS if shared_ai else []) + LEGAL_VARS:
         variables.setdefault(var, "${{shared.%s}}" % var)
 

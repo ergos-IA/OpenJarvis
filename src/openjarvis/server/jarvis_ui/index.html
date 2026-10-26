@@ -261,6 +261,15 @@ footer img { width: 22px; height: 22px; }
 .legal-item { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
 .legal-item h3 { font: 700 15px var(--display); margin: 0 0 6px; color: var(--t1); }
 .legal-item p { margin: 0; color: var(--t2); font-size: 14px; }
+.credit-box { padding: 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--s1); margin: 0 0 16px; }
+.credit-box .row1 { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--t2); }
+.credit-box b { color: var(--t1); }
+.credit-bar { height: 8px; border-radius: 4px; background: var(--s3); margin-top: 10px; overflow: hidden; }
+.credit-bar i { display: block; height: 100%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); transition: width .6s; }
+.credit-bar i.warn { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+.credit-bar i.bad { background: #ff3b64; box-shadow: none; }
+.model-switch { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0 0; }
+.model-switch select { flex: 1 1 220px; }
 .ai-note { margin-top: 14px; font-size: 13px; color: var(--t3); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0;
   padding: 12px 18px; border-radius: 12px; background: var(--s3); border: 1px solid var(--line); color: var(--t1);
@@ -443,6 +452,20 @@ footer img { width: 22px; height: 22px; }
       <div class="eyebrow">Paso 2 · Tu IA</div>
       <h2>Conecta tu inteligencia artificial</h2>
       <p class="lead">Jarvis piensa con un modelo de IA de <b>tu propia cuenta</b>. Pagas solo lo que usas, directamente al proveedor, y tú controlas el gasto.</p>
+
+      <div id="ai-plan" class="credit-box hidden">
+        <div class="row1"><span>Plan <b id="cr-plan"></b></span><span id="cr-text"></span></div>
+        <div class="credit-bar"><i id="cr-bar" style="width:0"></i></div>
+        <p id="cr-note" style="margin: 10px 0 0; font-size: 13px; color: var(--t3)"></p>
+      </div>
+      <div id="ai-switch" class="hidden">
+        <label for="ai-switch-model" style="font-size: 14px; font-weight: 600; color: var(--t2)">Modelo</label>
+        <div class="model-switch">
+          <select class="input" id="ai-switch-model"></select>
+          <button class="btn btn-ghost" id="ai-switch-go">Cambiar modelo</button>
+        </div>
+        <p id="ai-switch-note" style="margin: 8px 0 16px; font-size: 13px; color: var(--t3)"></p>
+      </div>
 
       <div id="ai-included" class="hidden">
         <div class="tip">✅ Tu Jarvis usa la IA incluida por AI Fast Track (<b id="ai-inc-model"></b>). No tienes que hacer nada.</div>
@@ -981,11 +1004,50 @@ footer img { width: 22px; height: 22px; }
       }, 2500);
     })();
   }
+  $("ai-switch-go").onclick = function () {
+    var b = this, m = $("ai-switch-model").value;
+    if (ai && m === ai.model) { toast("Ya usas ese modelo"); return; }
+    b.disabled = true;
+    api("POST", "/api/ai/model", { model: m }).then(function (s) { ai = s; info = null; waitForAi(ai.source === "own"); },
+      function (e) { toast(e.message); }).then(function () { b.disabled = false; });
+  };
+  function renderCredits() {
+    var cr = ai && ai.credits;
+    show("ai-plan", !!(cr && cr.included_ai));
+    if (cr && cr.included_ai) {
+      var total = cr.monthly + cr.topup, pct = Math.min(100, cr.percent || 0);
+      $("cr-plan").textContent = cr.plan_label;
+      $("cr-text").innerHTML = "<b>" + Math.round(cr.remaining) + "</b> de " + Math.round(total) + " créditos este mes";
+      var bar = $("cr-bar"); bar.style.width = (100 - pct) + "%";
+      bar.className = cr.exhausted ? "bad" : (pct >= 80 ? "warn" : "");
+      $("cr-note").textContent = cr.exhausted
+        ? (cr.downgraded ? "Créditos agotados: funcionando en modo ahorro (modelo ligero) hasta el día 1." : "Créditos agotados: Jarvis está en pausa hasta el día 1 o hasta una recarga.")
+        : "1 crédito = 1 céntimo de uso real de IA. Te avisamos al 80 % y al 100 %.";
+    }
+    var choices = (ai && ai.model_choices) || [];
+    var canSwitch = choices.length > 1 && !aiEditing && !aiWaiting;
+    show("ai-switch", canSwitch);
+    if (canSwitch) {
+      var sel = $("ai-switch-model");
+      if (sel.getAttribute("data-k") !== choices.map(function (m) { return m.id; }).join()) {
+        sel.setAttribute("data-k", choices.map(function (m) { return m.id; }).join()); sel.innerHTML = "";
+        choices.forEach(function (m) { var o = document.createElement("option"); o.value = m.id; o.textContent = m.label + " — " + m.note; sel.appendChild(o); });
+      }
+      sel.value = ai.model;
+      var wait = cr && cr.model_change_in_s;
+      $("ai-switch-go").disabled = !!wait;
+      $("ai-switch-note").textContent = ai.source === "own"
+        ? "Con tu propia cuenta puedes cambiar de modelo cuando quieras."
+        : (wait ? "Podrás volver a cambiar de modelo en ~" + Math.max(1, Math.round(wait / 3600)) + " h (un cambio al día)." : "Puedes cambiar de modelo una vez al día.");
+    }
+  }
   function renderAi() {
     if (!ai) return;
+    renderCredits();
     var own = ai.source === "own", inc = ai.source === "included";
     show("ai-wait", aiWaiting);
     show("ai-included", inc && !aiEditing && !aiWaiting);
+    show("ai-use-own", !(ai.credits && ai.credits.included_ai));
     show("ai-own", own && !aiEditing && !aiWaiting);
     show("ai-form", (aiEditing || ai.source === "none") && !aiWaiting);
     $("ai-inc-model").textContent = ai.label || "";

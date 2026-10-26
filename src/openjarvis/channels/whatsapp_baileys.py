@@ -83,6 +83,17 @@ def get_active_channel() -> Optional["WhatsAppBaileysChannel"]:
     return _active_channel
 
 
+def _credit_block() -> Optional[str]:
+    """Reply instead of the AI when the plan's credits are used up."""
+    try:
+        from openjarvis.fasttrack.credits import get_meter
+
+        return get_meter().blocked_reply()
+    except Exception:
+        logger.debug("Credit check failed", exc_info=True)
+        return None
+
+
 def _normalize_reply(text: str) -> str:
     """Lower-case, strip accents and punctuation: "¡Sí!" -> "si"."""
     decomposed = unicodedata.normalize("NFKD", text.strip().lower())
@@ -186,6 +197,17 @@ class WhatsAppBaileysChannel(BaseChannel):
         # Set by JarvisSystem.wire_channel: runs a prompt through the same
         # agent as this chat (used for scheduled tasks).
         self.task_runner: Optional[Callable[[str], str]] = None
+
+    def attach_system(self, system: Any) -> None:
+        """Called by wire_channel: start metering AI credits for this Jarvis."""
+        try:
+            from openjarvis.fasttrack.credits import get_meter
+
+            get_meter().attach(
+                bus=getattr(system, "bus", None) or self._bus, system=system
+            )
+        except Exception:
+            logger.debug("Credit meter not attached", exc_info=True)
 
     # -- bridge lifecycle -------------------------------------------------------
 
@@ -579,6 +601,10 @@ class WhatsAppBaileysChannel(BaseChannel):
         reply = self._take_pending_reply(cm.content)
         if reply is not None:
             self.send(cm.conversation_id, reply)
+            return
+        blocked = _credit_block()
+        if blocked:
+            self.send(cm.conversation_id, blocked)
             return
         for handler in self._handlers:
             try:
