@@ -34,6 +34,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import httpx
 
 from openjarvis.fasttrack import contact as mail
+from openjarvis.fasttrack import emails
 from openjarvis.fasttrack.models import DEFAULT_MODEL
 from openjarvis.fasttrack.plans import PLANS, TOPUP_CREDITS
 from openjarvis.fasttrack.provisioning import provision_user
@@ -42,6 +43,13 @@ logger = logging.getLogger(__name__)
 
 STRIPE_API = "https://api.stripe.com/v1/"
 TRIAL_DAYS = 30
+# Shared variables a self-service instance needs to email its access itself.
+INSTANCE_MAIL_VARS = (
+    "MAILJET_API_KEY",
+    "MAILJET_SECRET_KEY",
+    "FROM_EMAIL",
+    "CONTACT_TO",
+)
 INTERVALS = ("month", "year")
 
 
@@ -267,41 +275,6 @@ def _email(to: str, subject: str, text: str, *, name: str = "") -> Dict[str, Any
     }
 
 
-def welcome_text(name: str, plan: str, code: str, assisted: bool) -> str:
-    base = public_url()
-    p = PLANS[plan]
-    ai_step = (
-        "2. Conecta tu IA: el asistente te guía para enlazar tu cuenta de "
-        "Claude, OpenAI u otra (tienes un tutorial paso a paso)."
-        if not p["included_ai"]
-        else f"2. Tu plan incluye la IA: {p['credits']} créditos al mes."
-    )
-    extra = (
-        "\n\nHas pedido el alta asistida: te escribiremos en las próximas 24 h "
-        "laborables para dejarlo todo funcionando contigo."
-        if assisted
-        else ""
-    )
-    return (
-        f"Hola {name}:\n\n"
-        f"Gracias por elegir Jarvis, plan {p['label']}. Tu asistente se está "
-        "preparando y estará listo en unos 5 minutos.\n\n"
-        f"Tu código de acceso personal: {code}\n"
-        f"Entra en {base}, pulsa «Acceder» y escríbelo. Guárdalo y no lo "
-        "compartas: abre tu asistente.\n\n"
-        "Primeros pasos:\n"
-        "1. Acepta las condiciones de uso.\n"
-        f"{ai_step}\n"
-        "3. Vincula tu WhatsApp.\n"
-        "4. Si quieres, conecta tu correo de Gmail u Outlook.\n\n"
-        f"Los primeros {TRIAL_DAYS} días son gratis. Puedes cambiar la tarjeta, "
-        f"ver tus facturas o cancelar en {base}/cuenta con tu código."
-        f"{extra}\n\n"
-        "Cualquier duda, responde a este correo.\n\n"
-        "El equipo de AI Fast Track"
-    )
-
-
 class Fulfillment:
     """Acts on Stripe events.  Railway/Mailjet calls are injected for tests."""
 
@@ -328,11 +301,19 @@ class Fulfillment:
         return True
 
     async def _mail(self, to: str, subject: str, text: str, name: str = "") -> None:
+        """Plain internal email (to the team)."""
+        await self._deliver(to, subject, _email(to, subject, text, name=name))
+
+    async def _customer(self, to: str, name: str, email: emails.Email) -> None:
+        """Designed customer email (see :mod:`openjarvis.fasttrack.emails`)."""
+        await self._deliver(to, email[0], emails.payload(to, name, email))
+
+    async def _deliver(self, to: str, subject: str, message: Dict[str, Any]) -> None:
         if not to or not mail.configured():
             logger.warning("Email not sent (%s): %s", to or "no address", subject)
             return
         try:
-            await self._send(_email(to, subject, text, name=name))
+            await self._send(message)
         except Exception:
             logger.exception("Email failed: %s", subject)
 
@@ -394,14 +375,19 @@ class Fulfillment:
                 "JARVIS_PLAN": plan,
                 "STRIPE_CUSTOMER_ID": customer,
                 "STRIPE_SUBSCRIPTION_ID": session.get("subscription") or "",
+                # The instance emails the access itself once it is up.
+                "JARVIS_SEND_ACCESS_EMAIL": "1",
+                **{var: "${{shared.%s}}" % var for var in INSTANCE_MAIL_VARS},
+                "PUBLIC_URL": public_url(),
             },
         )
         assisted = meta.get("assisted") == "1"
-        await self._mail(
+        await self._customer(
             email,
-            "Tu Jarvis está en camino",
-            welcome_text(name, plan, result["access_code"], assisted),
-            name=name,
+            name,
+            emails.welcome(
+                name, PLANS[plan]["label"], assisted=assisted, trial_days=TRIAL_DAYS
+            ),
         )
         await self._team(
             f"Nueva alta: {name} ({PLANS[plan]['label']})",
@@ -442,28 +428,13 @@ class Fulfillment:
             f"Servicio: {(entry or {}).get('service', 'no encontrado')}\n\n"
             "Elimina su instancia desde la consola cuando corresponda.",
         )
-        await self._mail(
-            email,
-            "Tu suscripción a Jarvis ha terminado",
-            f"Hola {name}:\n\nTu suscripción a Jarvis se ha cancelado. En los "
-            "próximos días borraremos tu asistente y sus datos, y se desvinculará "
-            "tu WhatsApp. Si ha sido un error o quieres volver, responde a este "
-            "correo.\n\nGracias por probar Jarvis.\n\nEl equipo de AI Fast Track",
-            name=name,
-        )
+        await self._customer(email, name, emails.cancelled(name))
 
     async def _payment_failed(self, invoice: Dict[str, Any]) -> None:
         email = invoice.get("customer_email") or ""
         name = invoice.get("customer_name") or ""
         link = invoice.get("hosted_invoice_url") or f"{public_url()}/cuenta"
-        await self._mail(
-            email,
-            "No hemos podido cobrar tu suscripción a Jarvis",
-            f"Hola {name}:\n\nEl cobro de tu suscripción a Jarvis no se ha "
-            f"podido completar. Puedes pagarlo o cambiar la tarjeta aquí:\n{link}"
-            "\n\nVolveremos a intentarlo en unos días.\n\nEl equipo de AI Fast Track",
-            name=name,
-        )
+        await self._customer(email, name, emails.payment_failed(name, link))
         await self._team(
             f"Pago fallido: {name or email}",
             f"Factura {invoice.get('id')} de {email}: cobro fallido.",
@@ -480,5 +451,4 @@ __all__ = [
     "signup_session",
     "topup_session",
     "verify_signature",
-    "welcome_text",
 ]

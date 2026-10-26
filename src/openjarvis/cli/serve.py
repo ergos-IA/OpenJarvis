@@ -195,6 +195,15 @@ def serve(
         model_name or config.server.model or config.intelligence.default_model or None
     )
     resolved = get_engine(config, engine_key, model=selection_model)
+    if resolved is None and (
+        os.environ.get("JARVIS_ACCESS_CODE") or os.environ.get("JARVIS_ALLOW_NO_ENGINE")
+    ):
+        # AI Fast Track instance whose owner has not connected an AI yet:
+        # serve the setup page anyway; chats explain how to connect it.
+        from openjarvis.engine.setup_pending import SetupPendingEngine
+
+        console.print("[yellow]Sin IA conectada: modo configuración.[/yellow]")
+        resolved = ("setup", SetupPendingEngine(selection_model or ""))
     if resolved is None:
         console.print(
             "[red bold]No inference engine available.[/red bold]\n\n"

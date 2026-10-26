@@ -325,17 +325,20 @@ class TestFulfillment:
         assert kw["name"] == "Eva Pérez" and kw["email"] == "eva@example.com"
         assert kw["assistant_name"] == "Friday" and kw["shared_ai"] is True
         assert kw["model"] == "claude-sonnet-5-5"
-        assert kw["extra_vars"] == {
-            "JARVIS_PLAN": "pro",
-            "STRIPE_CUSTOMER_ID": "cus_9",
-            "STRIPE_SUBSCRIPTION_ID": "sub_9",
-        }
+        extra = kw["extra_vars"]
+        assert extra["JARVIS_PLAN"] == "pro" and extra["STRIPE_CUSTOMER_ID"] == "cus_9"
+        assert extra["STRIPE_SUBSCRIPTION_ID"] == "sub_9"
+        # The instance sends the access email itself once it is up.
+        assert extra["JARVIS_SEND_ACCESS_EMAIL"] == "1"
+        assert extra["MAILJET_API_KEY"] == "${{shared.MAILJET_API_KEY}}"
         welcome, team = sent
         assert welcome["To"][0]["Email"] == "eva@example.com"
-        assert (
-            "QRST-UVWX-YZ23" in welcome["TextPart"]
-            and "alta asistida" in welcome["TextPart"]
-        )
+        assert welcome["Subject"].startswith("Bienvenido a Jarvis")
+        # No access code yet: it comes in the second email.
+        assert "QRST-UVWX-YZ23" not in welcome["TextPart"] + welcome["HTMLPart"]
+        assert "segundo email" in welcome["TextPart"]
+        assert "alta asistida" in welcome["TextPart"]
+        assert "Pro" in welcome["HTMLPart"]
         assert team["To"][0]["Email"] == "team@example.com" and "SÍ" in team["TextPart"]
 
     def test_own_plan_uses_customers_ai(self, monkeypatch, mailjet):

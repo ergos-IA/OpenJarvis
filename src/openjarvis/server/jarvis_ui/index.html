@@ -30,6 +30,39 @@ a { color: var(--cyan); }
 button { font: inherit; }
 .hidden { display: none !important; }
 
+
+/* ---------- connectors ---------- */
+.conn-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 18px; }
+.conn-tools .input { flex: 1 1 220px; max-width: 320px; padding: 11px 14px; }
+.conn-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.conn-cats button { border: 1px solid var(--line); background: transparent; color: var(--t2); padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 13px; min-height: 36px; }
+.conn-cats button.on { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-a); }
+.conn-group { font: 600 11px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--t3); margin: 18px 0 10px; }
+.conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.conn { position: relative; display: flex; flex-direction: column; gap: 10px; text-align: left; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); color: var(--t1); cursor: pointer; transition: border-color .2s, transform .2s, box-shadow .2s; font: inherit; }
+.conn:hover { border-color: rgba(0,217,255,.45); transform: translateY(-2px); box-shadow: 0 10px 30px -18px rgba(0,217,255,.6); }
+.conn.on { border-color: rgba(34,197,94,.45); }
+.conn .top { display: flex; align-items: center; gap: 12px; }
+.conn .logo { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; font: 700 17px var(--display); background: var(--s3); border: 1px solid var(--line); }
+.conn b { font: 700 16px var(--display); line-height: 1.2; }
+.conn p { margin: 0; color: var(--t2); font-size: 14px; line-height: 1.45; }
+.conn .state { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--t3); margin-top: auto; }
+.conn .state .dot { animation: none; width: 7px; height: 7px; }
+.conn .state .dot.off { background: var(--t3); box-shadow: none; }
+.conn-modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.72); backdrop-filter: blur(6px); }
+.conn-sheet { width: min(600px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: linear-gradient(180deg, #161616, #0e0e0e); border: 1px solid var(--line); border-radius: 18px; padding: 26px; position: relative; }
+.conn-sheet .x { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border: 0; background: none; color: var(--t2); font-size: 24px; cursor: pointer; }
+.conn-sheet h3 { font: 700 24px var(--display); margin: 0; }
+.conn-sheet .asks { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 16px; }
+.conn-sheet .asks span { font-size: 13px; padding: 6px 10px; border-radius: 999px; background: var(--cyan-a); color: #bff4ff; }
+.conn-sheet ol { margin: 0 0 16px; padding-left: 22px; color: var(--t2); display: grid; gap: 8px; }
+.conn-sheet ol b { color: var(--t1); }
+.conn-sheet label { display: block; font-size: 13px; font-weight: 600; color: var(--t2); margin: 0 0 6px; }
+.conn-sheet .hint { font-size: 12px; color: var(--t3); margin: 6px 0 0; }
+.conn-sheet textarea.input { min-height: 90px; resize: vertical; font: 13px var(--mono); }
+.conn-sheet .acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+.conn-sheet .connected { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 12px; background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.3); margin: 4px 0 16px; }
+
 /* ---------- background: HUD grid, glow, particles ---------- */
 .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 .bg-grid { background-image:
@@ -426,7 +459,8 @@ footer img { width: 22px; height: 22px; }
       <li data-s="0.5"><span class="n">2</span><span class="lbl">Tu IA</span></li>
       <li data-s="1"><span class="n">3</span><span class="lbl">WhatsApp</span></li>
       <li data-s="2"><span class="n">4</span><span class="lbl">Correo</span></li>
-      <li data-s="3"><span class="n">5</span><span class="lbl">¡Listo!</span></li>
+      <li data-s="2.5"><span class="n">5</span><span class="lbl">Conectores</span></li>
+      <li data-s="3"><span class="n">6</span><span class="lbl">¡Listo!</span></li>
     </ol>
 
     <!-- step 0: terms -->
@@ -681,14 +715,31 @@ footer img { width: 22px; height: 22px; }
 
       <div class="nav">
         <button class="btn-link" data-goto="1">← Atrás</button>
-        <button class="btn btn-primary" data-goto="3" id="mail-next">Siguiente →</button>
+        <button class="btn btn-primary" data-goto="2.5" id="mail-next">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- step 2.5: connectors -->
+    <div class="panel hidden" data-step="2.5">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Paso 5 · Conectores · opcional</div>
+      <h2>Conecta tus herramientas</h2>
+      <p class="lead">Dale a Jarvis acceso a las apps que usas y pídeselo todo desde WhatsApp. Cada una tiene su guía paso a paso; puedes desconectarlas cuando quieras.</p>
+      <div class="conn-tools">
+        <input class="input" id="conn-q" type="search" placeholder="Buscar: Notion, calendario, facturas…" aria-label="Buscar conector">
+        <div class="conn-cats" id="conn-cats" role="group" aria-label="Categorías"></div>
+      </div>
+      <div id="conn-list"><p style="color:var(--t3)"><span class="spinner"></span> Cargando conectores…</p></div>
+      <div class="nav">
+        <button class="btn-link" data-goto="2">← Correo</button>
+        <button class="btn btn-primary" data-goto="3">Siguiente →</button>
       </div>
     </div>
 
     <!-- step 3: done / status -->
     <div class="panel hidden" data-step="3">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 5 · Sistemas</div>
+      <div class="eyebrow">Paso 6 · Sistemas</div>
       <h2 id="done-title">Jarvis está listo</h2>
       <p class="lead">Este es el estado de tus conexiones. Puedes volver aquí cuando quieras.</p>
       <div class="status-grid">
@@ -696,12 +747,13 @@ footer img { width: 22px; height: 22px; }
         <div class="stat"><small>Outlook</small><b><span class="dot" id="st-o-dot"></span><span id="st-o">—</span></b><span id="st-o-sub"></span></div>
         <div class="stat"><small>Gmail</small><b><span class="dot" id="st-g-dot"></span><span id="st-g">—</span></b><span id="st-g-sub"></span></div>
         <div class="stat"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
+        <div class="stat" style="cursor:pointer" data-goto="2.5"><small>Conectores</small><b><span class="dot" id="st-c-dot"></span><span id="st-c">—</span></b><span id="st-c-sub">Toca para gestionarlos</span></div>
       </div>
       <div class="eyebrow" style="margin-top:6px">Pruébalo · toca una frase</div>
       <p style="color:var(--t2);margin:6px 0 0" id="try-hint">Se abrirá WhatsApp con la frase escrita en tu chat «Tú». Solo tienes que enviarla.</p>
       <div class="tries" id="tries"></div>
       <div class="nav">
-        <button class="btn-link" data-goto="2">← Correo</button>
+        <button class="btn-link" data-goto="2.5">← Conectores</button>
         <button class="btn btn-ghost" data-goto="1">WhatsApp</button>
       </div>
     </div>
@@ -713,6 +765,28 @@ footer img { width: 22px; height: 22px; }
   <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/legal/aviso-legal" style="color:var(--t2)">Aviso legal</a> · <a href="/legal/terminos" style="color:var(--t2)">Términos</a> · <a href="/legal/privacidad" style="color:var(--t2)">Privacidad</a> · <a href="/legal/cookies" style="color:var(--t2)">Cookies</a> · <a href="#" id="signout" style="color:var(--t2)">Cerrar sesión</a></span>
 </footer>
 <div class="toast" id="toast" role="status"></div>
+<div class="conn-modal hidden" id="conn-modal" role="dialog" aria-modal="true" aria-labelledby="cm-name">
+  <div class="conn-sheet">
+    <button class="x" id="cm-x" aria-label="Cerrar">×</button>
+    <div class="conn top" style="padding:0;border:0;background:none;cursor:default;transform:none;box-shadow:none">
+      <div class="top"><div class="logo" id="cm-logo"></div><div><small class="eyebrow" id="cm-cat" style="display:block"></small><h3 id="cm-name"></h3></div></div>
+    </div>
+    <p id="cm-desc" style="color:var(--t2);margin:12px 0 0"></p>
+    <div class="asks" id="cm-asks"></div>
+    <div class="connected hidden" id="cm-on"><span class="dot ok" style="animation:none"></span><span>Conectado<span id="cm-account"></span></span></div>
+    <div id="cm-setup">
+      <div class="eyebrow" style="margin-bottom:8px">Cómo conectarlo</div>
+      <ol id="cm-steps"></ol>
+      <form id="cm-form" autocomplete="off"></form>
+    </div>
+    <p class="err hidden" id="cm-err" style="color:#ff7a95"></p>
+    <div class="acts">
+      <button class="btn btn-danger hidden" id="cm-off" type="button">Desconectar</button>
+      <button class="btn btn-ghost" id="cm-close" type="button">Cerrar</button>
+      <button class="btn btn-primary" id="cm-go" type="button">Conectar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -853,6 +927,7 @@ footer img { width: 22px; height: 22px; }
     });
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
     render();
+    if (n === 2.5) loadConns();
   }
   function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
   function aiReady() { return !ai || ai.configured; }
@@ -871,6 +946,132 @@ footer img { width: 22px; height: 22px; }
   qsa("[data-start]").forEach(function (b) { b.onclick = start; });
   qsa("[data-back]").forEach(function (b) { b.onclick = home; });
   qsa("[data-goto]").forEach(function (b) { b.onclick = function () { go(+b.getAttribute("data-goto")); }; });
+
+
+  // ---------- step 2.5: connectors ----------
+  var conns = null, connCat = "all", connCur = null;
+  var MAIL_CARDS = [
+    { id: "_gmail", name: "Gmail", category: "comunicacion", category_label: "Comunicación", description: "Tu correo de Gmail: avisos, resúmenes y respuestas con tu confirmación.", icon: "G", color: "#EA4335", mail: "gmail" },
+    { id: "_outlook", name: "Outlook / Microsoft 365", category: "comunicacion", category_label: "Comunicación", description: "Tu correo de Outlook o Microsoft 365.", icon: "O", color: "#0078D4", mail: "outlook" }
+  ];
+  function loadConns() {
+    return api("GET", "/api/integrations").then(function (d) { conns = d.integrations || []; renderConns(); renderConnStat(); }, function () {
+      if (!conns) $("conn-list").innerHTML = '<p class="err">No se han podido cargar los conectores. Recarga la página.</p>';
+    });
+  }
+  function mailOn(kind) {
+    if (!mail) return false;
+    var m = mail[kind];
+    return !!(m && m.state === "connected");
+  }
+  function allCards() {
+    var mails = MAIL_CARDS.map(function (c) { return Object.assign({}, c, { connected: mailOn(c.mail), available: true }); });
+    return mails.concat(conns || []);
+  }
+  function renderConns() {
+    if (!conns) return;
+    var cards = allCards(), cats = {}, order = [];
+    cards.forEach(function (c) { if (!cats[c.category]) { cats[c.category] = c.category_label; order.push(c.category); } });
+    var bar = $("conn-cats");
+    bar.innerHTML = '<button type="button" data-cat="all">Todos</button><button type="button" data-cat="on">Conectados</button>' +
+      order.map(function (k) { return '<button type="button" data-cat="' + esc(k) + '">' + esc(cats[k]) + "</button>"; }).join("");
+    qsa("button", bar).forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-cat") === connCat);
+      b.onclick = function () { connCat = b.getAttribute("data-cat"); renderConns(); };
+    });
+    var q = ($("conn-q").value || "").trim().toLowerCase();
+    var shown = cards.filter(function (c) {
+      if (connCat === "on" && !c.connected) return false;
+      if (connCat !== "all" && connCat !== "on" && c.category !== connCat) return false;
+      if (q && (c.name + " " + c.description + " " + (c.abilities || []).join(" ")).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    if (!shown.length) { $("conn-list").innerHTML = '<p style="color:var(--t3)">No hay conectores que coincidan.</p>'; return; }
+    var html = "";
+    order.forEach(function (k) {
+      var group = shown.filter(function (c) { return c.category === k; });
+      if (!group.length) return;
+      html += '<div class="conn-group">' + esc(cats[k]) + '</div><div class="conn-grid">' + group.map(function (c) {
+        var state = c.always_on ? '<span class="dot ok"></span>Siempre activo'
+          : c.connected ? '<span class="dot ok"></span>Conectado' + (c.account ? " · " + esc(c.account) : "")
+          : c.available === false ? '<span class="dot off"></span>Muy pronto'
+          : '<span class="dot off"></span>Sin conectar';
+        return '<button type="button" class="conn' + (c.connected ? " on" : "") + '" data-conn="' + esc(c.id) + '">' +
+          '<span class="top"><span class="logo" style="color:' + esc(c.color || "var(--cyan)") + '">' + esc(c.icon || c.name[0]) + "</span><b>" + esc(c.name) + "</b></span>" +
+          "<p>" + esc(c.description) + '</p><span class="state">' + state + "</span></button>";
+      }).join("") + "</div>";
+    });
+    $("conn-list").innerHTML = html;
+    qsa("[data-conn]").forEach(function (b) { b.onclick = function () { openConn(b.getAttribute("data-conn")); }; });
+  }
+  function renderConnStat() {
+    if (!conns || !$("st-c")) return;
+    var n = conns.filter(function (c) { return c.connected && !c.always_on; }).length;
+    $("st-c").textContent = n ? n + (n === 1 ? " conectado" : " conectados") : "Ninguno";
+    $("st-c-dot").className = "dot" + (n ? " ok" : "");
+  }
+  $("conn-q").oninput = renderConns;
+
+  function openConn(id) {
+    var c = allCards().filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+    if (c.mail) { go(2); return; }
+    connCur = c;
+    $("cm-logo").textContent = c.icon || c.name[0]; $("cm-logo").style.color = c.color || "var(--cyan)";
+    $("cm-cat").textContent = c.category_label; $("cm-name").textContent = c.name;
+    $("cm-desc").textContent = c.description;
+    $("cm-asks").innerHTML = (c.abilities || []).map(function (a) { return "<span>«" + esc(a) + "»</span>"; }).join("");
+    show("cm-on", c.connected && !c.always_on);
+    $("cm-account").textContent = c.account ? " · " + c.account : "";
+    // Guide steps come from our own server (trusted, simple HTML).
+    $("cm-steps").innerHTML = (c.steps || []).map(function (st) { return "<li>" + st + "</li>"; }).join("");
+    show("cm-setup", !c.always_on && !(c.connected && c.oauth));
+    var form = $("cm-form");
+    form.innerHTML = c.oauth ? "" : (c.fields || []).map(function (f) {
+      var tag = f.kind === "textarea" ? '<textarea class="input" ' : '<input class="input" type="' + (f.kind === "password" ? "password" : f.kind === "url" ? "url" : "text") + '" ';
+      return '<div class="field" style="margin-bottom:12px"><label for="cf-' + esc(f.key) + '">' + esc(f.label) + (f.optional ? " <small style=\"color:var(--t3)\">(opcional)</small>" : "") + "</label>" +
+        tag + 'id="cf-' + esc(f.key) + '" name="' + esc(f.key) + '" placeholder="' + esc(f.placeholder || "") + '" autocomplete="off" spellcheck="false">' + (f.kind === "textarea" ? "</textarea>" : "") +
+        (f.help ? '<p class="hint">' + esc(f.help) + "</p>" : "") + "</div>";
+    }).join("");
+    show("cm-err", false);
+    var go_ = $("cm-go");
+    show(go_, !c.always_on);
+    go_.disabled = c.available === false;
+    go_.textContent = c.available === false ? "Disponible muy pronto" : c.oauth ? (c.connected ? "Volver a conectar" : "Conectar con " + c.name) : c.connected ? "Actualizar datos" : "Conectar";
+    show("cm-off", c.connected && !c.always_on);
+    show("conn-modal", true);
+    var first = form.querySelector("input, textarea");
+    if (first && !mobile) first.focus();
+  }
+  function closeConn() { show("conn-modal", false); connCur = null; }
+  $("cm-x").onclick = closeConn; $("cm-close").onclick = closeConn;
+  $("conn-modal").addEventListener("click", function (e) { if (e.target === this) closeConn(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && connCur) closeConn(); });
+  function connErr(msg) { $("cm-err").textContent = msg; show("cm-err", true); }
+  $("cm-go").onclick = function () {
+    var c = connCur, b = this;
+    if (!c) return;
+    b.disabled = true; show("cm-err", false);
+    if (c.oauth) {
+      api("POST", "/api/integrations/" + c.id + "/oauth").then(function (d) { location.href = d.url; }, function (e) { connErr(e.message); b.disabled = false; });
+      return;
+    }
+    var body = {};
+    qsa("input, textarea", $("cm-form")).forEach(function (el) { body[el.name] = el.value; });
+    var label = b.textContent; b.innerHTML = '<span class="spinner"></span> Comprobando…';
+    api("POST", "/api/integrations/" + c.id, body).then(function (st) {
+      toast(c.name + " conectado ✓"); closeConn(); return loadConns();
+    }, function (e) { connErr(e.message); }).then(function () { b.disabled = false; b.textContent = label; });
+  };
+  $("cm-off").onclick = function () {
+    var c = connCur, b = this;
+    if (!c) return;
+    b.disabled = true;
+    api("DELETE", "/api/integrations/" + c.id).then(function () { toast(c.name + " desconectado"); closeConn(); return loadConns(); },
+      function (e) { connErr(e.message); }).then(function () { b.disabled = false; });
+  };
+  // Back from an OAuth connection: /#conectores=<id>
+  var connHash = /conectores(?:=([a-z_]+))?/.exec(location.hash);
 
   // ---------- step 1: WhatsApp ----------
   var tab = mobile ? "code" : "qr", lastSvg = "";
@@ -1214,7 +1415,7 @@ footer img { width: 22px; height: 22px; }
   });
 
   // ---------- boot ----------
-  function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function esc(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function greet() {
     var first = info && info.user_name ? info.user_name.split(" ")[0] : "";
     typeInto($("tagline"), (first ? "Hola, " + first + ". " : "") + "Tu asistente personal. En tu WhatsApp. Siempre activo.", 38);
@@ -1237,11 +1438,15 @@ footer img { width: 22px; height: 22px; }
   }
 
   // ?paso=whatsapp|correo|estado opens that wizard step directly.
-  var STEP_NAMES = { condiciones: 0, ia: 0.5, whatsapp: 1, correo: 2, estado: 3 };
+  var STEP_NAMES = { condiciones: 0, ia: 0.5, whatsapp: 1, correo: 2, conectores: 2.5, estado: 3 };
   var wanted = STEP_NAMES[(new URLSearchParams(location.search).get("paso") || "").toLowerCase()];
   refresh().then(function () {
-    greet(); boot(); loop();
-    if (wanted !== undefined) go(wanted);
+    greet(); boot(); loop(); loadConns();
+    if (connHash && accepted()) {
+      history.replaceState(null, "", location.pathname + location.search);
+      go(2.5);
+      if (connHash[1]) toast("Conectado ✓");
+    } else if (wanted !== undefined) go(wanted);
     else if (!accepted()) go(0);
     else if (!aiReady()) go(0.5);
   });

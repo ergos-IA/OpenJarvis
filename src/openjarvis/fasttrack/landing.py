@@ -20,10 +20,11 @@ import threading
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
 from openjarvis.fasttrack import billing
@@ -103,6 +104,21 @@ class Directory:
         with self._lock:
             self._refresh()
             return next((e for e in self._entries if e["customer"] == customer), None)
+
+    def has_domain(self, host: str) -> bool:
+        """Is *host* one of our users' instances? (OAuth relay target check)."""
+        host = (host or "").lower()
+        if not host:
+            return False
+        with self._lock:
+            if time.time() - self._loaded_at > self._ttl:
+                self._refresh()
+            if any(e["domain"].lower() == host for e in self._entries):
+                return True
+            if time.time() - self._loaded_at > self._min_gap:
+                self._refresh()
+                return any(e["domain"].lower() == host for e in self._entries)
+        return False
 
     def resolve(self, text: str) -> Optional[str]:
         entry = self.entry(text)
@@ -326,6 +342,33 @@ def create_landing_app(
             # Answer Stripe at once; creating an instance takes a while.
             background.add_task(fulfillment.handle, event)
         return {"received": "1"}
+
+    @app.get("/oauth/callback")
+    async def oauth_callback(
+        state: str = "", code: str = "", error: str = ""
+    ) -> RedirectResponse:
+        """One redirect URI for every user's OAuth connections: bounce the
+        browser back to the Jarvis named in ``state`` -- only if it is ours."""
+        from openjarvis.integrations.manager import decode_state
+
+        try:
+            host = decode_state(state)["h"]
+        except Exception:
+            raise HTTPException(400, "Autorización no válida.")
+        try:
+            known = await asyncio.to_thread(directory.has_domain, host)
+        except RailwayError:
+            raise HTTPException(503, "Servicio no disponible. Prueba en unos minutos.")
+        if not known:
+            raise HTTPException(400, "Autorización no válida.")
+        params = {"state": state}
+        if code:
+            params["code"] = code
+        if error:
+            params["error"] = error[:200]
+        return RedirectResponse(
+            f"https://{host}/oauth/done?{urlencode(params)}", status_code=303
+        )
 
     @app.post("/api/contacto")
     async def contact_form(

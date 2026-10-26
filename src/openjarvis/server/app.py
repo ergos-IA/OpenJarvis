@@ -25,6 +25,7 @@ from openjarvis.server.comparison import comparison_router
 from openjarvis.server.connectors_router import create_connectors_router
 from openjarvis.server.dashboard import dashboard_router
 from openjarvis.server.digest_routes import create_digest_router
+from openjarvis.server.integrations_routes import router as integrations_router
 from openjarvis.server.jarvis_ui_routes import router as jarvis_ui_router
 from openjarvis.server.legal_routes import router as legal_router
 from openjarvis.server.mail_routes import router as mail_router
@@ -494,10 +495,20 @@ def create_app(
     app.include_router(jarvis_ui_router)
     app.include_router(legal_router)
     app.include_router(ai_router)
+    app.include_router(integrations_router)
     include_all_routes(app)
 
     # Restore SendBlue channel bindings from database on startup
     _restore_sendblue_bindings(app)
+
+    @app.on_event("startup")
+    async def _fasttrack_access_email() -> None:
+        # Self-service sign-ups: tell the customer their Jarvis is ready.
+        import threading
+
+        from openjarvis.fasttrack.emails import send_access_email_once
+
+        threading.Thread(target=send_access_email_once, daemon=True).start()
 
     # Add security headers middleware
     try:

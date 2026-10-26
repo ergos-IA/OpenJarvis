@@ -208,6 +208,12 @@ class WhatsAppBaileysChannel(BaseChannel):
             )
         except Exception:
             logger.debug("Credit meter not attached", exc_info=True)
+        try:
+            from openjarvis.integrations.manager import get_manager
+
+            get_manager().attach(system)
+        except Exception:
+            logger.exception("Connected tools not attached")
 
     # -- bridge lifecycle -------------------------------------------------------
 
@@ -443,6 +449,12 @@ class WhatsAppBaileysChannel(BaseChannel):
         if facts:
             lines.append("Lo que sabes del usuario:")
             lines.extend(f"[{f['id']}] {f['text']}" for f in facts)
+        try:
+            from openjarvis.integrations.manager import get_manager
+
+            lines.append(get_manager().prompt_context())
+        except Exception:
+            logger.debug("Integrations context unavailable", exc_info=True)
         return "\n".join(lines)
 
     # -- inbox, contacts and outgoing messages -------------------------------------
