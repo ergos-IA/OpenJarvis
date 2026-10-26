@@ -77,6 +77,20 @@ def new_api_key() -> str:
     return "oj_sk_" + secrets.token_urlsafe(32)
 
 
+# No 0/O, 1/I/L: easy to read aloud and type.  12 chars ~ 60 bits.
+_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def new_access_code() -> str:
+    """Short personal code for the public site (jarvis.aifasttrack.tech)."""
+    chars = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(12))
+    return "-".join(chars[i : i + 4] for i in range(0, 12, 4))
+
+
+def normalize_code(code: str) -> str:
+    return "".join(ch for ch in code.upper() if ch.isalnum())
+
+
 # ---------------------------------------------------------------------------
 # Sessions (stateless signed cookie) and login throttling
 # ---------------------------------------------------------------------------
@@ -283,6 +297,7 @@ def create_admin_app(
         except RailwayError:
             variables, domain = {}, ""
         key = variables.get("OPENJARVIS_API_KEY", "")
+        access_code = variables.get("JARVIS_ACCESS_CODE", "")
         model = variables.get("JARVIS_MODEL", "")
         live = await _live(domain, key)
         return {
@@ -297,6 +312,7 @@ def create_admin_app(
             "deploy_status": svc["deploy_status"] or "SIN DESPLEGAR",
             "domain": domain,
             "link": f"https://{domain}/#key={key}" if domain and key else "",
+            "access_code": access_code,
             **live,
         }
 
@@ -344,10 +360,12 @@ def create_admin_app(
             service_name, n = f"{base}-{n}", n + 1
 
         key = new_api_key()
+        access_code = new_access_code()
         variables = {
             "PORT": "8000",
             "RAILWAY_DOCKERFILE_PATH": "deploy/railway/Dockerfile",
             "OPENJARVIS_API_KEY": key,
+            "JARVIS_ACCESS_CODE": access_code,
             "JARVIS_ASSISTANT_NAME": req.assistant_name.strip() or "Jarvis",
             "JARVIS_USER_NAME": name,
             "JARVIS_USER_EMAIL": req.email.strip(),
@@ -377,6 +395,7 @@ def create_admin_app(
             "id": result["id"],
             "service": service_name,
             "link": f"https://{result['domain']}/#key={key}",
+            "access_code": access_code,
             "build_error": result["build_error"],
         }
 
@@ -399,16 +418,20 @@ def create_admin_app(
     async def rotate_key(service_id: str, request: Request) -> Dict[str, Any]:
         require(request)
         await asyncio.to_thread(guard, service_id)
-        key = new_api_key()
+        key, access_code = new_api_key(), new_access_code()
         await asyncio.to_thread(
             railway_call,
             rw.set_variables,
             service_id,
-            {"OPENJARVIS_API_KEY": key},
+            {"OPENJARVIS_API_KEY": key, "JARVIS_ACCESS_CODE": access_code},
             deploy=True,
         )
         domain = await asyncio.to_thread(rw.domain, service_id)
-        return {"ok": True, "link": f"https://{domain}/#key={key}"}
+        return {
+            "ok": True,
+            "link": f"https://{domain}/#key={key}",
+            "access_code": access_code,
+        }
 
     @app.post("/api/users/{service_id}/redeploy")
     async def redeploy(service_id: str, request: Request) -> Dict[str, Any]:
@@ -439,4 +462,11 @@ def create_admin_app(
     return app
 
 
-__all__ = ["Auth", "create_admin_app", "new_api_key", "slugify"]
+__all__ = [
+    "Auth",
+    "create_admin_app",
+    "new_access_code",
+    "new_api_key",
+    "normalize_code",
+    "slugify",
+]

@@ -171,8 +171,9 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
     <div id="new-done" class="hidden" style="text-align:center">
       <div class="ok-big">✓</div>
       <h2 id="d-title">Jarvis creado</h2>
-      <p style="color:var(--t2)">Se está construyendo (10-15 min la primera vez). Envía este enlace personal al usuario: con él configura su WhatsApp y su correo.</p>
-      <div class="linkbox" id="d-link"></div>
+      <p style="color:var(--t2)">Se está construyendo (10-15 min la primera vez). Envía al usuario su <b>código de acceso</b> (lo usa en <span id="d-site"></span>) o directamente su enlace personal.</p>
+      <div class="field" style="text-align:left"><label>Código de acceso</label><div class="linkbox" id="d-code" style="font-size:20px;letter-spacing:.12em;justify-content:center"></div></div>
+      <div class="field" style="text-align:left"><label>Enlace personal</label><div class="linkbox" id="d-link"></div></div>
       <p class="err hidden" id="d-warn" style="text-align:left"></p>
       <div class="foot" style="justify-content:center">
         <button class="btn btn-ghost" id="d-copy">Copiar enlace</button>
@@ -216,6 +217,7 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id, on) { $(id).classList.toggle("hidden", !on); };
   var data = null, current = null;
+  var SITE = "jarvis.aifasttrack.tech";
 
   function api(method, path, body) {
     var opts = { method: method, headers: { "X-Requested-With": "fasttrack" }, credentials: "same-origin" };
@@ -278,9 +280,10 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
         '<div class="model"><b>' + esc(u.model.label) + "</b><span>" + esc(u.model.provider_label) + (u.assistant !== "Jarvis" ? " · asistente «" + esc(u.assistant) + "»" : "") + "</span></div>" +
         '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + wa + mail + legal + "</div>" +
         '<div class="actions">' +
+          (u.access_code ? '<button class="btn btn-ghost btn-sm" data-act="code" data-i="' + i + '" title="' + esc(u.access_code) + '">Copiar código</button>' : "") +
           (u.link ? '<button class="btn btn-ghost btn-sm" data-act="copy" data-i="' + i + '">Copiar enlace</button>' : "") +
           '<button class="btn btn-ghost btn-sm" data-act="model" data-i="' + i + '">Modelo</button>' +
-          '<button class="btn btn-ghost btn-sm" data-act="rotate" data-i="' + i + '" title="Invalida el enlace anterior">Nuevo enlace</button>' +
+          '<button class="btn btn-ghost btn-sm" data-act="rotate" data-i="' + i + '" title="Invalida el enlace y el código anteriores">Nuevo acceso</button>' +
           '<button class="btn btn-ghost btn-sm" data-act="redeploy" data-i="' + i + '">Redesplegar</button>' +
           '<button class="btn btn-danger btn-sm" data-act="delete" data-i="' + i + '">Baja</button>' +
         "</div></div>";
@@ -291,10 +294,11 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
     var u = data.users[+b.getAttribute("data-i")], act = b.getAttribute("data-act");
     current = u;
     if (act === "copy") copy(u.link);
+    if (act === "code") copy(u.access_code);
     if (act === "model") openModel(u);
     if (act === "rotate") {
       if (!confirm("¿Generar un enlace nuevo para " + u.name + "? El anterior dejará de funcionar y Jarvis se reinicia (1-2 min).")) return;
-      api("POST", "/api/users/" + u.id + "/rotate-key").then(function (r) { copy(r.link); toast("Enlace nuevo copiado ✓"); load(); }, function (x) { toast(x.message); });
+      api("POST", "/api/users/" + u.id + "/rotate-key").then(function (r) { copy(r.link); toast("Enlace nuevo copiado ✓ · código " + r.access_code); load(); }, function (x) { toast(x.message); });
     }
     if (act === "redeploy") api("POST", "/api/users/" + u.id + "/redeploy").then(function () { toast("Redespliegue lanzado"); setTimeout(load, 1500); }, function (x) { toast(x.message); });
     if (act === "delete") { $("del-title").textContent = "Eliminar a " + u.name; $("del-word").textContent = u.service.replace(/^jarvis-/, ""); $("del-confirm").value = ""; err("del-err", ""); show("m-del", true); }
@@ -331,7 +335,9 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
         show("new-form", false); show("new-done", true);
         $("d-title").textContent = "Jarvis de " + name + " creado";
         $("d-link").textContent = r.link;
-        var msg = "Hola " + name.split(" ")[0] + ", aquí tienes tu asistente Jarvis de AI Fast Track. Abre este enlace y sigue los pasos: " + r.link;
+        $("d-code").textContent = r.access_code;
+        $("d-site").textContent = SITE;
+        var msg = "Hola " + name.split(" ")[0] + ", aquí tienes tu asistente Jarvis de AI Fast Track. Entra en " + SITE + " con tu código " + r.access_code + " (o directamente aquí: " + r.link + ") y sigue los pasos.";
         $("d-wa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
         $("d-mail").href = "mailto:" + encodeURIComponent($("n-email").value.trim()) + "?subject=" + encodeURIComponent("Tu asistente Jarvis") + "&body=" + encodeURIComponent(msg);
         $("d-copy").onclick = function () { copy(r.link); };
