@@ -27,6 +27,10 @@ def test_access_ready_has_code_link_and_steps():
     assert "ABCD-EFGH-JKMN" in html and "ABCD-EFGH-JKMN" in text
     assert "https://x.up.railway.app/#key=k" in html
     assert "Conecta tu cuenta de IA" in html
+    assert (
+        "TU ENLACE DIRECTO" in html
+        and html.count("https://x.up.railway.app/#key=k") >= 3
+    )
 
 
 def test_billing_notices():

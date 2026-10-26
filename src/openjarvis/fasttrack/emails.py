@@ -110,6 +110,16 @@ def _code(code: str) -> str:
     )
 
 
+def _direct_link(url: str) -> str:
+    return (
+        f'<div style="margin:0 0 8px 0;font:600 11px {_MONO};letter-spacing:3px;color:{_T3};">'
+        "TU ENLACE DIRECTO (PERSONAL)</div>"
+        f'<div style="margin:0 0 22px 0;padding:12px 14px;border:1px solid {_LINE};'
+        f'background:#07090b;font:12px/1.5 {_MONO};word-break:break-all;">'
+        f'<a href="{_e(url)}" style="color:{_CYAN};text-decoration:none;">{_e(url)}</a></div>'
+    )
+
+
 def _steps(items: List[str]) -> str:
     rows = "".join(
         f'<tr><td valign="top" style="padding:0 14px 14px 0;font:700 13px {_MONO};color:{_CYAN};">'
@@ -218,6 +228,7 @@ def access_ready(
             "Entra para terminar la configuración: son unos minutos."
         ),
         _button("Abrir mi Jarvis", link or site),
+        _direct_link(link) if link else "",
         _code(code),
         _p(
             f"También puedes entrar desde <a href='{site}' style='color:{_CYAN};'>"

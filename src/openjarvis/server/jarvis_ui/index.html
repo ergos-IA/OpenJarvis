@@ -288,6 +288,10 @@ footer img { width: 22px; height: 22px; }
 .stat small { font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--t3); }
 .stat b { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 700 16px var(--display); }
 .stat span { display: block; color: var(--t2); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+.stat[data-goto] { cursor: pointer; position: relative; transition: border-color .2s, transform .2s; }
+.stat[data-goto]:hover { border-color: rgba(0,217,255,.45); transform: translateY(-2px); }
+.stat[data-goto]::after { content: "Gestionar →"; display: block; margin-top: 10px; font: 600 12px var(--body); color: var(--cyan); }
+.to-portal { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; }
 .tries { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 4px; }
 .try { padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--s2); color: var(--t1);
   font-size: 14px; cursor: pointer; text-decoration: none; transition: all .2s; }
@@ -463,13 +467,14 @@ footer img { width: 22px; height: 22px; }
 
   <!-- =============== WIZARD =============== -->
   <section id="wizard" class="wizard hidden">
+    <button class="btn-link to-portal hidden" id="to-portal" type="button">← Volver a mi portal</button>
     <ol class="steps" id="steps">
       <li data-s="0"><span class="n">1</span><span class="lbl">Condiciones</span></li>
       <li data-s="0.5"><span class="n">2</span><span class="lbl">Tu IA</span></li>
       <li data-s="1"><span class="n">3</span><span class="lbl">WhatsApp</span></li>
       <li data-s="2"><span class="n">4</span><span class="lbl">Correo</span></li>
       <li data-s="2.5"><span class="n">5</span><span class="lbl">Conectores</span></li>
-      <li data-s="3"><span class="n">6</span><span class="lbl">¡Listo!</span></li>
+      <li data-s="3"><span class="n">6</span><span class="lbl">Tu portal</span></li>
     </ol>
 
     <!-- step 0: terms -->
@@ -762,15 +767,15 @@ footer img { width: 22px; height: 22px; }
     <!-- step 3: done / status -->
     <div class="panel hidden" data-step="3">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 6 · Sistemas</div>
+      <div class="eyebrow">Tu portal de Jarvis</div>
       <h2 id="done-title">Jarvis está listo</h2>
-      <p class="lead">Este es el estado de tus conexiones. Puedes volver aquí cuando quieras.</p>
+      <p class="lead">Aquí tienes todo lo de tu asistente. Toca cualquier tarjeta para cambiarla; cuando termines, vuelves aquí.</p>
       <div class="status-grid">
-        <div class="stat"><small>WhatsApp</small><b><span class="dot" id="st-wa-dot"></span><span id="st-wa">—</span></b><span id="st-wa-sub"></span></div>
-        <div class="stat"><small>Outlook</small><b><span class="dot" id="st-o-dot"></span><span id="st-o">—</span></b><span id="st-o-sub"></span></div>
-        <div class="stat"><small>Gmail</small><b><span class="dot" id="st-g-dot"></span><span id="st-g">—</span></b><span id="st-g-sub"></span></div>
-        <div class="stat"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
-        <div class="stat" style="cursor:pointer" data-goto="2.5"><small>Conectores</small><b><span class="dot" id="st-c-dot"></span><span id="st-c">—</span></b><span id="st-c-sub">Toca para gestionarlos</span></div>
+        <div class="stat" data-goto="1"><small>WhatsApp</small><b><span class="dot" id="st-wa-dot"></span><span id="st-wa">—</span></b><span id="st-wa-sub"></span></div>
+        <div class="stat" data-goto="2"><small>Outlook</small><b><span class="dot" id="st-o-dot"></span><span id="st-o">—</span></b><span id="st-o-sub"></span></div>
+        <div class="stat" data-goto="2"><small>Gmail</small><b><span class="dot" id="st-g-dot"></span><span id="st-g">—</span></b><span id="st-g-sub"></span></div>
+        <div class="stat" data-goto="0.5"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
+        <div class="stat" data-goto="2.5"><small>Conectores</small><b><span class="dot" id="st-c-dot"></span><span id="st-c">—</span></b><span id="st-c-sub">Calendario, Notion, Todoist…</span></div>
       </div>
       <div class="selfchat">
         <div class="eyebrow">Cómo hablar con Jarvis</div>
@@ -790,8 +795,8 @@ footer img { width: 22px; height: 22px; }
       <p style="color:var(--t2);margin:6px 0 0" id="try-hint">Se abrirá WhatsApp con la frase escrita en tu chat «Tú» (o «Yo»). Solo tienes que enviarla.</p>
       <div class="tries" id="tries"></div>
       <div class="nav">
-        <button class="btn-link" data-goto="2.5">← Conectores</button>
-        <button class="btn btn-ghost" data-goto="1">WhatsApp</button>
+        <button class="btn-link" data-back>← Inicio</button>
+        <button class="btn btn-ghost" data-goto="0.5">Repasar la configuración</button>
       </div>
     </div>
   </section>
@@ -958,6 +963,8 @@ footer img { width: 22px; height: 22px; }
     step = n;
     show("landing", false); show("wizard", true);
     qsa("[data-step]").forEach(function (p) { show(p, +p.getAttribute("data-step") === n); });
+    show("steps", n !== 3);
+    show("to-portal", n !== 3 && portalReady());
     qsa("#steps li").forEach(function (li) {
       var s = +li.getAttribute("data-s");
       li.classList.toggle("on", s === n); li.classList.toggle("done", s < n);
@@ -968,6 +975,8 @@ footer img { width: 22px; height: 22px; }
   }
   function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
   function aiReady() { return !ai || ai.configured; }
+  function portalReady() { return accepted() && aiReady() && !!(wa && wa.connected); }
+  $("to-portal").onclick = function () { go(3); };
   function start() { go(!accepted() ? 0 : !aiReady() ? 0.5 : wa && wa.connected ? 3 : 1); }
 
   // ---------- step 0: terms ----------
@@ -1429,7 +1438,7 @@ footer img { width: 22px; height: 22px; }
     if (!info) return;
     $("ro-model").textContent = info.label;
     $("st-m").textContent = info.label;
-    $("st-m-sub").textContent = info.provider_label + (info.open_source ? " · open source" : "");
+    $("st-m-sub").textContent = (info.provider_label || "") + (info.open_source ? " · open source" : "");
     if (info.assistant_name && info.assistant_name !== "Jarvis") {
       document.querySelector("h1.title").textContent = info.assistant_name.toUpperCase();
       document.title = info.assistant_name + " · AI Fast Track";
@@ -1479,7 +1488,7 @@ footer img { width: 22px; height: 22px; }
       lines.push(wa.connected ? '<span class="hl">›</span> Todos los sistemas operativos.' : '<span class="hl">›</span> Pulsa «Activar» para completar la configuración.');
     }
     runBoot(lines);
-    $("cta").innerHTML = (wa && wa.connected) ? 'Ver estado de Jarvis <span aria-hidden="true">→</span>' : 'Activar a Jarvis <span aria-hidden="true">→</span>';
+    $("cta").innerHTML = (wa && wa.connected) ? 'Ir a mi portal <span aria-hidden="true">→</span>' : 'Activar a Jarvis <span aria-hidden="true">→</span>';
   }
 
   // ?paso=whatsapp|correo|estado opens that wizard step directly.
