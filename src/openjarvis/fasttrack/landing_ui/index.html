@@ -3,427 +3,489 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#080808">
-<title>Jarvis · Tu asistente personal de IA en WhatsApp · AI Fast Track</title>
-<meta name="description" content="Jarvis es tu asistente personal de inteligencia artificial dentro de WhatsApp: te avisa de mensajes y correos importantes, responde por ti con tu confirmación, recuerda lo que necesitas y te organiza el día. Un servicio de AI Fast Track.">
+<meta name="theme-color" content="#040506">
+<title>Jarvis · Inteligencia personal dentro de tu WhatsApp · AI Fast Track</title>
+<meta name="description" content="Jarvis es tu asistente personal de inteligencia artificial dentro de WhatsApp: te avisa de lo importante, responde por ti con tu confirmación, gestiona tu correo y recuerda lo que necesitas. Un servicio de AI Fast Track.">
 <meta property="og:title" content="Jarvis · AI Fast Track">
-<meta property="og:description" content="Tu asistente personal de IA, dentro de tu WhatsApp.">
+<meta property="og:description" content="Inteligencia personal. Dentro de tu WhatsApp.">
 <link rel="icon" href="/jarvis-ui/aifasttrack-mark.svg" type="image/svg+xml">
 <style>
-@font-face { font-family: "Space Grotesk"; font-weight: 400 700; font-display: swap; src: url("/jarvis-ui/space-grotesk.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 400 700; font-display: swap; src: url("/jarvis-ui/inter.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-weight: 300 700; font-display: swap; src: url("/jarvis-ui/space-grotesk.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400 600; font-display: swap; src: url("/jarvis-ui/jetbrains-mono.woff2") format("woff2"); }
 :root {
-  --bg: #080808; --s1: #0f0f0f; --s2: #141414; --s3: #1c1c1c; --line: #242424;
-  --t1: #fff; --t2: #9a9a9a; --t3: #5a5a5a;
-  --yellow: #ffdb05; --cyan: #00d9ff; --red: #ff3b64; --green: #22c55e;
-  --cyan-a: rgba(0,217,255,.13); --yellow-a: rgba(255,219,5,.13);
-  --display: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --bg: #040506; --panel: #080b0d; --code: #070a0c; --line: #1d242b; --line2: #14191e; --line3: #2a323a;
+  --t1: #e8ecef; --t2: #aab4bd; --t3: #8b96a0; --t4: #5d6872;
+  --accent: #00d9ff; --glow: rgba(0,217,255,.18); --yellow: #ffdb05; --green: #22c55e; --red: #ff7a95;
+  --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--t1); font: 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-a { color: var(--cyan); }
-button, input { font: inherit; }
-.hidden { display: none !important; }
+html { scroll-behavior: smooth; overflow-x: clip; }
+body { margin: 0; background: var(--bg); color: var(--t1); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: var(--t1); text-decoration: none; } a:hover { color: var(--accent); }
+button, input, textarea { font: inherit; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+@media (max-width: 600px) { .wrap { padding: 0 16px; } }
+.mono { font-family: var(--mono); }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--accent); }
+.label { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--t3); }
+h2 { margin: 0; font-weight: 500; font-size: clamp(36px, 4.6vw, 60px); line-height: 1; letter-spacing: -.03em; }
+.lead { margin: 0; font-size: 17px; line-height: 1.6; color: var(--t2); max-width: 460px; }
+.section { padding-top: 120px; padding-bottom: 40px; }
+.head-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 40px; align-items: end; margin-bottom: 56px; }
+.stack { display: flex; flex-direction: column; gap: 18px; }
 
-.bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-.bg-grid { background-image: linear-gradient(rgba(0,217,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,217,255,.05) 1px, transparent 1px);
-  background-size: 48px 48px; mask-image: radial-gradient(ellipse at 50% 25%, #000 20%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse at 50% 25%, #000 20%, transparent 75%); }
-.bg-glow { background: radial-gradient(700px 420px at 50% 22%, rgba(0,217,255,.13), transparent 70%), radial-gradient(500px 320px at 90% 80%, rgba(255,219,5,.06), transparent 70%); }
-.bg-scan { background: linear-gradient(180deg, transparent, rgba(0,217,255,.05) 50%, transparent); height: 180px; top: -180px; animation: scan 8s linear infinite; }
-@keyframes scan { to { transform: translateY(calc(100vh + 180px)); } }
-#particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .65; }
+.bg-grid { position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(232,236,239,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(232,236,239,.03) 1px, transparent 1px); background-size: 80px 80px; }
+.bg-glow { position: absolute; left: 50%; top: 120px; width: min(1400px, 100vw); height: 1100px; transform: translateX(-50%); pointer-events: none; background: radial-gradient(closest-side, var(--glow), transparent 70%); }
 
-header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 18px; padding: 14px clamp(16px, 4vw, 40px);
-  background: rgba(8,8,8,.72); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(36,36,36,.6); }
-header img { height: 32px; display: block; }
-header nav { display: flex; gap: 4px; margin-left: auto; }
-header nav a { color: var(--t2); text-decoration: none; font-size: 14px; padding: 8px 12px; border-radius: 9px; }
-header nav a:hover { color: var(--t1); background: var(--s2); }
-@media (max-width: 760px) { header nav { display: none; } header .btn { margin-left: auto; } }
+header { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--line2); background: rgba(4,5,6,.78); backdrop-filter: blur(12px); }
+header .wrap { height: 68px; display: flex; align-items: center; gap: 28px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand img { height: 28px; width: auto; display: block; }
+.brand .sep { width: 1px; height: 20px; background: #232a31; }
+.brand .name { font-family: var(--mono); font-size: 12px; letter-spacing: .24em; }
+nav.sections { display: flex; gap: 26px; margin-left: auto; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; }
+nav.sections a { color: var(--t3); } nav.sections a:hover { color: var(--accent); }
+.ghost { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; padding: 11px 16px; border: 1px solid var(--line3); min-height: 44px; display: inline-flex; align-items: center; gap: 10px; transition: border-color .2s, color .2s; }
+.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+@media (max-width: 860px) { nav.sections { display: none; } header .ghost { margin-left: auto; } }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 24px; border-radius: 12px; border: 0; cursor: pointer;
-  text-decoration: none; font: 700 16px/1 var(--display); transition: box-shadow .2s, border-color .2s, color .2s, transform .1s; white-space: nowrap; }
-.btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--yellow); color: #0a0a0a; box-shadow: 0 0 0 1px rgba(255,219,5,.4), 0 10px 40px -10px rgba(255,219,5,.55); }
-.btn-primary:hover { box-shadow: 0 0 0 1px rgba(255,219,5,.6), 0 12px 50px -8px rgba(255,219,5,.75); }
-.btn-ghost { background: rgba(15,15,15,.6); color: var(--t1); border: 1px solid var(--line); }
-.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
-.btn-sm { padding: 10px 16px; font-size: 14px; border-radius: 10px; }
+.btn { min-height: 52px; padding: 0 22px; border: 0; background: var(--yellow); color: var(--bg); font-family: var(--mono); font-weight: 600; font-size: 13px; letter-spacing: .14em; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .2s; }
+.btn:hover { background: #ffe94d; color: var(--bg); }
 .btn[disabled] { opacity: .6; cursor: default; }
+.input { min-height: 48px; padding: 0 14px; background: var(--bg); border: 1px solid var(--line3); color: var(--t1); font-size: 16px; border-radius: 0; width: 100%; }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+textarea.input { padding: 12px 14px; resize: vertical; min-height: 130px; }
 
-main { position: relative; z-index: 1; }
-.hero { min-height: calc(100vh - 62px); display: grid; place-items: center; text-align: center; padding: 24px 16px 60px; }
-.reactor-wrap { position: relative; width: min(300px, 70vw); aspect-ratio: 1; margin: 0 auto; }
-.reactor { width: 100%; height: 100%; overflow: visible; }
-.r-spin { transform-origin: 200px 200px; animation: spin 24s linear infinite; }
-.r-spin.rev { animation-duration: 16s; animation-direction: reverse; }
-.r-spin.fast { animation-duration: 6s; }
+/* ---- hero / reactor ---- */
+.hero { position: relative; padding: 40px 0 96px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.reactor { position: relative; width: min(680px, 92vw); aspect-ratio: 1; }
+.reactor svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.rx { transform-origin: 400px 400px; transform-box: view-box; }
+.rx-a { animation: spin 80s linear infinite; } .rx-b { animation: spin 40s linear infinite reverse; }
+.rx-c { animation: spin 18s linear infinite; } .rx-d { animation: spin 7s linear infinite reverse; }
+.rx-e { animation: spin 3.2s linear infinite; } .rx-beam { animation: spin 6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.r-core { transform-origin: 200px 200px; animation: pulse 3.2s ease-in-out infinite; }
-@keyframes pulse { 50% { transform: scale(1.06); opacity: .85; } }
-.eyebrow { font: 600 12px var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--cyan); }
-h1 { font: 700 clamp(56px, 13vw, 132px)/.95 var(--display); letter-spacing: .18em; padding-left: .18em; margin: 14px 0 10px;
-  background: linear-gradient(180deg, #fff 30%, #9fefff 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 40px rgba(0,217,255,.25); }
-.lead { font: 500 clamp(19px, 2.8vw, 26px)/1.35 var(--display); color: #d6d6d6; max-width: 30ch; margin: 0 auto 10px; }
-.sub { color: var(--t2); max-width: 54ch; margin: 0 auto 28px; }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-.ai-note { margin-top: 16px; font-size: 13px; color: var(--t3); }
+.rx-core { animation: breath 3.6s ease-in-out infinite; }
+@keyframes breath { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .82; transform: scale(1.045); } }
+.rx-wave { animation: wave 4.8s cubic-bezier(.2,.6,.3,1) infinite; opacity: 0; }
+.rx-wave.w2 { animation-delay: 1.6s; } .rx-wave.w3 { animation-delay: 3.2s; }
+@keyframes wave { 0% { transform: scale(.42); opacity: .9; } 100% { transform: scale(1.18); opacity: 0; } }
+.rx-flick { animation: flick 2.4s steps(1) infinite; }
+@keyframes flick { 0%,100% { opacity: 1; } 48% { opacity: .35; } 52% { opacity: 1; } 74% { opacity: .6; } }
+.rx-halo { animation: halo 3.6s ease-in-out infinite; }
+@keyframes halo { 0%,100% { opacity: .55; } 50% { opacity: .9; } }
+.readout { position: absolute; font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--t3); line-height: 1.7; }
+.readout b { display: block; font-weight: 400; color: var(--t1); }
+.readout.tl { top: 12%; left: -6%; text-align: left; } .readout.tr { top: 12%; right: -6%; text-align: right; }
+.readout.bl { bottom: 12%; left: -6%; text-align: left; } .readout.br { bottom: 12%; right: -6%; text-align: right; }
+@media (max-width: 860px) { .readout { display: none; } }
+.presents { display: flex; align-items: center; gap: 12px; margin-top: 8px; font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--t3); }
+.presents i { width: 8px; height: 8px; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+h1 { margin: 18px 0 0; font-weight: 600; font-size: clamp(64px, 12vw, 168px); line-height: .9; letter-spacing: .16em; padding-left: .16em; color: #f4fdff; text-shadow: 0 0 48px var(--glow); }
+.tagline { margin: 22px 0 0; max-width: 680px; font-size: clamp(20px, 2.4vw, 28px); line-height: 1.3; letter-spacing: -.01em; }
+.tagline span { color: var(--t3); }
+.sub { margin: 14px 0 0; max-width: 560px; font-size: 17px; line-height: 1.6; color: var(--t2); }
+.access { margin-top: 36px; width: min(100%, 560px); display: flex; flex-direction: column; gap: 10px; padding: 18px; border: 1px solid var(--line); background: rgba(8,11,13,.88); text-align: left; }
+.access .row { display: flex; flex-wrap: wrap; gap: 10px; }
+.access .code { flex: 1 1 260px; min-width: 0; min-height: 52px; font-family: var(--mono); font-size: 20px; letter-spacing: .18em; text-transform: uppercase; }
+.status { margin: 0; min-height: 18px; font-family: var(--mono); font-size: 12px; color: var(--t3); }
+.status.err { color: var(--red); } .status.ok { color: var(--green); } .status.wait { color: var(--accent); }
+.hero-links { margin-top: 18px; display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--t3); }
+.hero-links a { border-bottom: 1px solid var(--accent); padding-bottom: 4px; }
 
-.section { position: relative; padding: 70px clamp(16px, 4vw, 40px); max-width: 1160px; margin: 0 auto; }
-h2 { font: 700 clamp(30px, 4.6vw, 48px)/1.08 var(--display); margin: 10px 0 14px; letter-spacing: -.01em; }
-h2 em { font-style: normal; color: var(--yellow); }
-.intro { color: var(--t2); max-width: 62ch; margin: 0 0 30px; font-size: 17px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
-.card { position: relative; padding: 24px; border-radius: 16px; background: linear-gradient(180deg, var(--s2), var(--s1)); border: 1px solid var(--line);
-  overflow: hidden; transition: border-color .25s; opacity: 0; transform: translateY(18px); }
-.card.in { opacity: 1; transform: none; transition: opacity .6s, transform .6s, border-color .25s; }
-.card:hover { border-color: rgba(0,217,255,.45); }
-.ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--cyan-a); color: var(--cyan); margin-bottom: 14px; }
-.ico.y { background: var(--yellow-a); color: var(--yellow); }
-.card h3 { font: 700 19px/1.25 var(--display); margin: 0 0 6px; }
-.card p { margin: 0; color: var(--t2); font-size: 15px; }
-.card q { display: block; margin-top: 12px; font: 13px/1.45 var(--mono); padding: 10px 12px; background: rgba(0,0,0,.35); border-left: 2px solid var(--yellow); border-radius: 6px; quotes: "«" "»"; }
+.strip { position: relative; border-top: 1px solid var(--line2); border-bottom: 1px solid var(--line2); background: rgba(4,5,6,.6); }
+.strip .wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.strip .cell { padding: 26px 24px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--line2); }
+.strip .cell:first-child { padding-left: 0; } .strip .cell:last-child { border-right: 0; }
+.strip .cell span:last-child { font-size: 17px; }
 
-.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; counter-reset: s; }
-.step { position: relative; padding: 26px 22px 22px; border-radius: 16px; border: 1px solid var(--line); background: var(--s1); counter-increment: s; }
-.step::before { content: "0" counter(s); font: 700 44px/1 var(--display); color: transparent; -webkit-text-stroke: 1px rgba(0,217,255,.55); display: block; margin-bottom: 12px; }
-.step h3 { font: 700 18px var(--display); margin: 0 0 6px; }
-.step p { margin: 0; color: var(--t2); font-size: 15px; }
+/* ---- capabilities ---- */
+.rows { border-top: 1px solid var(--line); }
+.cap { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 24px; align-items: center; padding: 28px 8px; border-bottom: 1px solid var(--line); transition: background .2s; }
+.cap:hover { background: #0a0e11; } .cap:hover .idx { color: var(--accent); }
+.cap .t { display: flex; align-items: baseline; gap: 22px; }
+.cap .idx { font-family: var(--mono); font-size: 13px; color: var(--t4); min-width: 28px; transition: color .2s; }
+.cap .name { font-size: 26px; font-weight: 500; letter-spacing: -.015em; }
+.cap .desc { font-size: 16px; line-height: 1.55; color: var(--t2); }
+.cap code { font-family: var(--mono); font-size: 13px; padding: 12px 14px; border: 1px solid var(--line); background: var(--code); line-height: 1.5; }
+.cap code b { color: var(--accent); font-weight: 400; }
 
-/* chat mockup */
-.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: center; }
-@media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
-.phone { width: min(360px, 100%); margin: 0 auto; border-radius: 34px; padding: 12px; background: #111; border: 1px solid #2a2a2a;
-  box-shadow: 0 30px 80px -20px rgba(0,217,255,.25), 0 0 0 6px #0b0b0b; }
-.chat { border-radius: 24px; overflow: hidden; background: #0b141a; }
-.chat-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #1f2c34; font-weight: 600; font-size: 15px; }
-.chat-head .av { width: 32px; height: 32px; border-radius: 50%; background: var(--yellow-a); display: grid; place-items: center; color: var(--yellow); font: 700 13px var(--display); }
-.chat-head small { display: block; color: #8696a0; font-weight: 400; font-size: 12px; }
-.chat-body { padding: 14px 10px 16px; display: grid; gap: 8px; min-height: 380px; align-content: start;
-  background-image: radial-gradient(rgba(255,255,255,.025) 1px, transparent 1px); background-size: 14px 14px; }
-.msg { max-width: 82%; padding: 7px 10px 6px; border-radius: 9px; font-size: 14px; line-height: 1.4; opacity: 0; transform: translateY(6px); transition: all .35s; white-space: pre-line; }
-.msg.show { opacity: 1; transform: none; }
-.msg.me { justify-self: end; background: #005c4b; border-top-right-radius: 2px; }
-.msg.bot { justify-self: start; background: #202c33; border-top-left-radius: 2px; }
-.msg b { color: #fff; }
-.msg .t { display: block; text-align: right; font-size: 10px; color: rgba(255,255,255,.5); margin-top: 2px; }
+/* ---- demo phone ---- */
+.demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 64px; align-items: center; }
+.phone-wrap { justify-self: center; position: relative; width: min(100%, 370px); }
+.phone-wrap::before { content: ""; position: absolute; inset: -40px; background: radial-gradient(closest-side, var(--glow), transparent 75%); pointer-events: none; }
+.phone { position: relative; border-radius: 44px; padding: 12px; background: #0d1013; border: 1px solid #262e35; box-shadow: 0 0 0 6px #07090b, 0 40px 90px -30px rgba(0,0,0,.9); }
+.screen { border-radius: 33px; overflow: hidden; background: #0b141a; }
+.chat-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #1f2c34; }
+.chat-head .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,219,5,.14); color: var(--yellow); font-weight: 700; font-size: 13px; }
+.chat-head .who { display: flex; flex-direction: column; font-size: 15px; font-weight: 600; color: #e9edef; }
+.chat-head .who small { font-weight: 400; font-size: 12px; color: #8696a0; }
+.chat { padding: 16px 10px 18px; min-height: 470px; display: flex; flex-direction: column; gap: 8px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.4; color: #e9edef; background-image: radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px); background-size: 14px 14px; }
+.msg { max-width: 82%; padding: 7px 10px 6px; border-radius: 9px; white-space: pre-line; opacity: 0; transform: translateY(8px); }
+.play .msg { animation: msg .45s ease forwards; }
+@keyframes msg { to { opacity: 1; transform: none; } }
+.msg.bot { align-self: flex-start; background: #202c33; } .msg.me { align-self: flex-end; background: #005c4b; }
+.msg small { display: block; text-align: right; font-size: 10px; color: rgba(233,237,239,.55); margin-top: 3px; }
 
-.models { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
-.model { padding: 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
-.model b { display: block; font: 700 17px var(--display); margin-bottom: 4px; }
-.model span { color: var(--t2); font-size: 14px; }
-.tag { display: inline-block; margin-top: 10px; padding: 4px 9px; border-radius: 999px; font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; background: var(--cyan-a); color: var(--cyan); }
-.tag.y { background: var(--yellow-a); color: var(--yellow); }
+/* ---- protocol ---- */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); border-top: 1px solid var(--line3); }
+.steps li { position: relative; padding: 32px 28px 8px 0; display: flex; flex-direction: column; gap: 12px; }
+.steps li::before { content: ""; position: absolute; top: -5px; left: 0; width: 9px; height: 9px; background: var(--line3); }
+.steps li.a::before { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.steps li.y::before { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+.steps .ttl { font-size: 22px; font-weight: 500; }
+.steps .txt { font-size: 15px; line-height: 1.6; color: var(--t2); }
 
-.sec-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
-.sec { display: grid; grid-template-columns: 28px 1fr; gap: 12px; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
-.sec .k { color: var(--green); font-size: 20px; line-height: 1.2; }
-.sec b { display: block; font-weight: 600; } .sec span { color: var(--t2); font-size: 14px; }
+/* ---- models ---- */
+.table-box { overflow-x: auto; border: 1px solid var(--line); }
+table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 16px; }
+thead th { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--t3); text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--line); font-weight: 500; }
+tbody th, tbody td { padding: 22px 20px; border-bottom: 1px solid var(--line2); text-align: left; }
+tbody th { font-weight: 500; font-size: 20px; } tbody td { color: var(--t2); }
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+.tag { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; padding: 6px 10px; border: 1px solid var(--t3); color: var(--t3); white-space: nowrap; }
+.tag.y { border-color: var(--yellow); color: var(--yellow); } .tag.a { border-color: var(--accent); color: var(--accent); }
 
-.legal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
-.legal-item { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
-.legal-item h3 { font: 700 15px var(--display); margin: 0 0 6px; }
-.legal-item p { margin: 0; color: var(--t2); font-size: 14px; }
+/* ---- security ---- */
+.sec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.sec { padding: 28px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.sec .k { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--green); }
+.sec .ttl { font-size: 19px; font-weight: 500; } .sec .txt { font-size: 15px; line-height: 1.6; color: var(--t2); }
 
-/* access */
-.access { max-width: 620px; margin: 0 auto; text-align: center; padding: 36px clamp(18px, 4vw, 40px); border-radius: 22px; border: 1px solid rgba(0,217,255,.3);
-  background: linear-gradient(180deg, rgba(20,20,20,.95), rgba(12,12,12,.95)); box-shadow: 0 0 80px -30px rgba(0,217,255,.5); position: relative; }
-.access h2 { font-size: clamp(26px, 4vw, 36px); }
-.code-input { width: 100%; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--t1);
-  font: 600 22px var(--mono); letter-spacing: .14em; text-align: center; text-transform: uppercase; outline: none; transition: border-color .2s, box-shadow .2s; }
-.code-input::placeholder { color: var(--t3); letter-spacing: .1em; }
-.code-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px var(--cyan-a); }
-.access form { display: grid; gap: 12px; margin-top: 18px; }
-.access .err { color: #ff7a95; font-size: 14px; min-height: 1.4em; margin: 0; }
-.access small { color: var(--t3); }
-.modal { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.72); backdrop-filter: blur(8px); }
-.modal .access { width: min(560px, 100%); }
-.close { position: absolute; top: 12px; right: 14px; background: none; border: 0; color: var(--t2); font-size: 24px; cursor: pointer; }
-.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(0,0,0,.25); border-top-color: #000; animation: spin .8s linear infinite; display: inline-block; }
+/* ---- contact ---- */
+.contact { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 56px; align-items: start; }
+.cform { display: flex; flex-direction: column; gap: 16px; padding: 28px; border: 1px solid var(--line); background: rgba(8,11,13,.88); }
+@media (max-width: 600px) { .cform { padding: 18px; } }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { font-family: var(--mono); font-size: 11px; letter-spacing: .18em; color: var(--t3); }
+.consent { display: flex; gap: 12px; align-items: flex-start; }
+.consent input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--yellow); flex: none; }
+.consent label { font-size: 14px; line-height: 1.5; color: var(--t2); }
+.consent a, .notes a { border-bottom: 1px solid var(--line3); }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
-footer { position: relative; z-index: 1; border-top: 1px solid var(--line); padding: 30px clamp(16px, 4vw, 40px) 44px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; color: var(--t3); font-size: 13px; }
-footer nav { display: flex; flex-wrap: wrap; gap: 14px; }
-footer a { color: var(--t2); text-decoration: none; }
-footer a:hover { color: var(--t1); }
-footer .brand { display: flex; align-items: center; gap: 10px; }
-footer .brand img { width: 24px; height: 24px; }
+/* ---- notices ---- */
+.notices { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.notices li { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px 40px; padding: 24px 0; border-bottom: 1px solid var(--line); }
+.notices .ttl { display: flex; gap: 18px; font-size: 18px; font-weight: 500; }
+.notices .ttl span { font-family: var(--mono); font-size: 13px; color: var(--t4); padding-top: 3px; }
+.notices .txt { font-size: 15px; line-height: 1.6; color: var(--t2); }
+.notes { margin: 24px 0 0; font-size: 15px; color: var(--t3); }
 
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .card, .msg { opacity: 1; transform: none; } }
+footer { border-top: 1px solid var(--line2); }
+footer .wrap { padding-top: 32px; padding-bottom: 32px; display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--t3); }
+footer nav { display: flex; flex-wrap: wrap; gap: 22px; margin-left: auto; }
+footer nav a { color: var(--t3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rx-a, .rx-b, .rx-c, .rx-d, .rx-e, .rx-core, .rx-wave, .rx-beam, .rx-flick, .rx-halo { animation: none; }
+  .msg, .play .msg { animation: none; opacity: 1; transform: none; }
+}
 </style>
 </head>
 <body>
-<div class="bg bg-grid"></div><div class="bg bg-glow"></div><div class="bg bg-scan"></div>
-<canvas id="particles" aria-hidden="true"></canvas>
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
 
 <header>
-  <a href="/" aria-label="Jarvis by AI Fast Track"><img src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track"></a>
-  <nav>
-    <a href="#que-hace">Qué hace</a>
-    <a href="#como-funciona">Cómo funciona</a>
-    <a href="#seguridad">Seguridad</a>
-    <a href="#importante">Importante</a>
-  </nav>
-  <button class="btn btn-primary btn-sm" data-access>Acceder a mi Jarvis</button>
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="AI Fast Track — inicio">
+      <img src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track">
+      <span class="sep"></span><span class="name">JARVIS</span>
+    </a>
+    <nav class="sections" aria-label="Secciones">
+      <a href="#sistema">[01] SISTEMA</a>
+      <a href="#demo">[02] EN ACCIÓN</a>
+      <a href="#seguridad">[03] SEGURIDAD</a>
+      <a href="#contacto">[04] CONTACTO</a>
+    </nav>
+    <a class="ghost" href="#acceso"><span class="dot"></span>ACCEDER</a>
+  </div>
 </header>
 
-<main>
-  <section class="hero">
-    <div>
-      <div class="reactor-wrap">
-        <svg class="reactor" viewBox="0 0 400 400" aria-hidden="true">
-          <defs>
-            <radialGradient id="core" cx="50%" cy="50%" r="50%">
-              <stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#9ff3ff"/>
-              <stop offset=".7" stop-color="#00d9ff" stop-opacity=".55"/><stop offset="1" stop-color="#00d9ff" stop-opacity="0"/>
-            </radialGradient>
-            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
-          <g class="r-spin"><circle cx="200" cy="200" r="186" fill="none" stroke="#00d9ff" stroke-opacity=".25"/><circle cx="200" cy="200" r="178" fill="none" stroke="#00d9ff" stroke-width="6" stroke-dasharray="2 9" stroke-opacity=".7"/></g>
-          <g class="r-spin rev"><circle cx="200" cy="200" r="150" fill="none" stroke="#00d9ff" stroke-width="10" stroke-dasharray="70 24" stroke-opacity=".9" filter="url(#glow)"/></g>
-          <g class="r-spin fast"><circle cx="200" cy="200" r="124" fill="none" stroke="#ffdb05" stroke-width="2" stroke-dasharray="30 360" stroke-linecap="round" filter="url(#glow)"/></g>
-          <g class="r-spin"><circle cx="200" cy="200" r="112" fill="none" stroke="#00d9ff" stroke-opacity=".35"/><g id="spokes" stroke="#00d9ff" stroke-opacity=".75" stroke-width="3" stroke-linecap="round"></g></g>
-          <g class="r-core"><circle cx="200" cy="200" r="96" fill="url(#core)"/><circle cx="200" cy="200" r="62" fill="none" stroke="#e6fbff" stroke-width="3" filter="url(#glow)"/>
-            <polygon points="200,160 235,180 235,220 200,240 165,220 165,180" fill="#00d9ff" fill-opacity=".25" stroke="#fff" stroke-width="2"/><circle cx="200" cy="200" r="16" fill="#fff" filter="url(#glow)"/></g>
-        </svg>
-      </div>
-      <div class="eyebrow" style="margin-top:8px">AI Fast Track presenta</div>
-      <h1>JARVIS</h1>
-      <p class="lead">Tu asistente personal de IA, dentro de tu WhatsApp.</p>
-      <p class="sub">Te avisa de lo importante, lee y resume tus mensajes y correos, responde por ti cuando se lo pides —con tu «sí»— y te recuerda lo que no puedes olvidar. Sin apps nuevas: le escribes como a cualquier contacto.</p>
-      <div class="actions">
-        <button class="btn btn-primary" data-access>Acceder a mi Jarvis →</button>
-        <a class="btn btn-ghost" href="{{CONTACT_URL}}" target="_blank" rel="noopener">Quiero mi Jarvis</a>
-      </div>
-      <div class="ai-note">Jarvis es un sistema de inteligencia artificial y puede cometer errores.</div>
-    </div>
-  </section>
+<main id="top" style="position: relative">
 
-  <section class="section" id="que-hace">
-    <div class="eyebrow">// Capacidades</div>
-    <h2>Un asistente que <em>trabaja contigo</em>, no otra app más.</h2>
-    <p class="intro">Jarvis vive en tu chat «Tú» de WhatsApp. Le hablas con naturalidad y él se encarga.</p>
-    <div class="grid">
-      <article class="card"><div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-13.4 7.9L3 21l1.2-4.4A9 9 0 1 1 21 12z"/><path d="M8.5 10.5h7M8.5 13.5h4.5"/></svg></div>
-        <h3>Conversa y busca por ti</h3><p>Pregúntale lo que quieras: dudas, cálculos, búsquedas en internet o redactar un texto.</p><q>¿Qué tiempo hará el sábado en Valencia?</q></article>
-      <article class="card"><div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
-        <h3>Te avisa de lo importante</h3><p>Mensajes de WhatsApp, también de desconocidos, y correos relevantes: te dice quién es y qué quiere.</p><q>¿Qué tengo sin leer de hoy?</q></article>
-      <article class="card"><div class="ico y"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></svg></div>
-        <h3>Responde por ti, con tu «sí»</h3><p>Redacta WhatsApp y correos a tus contactos. Te enseña el borrador y solo lo envía si lo confirmas.</p><q>Dile a Laura que llego 10 minutos tarde</q></article>
-      <article class="card"><div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>
-        <h3>Tu correo, bajo control</h3><p>Outlook / Microsoft 365 y Gmail: busca facturas, resume hilos y prepara respuestas.</p><q>Busca la factura de la luz y dime el importe</q></article>
-      <article class="card"><div class="ico y"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M5 3 2 6M22 6l-3-3"/></svg></div>
-        <h3>Recordatorios y tareas</h3><p>Te recuerda las cosas a su hora y hace tareas programadas: cada mañana, cada lunes…</p><q>Cada día a las 8 resúmeme correos y WhatsApp</q></article>
-      <article class="card"><div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a4 4 0 0 0-4 4v1a4 4 0 0 0-1 7.5V17a4 4 0 0 0 5 3.9A4 4 0 0 0 17 17v-1.5A4 4 0 0 0 16 8V7a4 4 0 0 0-4-4z"/></svg></div>
-        <h3>Memoria</h3><p>Recuerda lo que le cuentas de ti y tus preferencias, y lo tiene en cuenta siempre.</p><q>Acuérdate de que prefiero respuestas cortas</q></article>
-    </div>
-  </section>
+<section class="wrap hero" aria-labelledby="hero-title">
+  <div class="reactor" aria-hidden="true">
+    <svg viewBox="0 0 800 800">
+      <defs>
+        <radialGradient id="rxCore" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stop-color="#fff"/><stop offset=".22" stop-color="#e9fdff"/>
+          <stop offset=".5" stop-color="#00d9ff" stop-opacity=".85"/><stop offset="1" stop-color="#00d9ff" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="rxHalo" cx="50%" cy="50%" r="50%">
+          <stop offset=".35" stop-color="#00d9ff" stop-opacity=".32"/><stop offset="1" stop-color="#00d9ff" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="rxBeam" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#00d9ff" stop-opacity="0"/><stop offset="1" stop-color="#00d9ff" stop-opacity=".5"/>
+        </linearGradient>
+        <filter id="rxGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="rxSoft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="14"/></filter>
+      </defs>
+      <circle class="rx-halo" cx="400" cy="400" r="380" fill="url(#rxHalo)"/>
+      <circle class="rx rx-wave" cx="400" cy="400" r="330" fill="none" stroke="#00d9ff" stroke-width="1.2"/>
+      <circle class="rx rx-wave w2" cx="400" cy="400" r="330" fill="none" stroke="#00d9ff" stroke-width="1.2"/>
+      <circle class="rx rx-wave w3" cx="400" cy="400" r="330" fill="none" stroke="#ffdb05" stroke-width="1"/>
+      <g class="rx rx-a">
+        <circle cx="400" cy="400" r="372" fill="none" stroke="#1b2228"/>
+        <circle cx="400" cy="400" r="360" fill="none" stroke="#3a4650" stroke-width="10" stroke-dasharray="1.2 9.27"/>
+        <circle cx="400" cy="400" r="360" fill="none" stroke="#00d9ff" stroke-width="16" stroke-dasharray="2 54.55" stroke-opacity=".9"/>
+        <circle cx="400" cy="28" r="5" fill="#ffdb05" filter="url(#rxGlow)"/>
+        <circle cx="400" cy="772" r="3" fill="#00d9ff"/>
+      </g>
+      <g class="rx rx-b">
+        <circle cx="400" cy="400" r="318" fill="none" stroke="#00d9ff" stroke-opacity=".35" stroke-dasharray="4 8"/>
+        <circle cx="400" cy="400" r="300" fill="none" stroke="#00d9ff" stroke-width="22" stroke-dasharray="190 46 26 46" stroke-opacity=".95" filter="url(#rxGlow)"/>
+      </g>
+      <g class="rx rx-c">
+        <circle cx="400" cy="400" r="256" fill="none" stroke="#ffdb05" stroke-width="3" stroke-dasharray="64 1544" stroke-linecap="round" filter="url(#rxGlow)"/>
+        <circle cx="400" cy="400" r="256" fill="none" stroke="#00d9ff" stroke-width="3" stroke-dasharray="24 780" stroke-dashoffset="400" stroke-linecap="round" filter="url(#rxGlow)"/>
+      </g>
+      <g class="rx rx-beam"><path d="M400 400 L656 400 A256 256 0 0 0 637 304 Z" fill="url(#rxBeam)" opacity=".55"/></g>
+      <g class="rx rx-d">
+        <circle cx="400" cy="400" r="226" fill="none" stroke="#2a333b"/>
+        <circle cx="400" cy="400" r="214" fill="none" stroke="#00d9ff" stroke-width="12" stroke-dasharray="3 25" stroke-opacity=".85"/>
+      </g>
+      <g class="rx rx-e"><circle cx="400" cy="400" r="184" fill="none" stroke="#00d9ff" stroke-width="2" stroke-dasharray="40 1116" stroke-linecap="round" filter="url(#rxGlow)"/></g>
+      <g class="rx rx-core">
+        <circle cx="400" cy="400" r="176" fill="url(#rxCore)" opacity=".35" filter="url(#rxSoft)"/>
+        <circle cx="400" cy="400" r="150" fill="none" stroke="#00d9ff" stroke-width="2" filter="url(#rxGlow)"/>
+        <polygon points="400,286 499,343 499,457 400,514 301,457 301,343" fill="none" stroke="#e9fdff" stroke-width="2.5" filter="url(#rxGlow)"/>
+        <polygon points="400,316 473,358 473,442 400,484 327,442 327,358" fill="#00d9ff" fill-opacity=".16" stroke="#00d9ff" stroke-width="1.5"/>
+        <line x1="400" y1="286" x2="400" y2="340" stroke="#e9fdff" stroke-width="2"/>
+        <line x1="499" y1="457" x2="452" y2="430" stroke="#e9fdff" stroke-width="2"/>
+        <line x1="301" y1="457" x2="348" y2="430" stroke="#e9fdff" stroke-width="2"/>
+        <circle cx="400" cy="400" r="96" fill="url(#rxCore)"/>
+        <circle class="rx-flick" cx="400" cy="400" r="44" fill="#fff" filter="url(#rxGlow)"/>
+        <circle cx="400" cy="400" r="60" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="1.5"/>
+      </g>
+      <line x1="400" y1="0" x2="400" y2="60" stroke="#2a333b"/><line x1="400" y1="740" x2="400" y2="800" stroke="#2a333b"/>
+      <line x1="0" y1="400" x2="60" y2="400" stroke="#2a333b"/><line x1="740" y1="400" x2="800" y2="400" stroke="#2a333b"/>
+    </svg>
+    <div class="readout tl">NÚCLEO<b>ACTIVO · 100%</b></div>
+    <div class="readout tr">CANAL<b>WHATSAPP · CHAT «TÚ»</b></div>
+    <div class="readout bl">ENVÍOS<b>REQUIEREN «SÍ»</b></div>
+    <div class="readout br">INSTANCIA<b>PRIVADA · AISLADA</b></div>
+  </div>
 
-  <section class="section" id="demo">
-    <div class="split">
-      <div>
-        <div class="eyebrow">// En acción</div>
-        <h2>Así de <em>sencillo</em>.</h2>
-        <p class="intro" style="margin-bottom:16px">Te llega un mensaje importante, Jarvis te avisa, le pides que conteste y él prepara la respuesta. Tú solo dices «sí».</p>
-        <p class="intro">Nada se envía en tu nombre sin tu confirmación expresa. Y si un mensaje o un correo intenta darle órdenes, Jarvis lo trata como información, nunca como una instrucción.</p>
-      </div>
-      <div class="phone" aria-label="Ejemplo de conversación con Jarvis">
-        <div class="chat">
-          <div class="chat-head"><span class="av">TÚ</span><span>Tú (mensajes para ti)<small>Jarvis activo</small></span></div>
-          <div class="chat-body" id="chat"></div>
+  <div class="presents"><i></i>AI FAST TRACK PRESENTA</div>
+  <h1 id="hero-title">JARVIS</h1>
+  <p class="tagline">Inteligencia personal. <span>Dentro de tu WhatsApp.</span></p>
+  <p class="sub">Lee lo que te llega, te avisa de lo que importa, responde por ti cuando se lo pides —solo con tu «sí»— y recuerda lo que no puedes olvidar.</p>
+
+  <form class="access" id="acceso" novalidate>
+    <label class="label" for="code" style="letter-spacing: .2em">&gt; CÓDIGO DE ACCESO</label>
+    <div class="row">
+      <input id="code" class="input code" placeholder="XXXX-XXXX-XXXX" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false">
+      <button type="submit" class="btn">ENTRAR →</button>
+    </div>
+    <p class="status" id="code-status" role="status"></p>
+  </form>
+  <div class="hero-links">
+    <a href="#contacto">QUIERO MI JARVIS →</a>
+    <span>IA · PUEDE COMETER ERRORES</span>
+  </div>
+</section>
+
+<section class="strip" aria-label="Principios">
+  <div class="wrap">
+    <div class="cell"><span class="label">AISLAMIENTO</span><span>Una instancia por persona</span></div>
+    <div class="cell"><span class="label">CONTROL</span><span>Nada sale sin tu confirmación</span></div>
+    <div class="cell"><span class="label">PRIVACIDAD</span><span>RGPD · LOPDGDD</span></div>
+    <div class="cell"><span class="label">MODELOS</span><span>Claude · GPT · Open source</span></div>
+  </div>
+</section>
+
+<section class="wrap section" id="sistema" aria-labelledby="sys-title">
+  <div class="head-split">
+    <div class="stack"><span class="eyebrow">[01] SISTEMA</span><h2 id="sys-title">Seis funciones.<br>Una conversación.</h2></div>
+    <p class="lead">Le hablas en tu chat «Tú» de WhatsApp, como si fuera una nota. Jarvis decide qué herramienta usar y te responde ahí mismo.</p>
+  </div>
+  <div class="rows" role="list">
+    <div class="cap" role="listitem"><div class="t"><span class="idx">01</span><span class="name">Conversa</span></div><span class="desc">Dudas, cálculos, redacción y búsquedas en internet, en lenguaje natural.</span><code><b>&gt;</b> ¿Qué tiempo hará el sábado en Valencia?</code></div>
+    <div class="cap" role="listitem"><div class="t"><span class="idx">02</span><span class="name">Vigila</span></div><span class="desc">Te avisa de WhatsApp —también de desconocidos— y de correos importantes.</span><code><b>&gt;</b> ¿Qué tengo sin leer de hoy?</code></div>
+    <div class="cap" role="listitem"><div class="t"><span class="idx">03</span><span class="name">Responde</span></div><span class="desc">Redacta WhatsApp y correos a tus contactos. Solo los envía si dices «sí».</span><code><b>&gt;</b> Dile a Laura que llego 10 min tarde</code></div>
+    <div class="cap" role="listitem"><div class="t"><span class="idx">04</span><span class="name">Correo</span></div><span class="desc">Outlook / Microsoft 365 y Gmail: busca, resume y prepara respuestas.</span><code><b>&gt;</b> Busca la factura de la luz y dime el importe</code></div>
+    <div class="cap" role="listitem"><div class="t"><span class="idx">05</span><span class="name">Programa</span></div><span class="desc">Recordatorios a su hora y tareas periódicas que te entrega por WhatsApp.</span><code><b>&gt;</b> Cada día a las 8, resúmeme lo pendiente</code></div>
+    <div class="cap" role="listitem"><div class="t"><span class="idx">06</span><span class="name">Recuerda</span></div><span class="desc">Guarda tus datos y preferencias y los tiene en cuenta siempre.</span><code><b>&gt;</b> Acuérdate de que prefiero respuestas cortas</code></div>
+  </div>
+</section>
+
+<section class="wrap section demo" id="demo" aria-labelledby="demo-title">
+  <div class="stack">
+    <span class="eyebrow">[02] EN ACCIÓN</span>
+    <h2 id="demo-title">Tú decides.<br>Jarvis ejecuta.</h2>
+    <p class="lead">Te llega un mensaje importante, Jarvis te avisa, le pides que conteste y prepara el borrador. Solo se envía con tu «sí».</p>
+    <p class="lead">Si un mensaje o un correo intenta darle órdenes, Jarvis lo trata como información, nunca como instrucción.</p>
+  </div>
+  <div class="phone-wrap">
+    <div class="phone" role="img" aria-label="Ejemplo de conversación con Jarvis en WhatsApp">
+      <div class="screen">
+        <div class="chat-head"><span class="av">TÚ</span><span class="who">Tú (mensajes para ti)<small>Jarvis activo</small></span></div>
+        <div class="chat" id="chat">
+          <div class="msg bot" style="animation-delay:.4s">Laura (cliente): ¿podemos mover la reunión de mañana a las 12?<small>09:41</small></div>
+          <div class="msg me" style="animation-delay:1.3s">Dile que perfecto, a las 12 en la oficina<small>09:42 ✓✓</small></div>
+          <div class="msg bot" style="animation-delay:2.2s">Borrador para Laura:
+«¡Perfecto! Nos vemos mañana a las 12 en la oficina.»
+
+¿Lo envío? Responde sí o no.<small>09:42</small></div>
+          <div class="msg me" style="animation-delay:3.1s">sí<small>09:42 ✓✓</small></div>
+          <div class="msg bot" style="animation-delay:4s">Enviado a Laura.<small>09:42</small></div>
+          <div class="msg me" style="animation-delay:4.9s">Recuérdame mañana a las 11:30 salir hacia allí<small>09:43 ✓✓</small></div>
+          <div class="msg bot" style="animation-delay:5.8s">Hecho. Te aviso mañana a las 11:30.<small>09:43</small></div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="section" id="como-funciona">
-    <div class="eyebrow">// Cómo funciona</div>
-    <h2>En marcha en <em>3 minutos</em>.</h2>
-    <div class="steps">
-      <div class="step"><h3>Recibe tu acceso</h3><p>Te damos tu código personal. Cada persona tiene su propio Jarvis, privado y aislado.</p></div>
-      <div class="step"><h3>Conecta WhatsApp</h3><p>Escanea un código QR (o escribe un código en el móvil), igual que con WhatsApp Web.</p></div>
-      <div class="step"><h3>Añade tu correo</h3><p>Opcional: Outlook / Microsoft 365 y Gmail, en un par de clics.</p></div>
-      <div class="step"><h3>Háblale</h3><p>Escríbele en tu chat «Tú» de WhatsApp. Ya está trabajando para ti.</p></div>
-    </div>
-  </section>
+<section class="wrap section" aria-labelledby="proto-title">
+  <div class="stack" style="margin-bottom: 64px"><span class="eyebrow">PROTOCOLO</span><h2 id="proto-title">Operativo en minutos.</h2></div>
+  <ol class="steps">
+    <li class="a"><span class="label">T+0</span><span class="ttl">Recibes tu código</span><span class="txt">Cada persona tiene su propio Jarvis, privado y aislado.</span></li>
+    <li><span class="label">T+1</span><span class="ttl">Aceptas condiciones</span><span class="txt">Lees lo esencial y lo confirmas en un paso.</span></li>
+    <li><span class="label">T+2</span><span class="ttl">Vinculas WhatsApp</span><span class="txt">Con un QR o un código de 8 letras desde el móvil.</span></li>
+    <li class="y"><span class="label">T+3</span><span class="ttl">Le hablas</span><span class="txt">En tu chat «Tú». Correo opcional cuando quieras.</span></li>
+  </ol>
+</section>
 
-  <section class="section" id="modelos">
-    <div class="eyebrow">// Inteligencia</div>
-    <h2>Elige el <em>cerebro</em> de tu Jarvis.</h2>
-    <p class="intro">Trabajamos con los mejores modelos del mercado y también con modelos de código abierto.</p>
-    <div class="models">
-      <div class="model"><b>Claude (Anthropic)</b><span>El más fiable usando herramientas y siguiendo instrucciones.</span><br><span class="tag y">Recomendado</span></div>
-      <div class="model"><b>GPT (OpenAI)</b><span>Los modelos más conocidos, rápidos y versátiles.</span><br><span class="tag">Disponible</span></div>
-      <div class="model"><b>Código abierto</b><span>Llama, Qwen, Mistral… a través de proveedores especializados.</span><br><span class="tag">Open source</span></div>
-      <div class="model"><b>Servidor propio</b><span>Para empresas que necesitan que nada salga de su infraestructura.</span><br><span class="tag">A medida</span></div>
-    </div>
-  </section>
+<section class="wrap section" aria-labelledby="models-title">
+  <div class="head-split" style="margin-bottom: 48px">
+    <div class="stack"><span class="eyebrow">MODELOS</span><h2 id="models-title">Elige el núcleo.</h2></div>
+    <p class="lead">Cada Jarvis funciona con el modelo que mejor encaje: comercial, de código abierto o en tu propia infraestructura.</p>
+  </div>
+  <div class="table-box">
+    <table>
+      <thead><tr><th scope="col">NÚCLEO</th><th scope="col">PROVEEDOR</th><th scope="col">PERFIL</th><th scope="col">TIPO</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Claude</th><td>Anthropic</td><td>Máxima fiabilidad usando herramientas</td><td><span class="tag y">RECOMENDADO</span></td></tr>
+        <tr><th scope="row">GPT</th><td>OpenAI</td><td>Rápido y versátil</td><td><span class="tag">COMERCIAL</span></td></tr>
+        <tr><th scope="row">Llama · Qwen · Mistral</th><td>Vía OpenRouter</td><td>Modelos de pesos abiertos</td><td><span class="tag a">OPEN SOURCE</span></td></tr>
+        <tr><th scope="row">Servidor propio</th><td>Tu infraestructura</td><td>Nada sale de tu entorno</td><td><span class="tag">A MEDIDA</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
-  <section class="section" id="seguridad">
-    <div class="eyebrow">// Seguridad y privacidad</div>
-    <h2>Tus datos, <em>solo tuyos</em>.</h2>
-    <div class="sec-list">
-      <div class="sec"><span class="k">✓</span><div><b>Un Jarvis por persona</b><span>Cada usuario tiene su propia instancia aislada: nada se comparte entre usuarios.</span></div></div>
-      <div class="sec"><span class="k">✓</span><div><b>Acceso privado</b><span>Solo con tu código o enlace personal, sesión segura y bloqueo automático de intentos abusivos.</span></div></div>
-      <div class="sec"><span class="k">✓</span><div><b>Tú tienes el control</b><span>Nada se envía sin tu «sí». Desconecta WhatsApp o tu correo cuando quieras.</span></div></div>
-      <div class="sec"><span class="k">✓</span><div><b>RGPD y LOPDGDD</b><span>Tus datos se usan solo para prestarte el servicio: no se venden ni se usan para entrenar modelos.</span></div></div>
-    </div>
-  </section>
+<section class="wrap section" id="seguridad" aria-labelledby="sec-title">
+  <div class="stack" style="margin-bottom: 48px"><span class="eyebrow">[03] SEGURIDAD</span><h2 id="sec-title">Privado por diseño.</h2></div>
+  <div class="sec-grid">
+    <div class="sec"><span class="k">● AISLADO</span><span class="ttl">Una instancia por persona</span><span class="txt">Datos, sesión y memoria separados por usuario.</span></div>
+    <div class="sec"><span class="k">● ACCESO</span><span class="ttl">Código personal</span><span class="txt">Sesión segura y bloqueo automático de intentos abusivos.</span></div>
+    <div class="sec"><span class="k">● CONTROL</span><span class="ttl">Confirmación humana</span><span class="txt">Ningún mensaje ni correo sale sin tu «sí» explícito.</span></div>
+    <div class="sec"><span class="k">● CIFRADO</span><span class="ttl">Tráfico cifrado</span><span class="txt">Todas las comunicaciones con tu Jarvis viajan por HTTPS.</span></div>
+    <div class="sec"><span class="k">● DATOS</span><span class="ttl">Sin venta ni entrenamiento</span><span class="txt">Tus datos solo se usan para prestarte el servicio.</span></div>
+    <div class="sec"><span class="k">● NORMATIVA</span><span class="ttl">RGPD y LOPDGDD</span><span class="txt">Derechos de acceso, supresión y baja cuando quieras.</span></div>
+    <div class="sec"><span class="k">● TRAZABLE</span><span class="ttl">Consentimiento registrado</span><span class="txt">Cada aceptación de condiciones queda guardada con fecha y versión.</span></div>
+    <div class="sec"><span class="k">● REVOCABLE</span><span class="ttl">Desconexión inmediata</span><span class="txt">Desvincula WhatsApp o el correo en un clic.</span></div>
+  </div>
+</section>
 
-  <section class="section" id="importante">
-    <div class="eyebrow">// Información importante</div>
-    <h2>Lo que debes saber.</h2>
-    <div class="legal-grid">
-      <div class="legal-item"><h3>🤖 Es una inteligencia artificial</h3><p>Sus respuestas se generan automáticamente y pueden contener errores. No es asesoramiento profesional: verifica lo importante.</p></div>
-      <div class="legal-item"><h3>📱 WhatsApp no oficial</h3><p>Jarvis se conecta como «dispositivo vinculado» mediante software no oficial. No es un servicio de Meta ni está respaldado por ella; Meta puede limitar o bloquear la cuenta o la conexión en cualquier momento.</p></div>
-      <div class="legal-item"><h3>🔌 Servicios de terceros</h3><p>Jarvis depende de WhatsApp, Google, Microsoft y proveedores de IA y alojamiento, que pueden cambiar o retirar sus servicios. AI Fast Track no controla esas decisiones ni responde de ellas.</p></div>
-      <div class="legal-item"><h3>✋ Uso responsable</h3><p>Eres responsable de lo que confirmas enviar. Prohibido el spam, los envíos masivos y el uso de datos de terceros sin base legal.</p></div>
+<section class="wrap section contact" id="contacto" aria-labelledby="contact-title">
+  <div class="stack">
+    <span class="eyebrow">[04] CONTACTO</span>
+    <h2 id="contact-title">¿Quieres tu<br>Jarvis?</h2>
+    <p class="lead">Cuéntanos para quién es y cómo lo usarías. Te respondemos desde AI Fast Track con una propuesta.</p>
+    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px" class="mono">
+      <span class="label">DIRECTO</span>
+      <a href="mailto:hola@aifasttrack.tech" style="font-size: 16px">hola@aifasttrack.tech</a>
     </div>
-    <p style="color:var(--t2);margin-top:16px">Consulta los <a href="/legal/terminos">Términos de uso</a>, la <a href="/legal/privacidad">Política de privacidad</a>, el <a href="/legal/aviso-legal">Aviso legal</a> y la <a href="/legal/cookies">Política de cookies</a>.</p>
-  </section>
+  </div>
+  <form class="cform" id="contact-form" novalidate>
+    <div class="fields">
+      <div class="field"><label for="c-name">NOMBRE *</label><input id="c-name" name="name" class="input" autocomplete="name" required maxlength="120"></div>
+      <div class="field"><label for="c-email">EMAIL *</label><input id="c-email" name="email" type="email" class="input" autocomplete="email" required maxlength="200"></div>
+      <div class="field"><label for="c-company">EMPRESA</label><input id="c-company" name="company" class="input" autocomplete="organization" maxlength="160"></div>
+      <div class="field"><label for="c-phone">TELÉFONO</label><input id="c-phone" name="phone" type="tel" class="input" autocomplete="tel" maxlength="40"></div>
+    </div>
+    <div class="field"><label for="c-msg">MENSAJE *</label><textarea id="c-msg" name="message" class="input" rows="5" required maxlength="4000"></textarea></div>
+    <div class="hp" aria-hidden="true"><label for="c-web">No rellenar</label><input id="c-web" name="website" tabindex="-1" autocomplete="off"></div>
+    <div class="consent"><input id="c-consent" name="consent" type="checkbox"><label for="c-consent">He leído y acepto la <a href="/legal/privacidad">política de privacidad</a>. Usaremos tus datos solo para responderte.</label></div>
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center">
+      <button type="submit" class="btn" style="padding: 0 26px">ENVIAR SOLICITUD →</button>
+      <span class="status" id="contact-status" role="status"></span>
+    </div>
+  </form>
+</section>
 
-  <section class="section" id="acceder">
-    <div class="access">
-      <div class="eyebrow">// Acceso</div>
-      <h2>Entra en tu Jarvis</h2>
-      <p style="color:var(--t2);margin:0">Escribe tu código de acceso personal.</p>
-      <form data-form>
-        <input class="code-input" name="code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" aria-label="Código de acceso">
-        <button class="btn btn-primary" type="submit">Entrar →</button>
-        <p class="err" role="alert"></p>
-      </form>
-      <small>¿Aún no tienes Jarvis? <a href="{{CONTACT_URL}}" target="_blank" rel="noopener">Solicítalo a AI Fast Track</a>.</small>
-    </div>
-  </section>
+<section class="wrap section" style="padding-bottom: 120px" aria-labelledby="notice-title">
+  <div class="stack" style="margin-bottom: 40px"><span class="eyebrow" style="color: var(--yellow)">AVISOS</span><h2 id="notice-title" style="font-size: clamp(30px, 3.6vw, 44px)">Lo que debes saber.</h2></div>
+  <ol class="notices">
+    <li><span class="ttl"><span>A</span>Es una inteligencia artificial</span><span class="txt">Puede equivocarse. No es asesoramiento profesional: verifica lo importante.</span></li>
+    <li><span class="ttl"><span>B</span>WhatsApp no oficial</span><span class="txt">Se conecta como dispositivo vinculado mediante software no oficial. No es un servicio de Meta, que puede limitar o bloquear la cuenta o la conexión.</span></li>
+    <li><span class="ttl"><span>C</span>Servicios de terceros</span><span class="txt">Depende de WhatsApp, Google, Microsoft y proveedores de IA y alojamiento, que pueden cambiar o retirar sus servicios.</span></li>
+    <li><span class="ttl"><span>D</span>Uso responsable</span><span class="txt">Eres responsable de lo que confirmas enviar. Prohibido el spam y los envíos masivos.</span></li>
+  </ol>
+  <p class="notes">Textos completos: <a href="/legal/terminos">Términos de uso</a> · <a href="/legal/privacidad">Privacidad</a> · <a href="/legal/aviso-legal">Aviso legal</a> · <a href="/legal/cookies">Cookies</a></p>
+</section>
+
 </main>
 
-<div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-label="Acceder a mi Jarvis">
-  <div class="access">
-    <button class="close" aria-label="Cerrar" data-close>×</button>
-    <div class="eyebrow">// Acceso</div>
-    <h2>Entra en tu Jarvis</h2>
-    <p style="color:var(--t2);margin:0">Escribe tu código de acceso personal.</p>
-    <form data-form>
-      <input class="code-input" name="code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" aria-label="Código de acceso">
-      <button class="btn btn-primary" type="submit">Entrar →</button>
-      <p class="err" role="alert"></p>
-    </form>
-    <small>También puedes pegar aquí tu enlace personal.</small>
-  </div>
-</div>
-
 <footer>
-  <div class="brand"><img src="/jarvis-ui/aifasttrack-mark.svg" alt=""><span>Jarvis · un servicio de <b style="color:var(--t2)">AI Fast Track</b></span></div>
-  <nav>
-    <a href="/legal/aviso-legal">Aviso legal</a>
-    <a href="/legal/terminos">Términos de uso</a>
-    <a href="/legal/privacidad">Privacidad</a>
-    <a href="/legal/cookies">Cookies</a>
-  </nav>
+  <div class="wrap">
+    <span>JARVIS · UN SERVICIO DE AI FAST TRACK · FAST FACTORY IA ENGINE S.L.</span>
+    <nav aria-label="Legal">
+      <a href="/legal/aviso-legal">AVISO LEGAL</a>
+      <a href="/legal/terminos">TÉRMINOS</a>
+      <a href="/legal/privacidad">PRIVACIDAD</a>
+      <a href="/legal/cookies">COOKIES</a>
+    </nav>
+  </div>
 </footer>
 
 <script>
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var qsa = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
-  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  // ---------- reactor spokes ----------
-  (function () {
-    var g = $("spokes"), ns = "http://www.w3.org/2000/svg";
-    for (var i = 0; i < 24; i++) {
-      var a = i / 24 * Math.PI * 2, l = document.createElementNS(ns, "line"), r1 = i % 2 ? 100 : 104;
-      l.setAttribute("x1", 200 + Math.cos(a) * r1); l.setAttribute("y1", 200 + Math.sin(a) * r1);
-      l.setAttribute("x2", 200 + Math.cos(a) * 110); l.setAttribute("y2", 200 + Math.sin(a) * 110);
-      g.appendChild(l);
-    }
-  })();
-
-  // ---------- particles ----------
-  (function () {
-    var c = $("particles"); if (!c || reduced) return;
-    var ctx = c.getContext("2d"), pts = [], W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
-    function size() { W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr; c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px"; }
-    size(); addEventListener("resize", size);
-    for (var i = 0, n = Math.min(70, Math.floor(innerWidth / 18)); i < n; i++)
-      pts.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .25 * dpr, vy: (Math.random() - .5) * .25 * dpr, r: (Math.random() * 1.4 + .4) * dpr, y2: Math.random() < .12 });
-    (function tick() {
-      ctx.clearRect(0, 0, W, H);
-      for (var i = 0; i < pts.length; i++) {
-        var p = pts[i]; p.x += p.vx; p.y += p.vy;
-        if (p.x < 0 || p.x > W) p.vx *= -1; if (p.y < 0 || p.y > H) p.vy *= -1;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fillStyle = p.y2 ? "rgba(255,219,5,.7)" : "rgba(0,217,255,.55)"; ctx.fill();
-        for (var j = i + 1; j < pts.length; j++) {
-          var q = pts[j], dx = p.x - q.x, dy = p.y - q.y, d = dx * dx + dy * dy, lim = 130 * dpr;
-          if (d < lim * lim) { ctx.strokeStyle = "rgba(0,217,255," + (0.12 * (1 - Math.sqrt(d) / lim)) + ")"; ctx.lineWidth = dpr * .6; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
-        }
-      }
-      requestAnimationFrame(tick);
-    })();
-  })();
-
-  // ---------- reveal cards ----------
-  var io = "IntersectionObserver" in window ? new IntersectionObserver(function (es) {
-    es.forEach(function (e, i) { if (e.isIntersecting) { setTimeout(function () { e.target.classList.add("in"); }, i * 90); io.unobserve(e.target); } });
-  }, { threshold: .15 }) : null;
-  qsa(".card").forEach(function (c) { io ? io.observe(c) : c.classList.add("in"); });
-
-  // ---------- chat demo ----------
-  var SCRIPT = [
-    ["bot", "📩 <b>Laura (Cliente)</b>: ¿Podemos mover la reunión de mañana a las 12?", "09:41"],
-    ["me", "Dile que perfecto, a las 12 en la oficina", "09:42"],
-    ["bot", "Borrador para <b>Laura</b>:\n«¡Perfecto! Nos vemos mañana a las 12 en la oficina.»\n\n¿Lo envío? Responde <b>sí</b> o <b>no</b>.", "09:42"],
-    ["me", "sí", "09:42"],
-    ["bot", "✅ Enviado a Laura.", "09:42"],
-    ["me", "Recuérdame mañana a las 11:30 salir hacia la reunión", "09:43"],
-    ["bot", "⏰ Hecho. Te aviso mañana a las 11:30.", "09:43"]
-  ];
-  (function demo() {
-    var box = $("chat"), started = false;
-    function play() {
-      if (started) return; started = true;
-      SCRIPT.forEach(function (m, i) {
-        var d = document.createElement("div"); d.className = "msg " + m[0];
-        d.innerHTML = m[1] + '<span class="t">' + m[2] + (m[0] === "me" ? " ✓✓" : "") + "</span>";
-        box.appendChild(d);
-        setTimeout(function () { d.classList.add("show"); }, reduced ? 0 : 400 + i * 1100);
-      });
-    }
-    if (!("IntersectionObserver" in window)) return play();
-    new IntersectionObserver(function (es, o) { if (es[0].isIntersecting) { play(); o.disconnect(); } }, { threshold: .3 }).observe(box);
-  })();
-
-  // ---------- access ----------
-  var modal = $("modal");
-  qsa("[data-access]").forEach(function (b) { b.onclick = function () { modal.classList.remove("hidden"); modal.querySelector("input").focus(); }; });
-  qsa("[data-close]").forEach(function (b) { b.onclick = function () { modal.classList.add("hidden"); }; });
-  modal.addEventListener("click", function (e) { if (e.target === modal) modal.classList.add("hidden"); });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") modal.classList.add("hidden"); });
-
-  function formatCode(v) {
-    if (/oj_sk_|https?:/i.test(v)) return v; // a pasted link or key: leave it
-    var c = v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
-    return c.replace(/(.{4})(?=.)/g, "$1-");
+  function setStatus(el, text, kind) { el.textContent = text; el.className = "status" + (kind ? " " + kind : ""); }
+  function post(path, body) {
+    return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); });
   }
-  qsa("[data-form]").forEach(function (form) {
-    var input = form.querySelector("input"), err = form.querySelector(".err"), btn = form.querySelector("button");
-    input.addEventListener("input", function () { var s = input.selectionStart === input.value.length; input.value = formatCode(input.value); if (s) input.selectionStart = input.selectionEnd = input.value.length; err.textContent = ""; });
-    form.onsubmit = function (e) {
-      e.preventDefault();
-      var code = input.value.trim();
-      if (!code) { err.textContent = "Escribe tu código de acceso."; return; }
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>&nbsp; Verificando…';
-      fetch("/api/acceder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: code }) })
-        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
-        .then(function (res) {
-          if (res.ok && res.d.url) { btn.innerHTML = "Entrando…"; location.href = res.d.url; return; }
-          err.textContent = res.d.detail || "No se ha podido verificar el código.";
-          btn.disabled = false; btn.textContent = "Entrar →";
-        }, function () { err.textContent = "Sin conexión. Inténtalo de nuevo."; btn.disabled = false; btn.textContent = "Entrar →"; });
-    };
+
+  // ---------- chat demo plays when visible ----------
+  var chat = $("chat");
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (es, o) { if (es[0].isIntersecting) { chat.classList.add("play"); o.disconnect(); } }, { threshold: .3 }).observe(chat);
+  } else { chat.classList.add("play"); }
+
+  // ---------- access code ----------
+  var code = $("code"), codeStatus = $("code-status");
+  code.addEventListener("input", function () {
+    if (/oj_sk_|https?:/i.test(code.value)) return; // a pasted link or key: leave it
+    var c = code.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+    code.value = c.replace(/(.{4})(?=.)/g, "$1-");
+    setStatus(codeStatus, "");
+  });
+  $("acceso").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = code.value.trim(), btn = this.querySelector("button");
+    if (!/oj_sk_/i.test(v) && v.replace(/-/g, "").length !== 12) { setStatus(codeStatus, "× Introduce los 12 caracteres de tu código.", "err"); return; }
+    btn.disabled = true; setStatus(codeStatus, "◌ Verificando acceso…", "wait");
+    post("/api/acceder", { code: v }).then(function (res) {
+      if (res.ok && res.d.url) { setStatus(codeStatus, "✓ Acceso verificado · abriendo tu Jarvis", "ok"); location.href = res.d.url; return; }
+      setStatus(codeStatus, "× " + (res.d.detail || "No se ha podido verificar el código."), "err"); btn.disabled = false;
+    }, function () { setStatus(codeStatus, "× Sin conexión. Inténtalo de nuevo.", "err"); btn.disabled = false; });
+  });
+
+  // ---------- contact ----------
+  var form = $("contact-form"), cStatus = $("contact-status");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = form.elements, btn = form.querySelector("button[type=submit]");
+    var data = { name: f.name.value, email: f.email.value, company: f.company.value, phone: f.phone.value, message: f.message.value, consent: f.consent.checked, website: f.website.value };
+    if (!data.name.trim() || !data.email.trim() || data.message.trim().length < 10) { setStatus(cStatus, "× Completa nombre, email y un mensaje.", "err"); return; }
+    if (!data.consent) { setStatus(cStatus, "× Acepta la política de privacidad.", "err"); return; }
+    btn.disabled = true; setStatus(cStatus, "◌ Enviando…", "wait");
+    post("/api/contacto", data).then(function (res) {
+      if (res.ok) { form.reset(); setStatus(cStatus, "✓ Recibido. Te respondemos pronto.", "ok"); }
+      else setStatus(cStatus, "× " + (res.d.detail || "No se ha podido enviar."), "err");
+      btn.disabled = false;
+    }, function () { setStatus(cStatus, "× Sin conexión. Escríbenos a hola@aifasttrack.tech.", "err"); btn.disabled = false; });
   });
 })();
 </script>

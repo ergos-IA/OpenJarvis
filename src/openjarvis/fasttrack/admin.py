@@ -53,6 +53,7 @@ _ASSETS = {
     "aifasttrack-mark.svg": "image/svg+xml",
     "space-grotesk.woff2": "font/woff2",
     "inter.woff2": "font/woff2",
+    "jetbrains-mono.woff2": "font/woff2",
 }
 _CREDENTIALS = [p["credential"] for p in PROVIDERS.values()]
 _LEGAL_VARS = [

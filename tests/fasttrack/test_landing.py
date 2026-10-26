@@ -88,7 +88,7 @@ def client():
 class TestSite:
     def test_pages(self, client):
         home = client.get("/")
-        assert home.status_code == 200 and "Acceder a mi Jarvis" in home.text
+        assert home.status_code == 200 and "CÓDIGO DE ACCESO" in home.text
         assert "{{CONTACT_URL}}" not in home.text
         assert client.get("/legal/terminos").status_code == 200
         assert client.get("/jarvis-ui/inter.woff2").status_code == 200

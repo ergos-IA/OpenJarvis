@@ -37,6 +37,7 @@ _ASSETS = {
     "aifasttrack-mark.svg": "image/svg+xml",
     "space-grotesk.woff2": "font/woff2",
     "inter.woff2": "font/woff2",
+    "jetbrains-mono.woff2": "font/woff2",
 }
 _KEY_RE = re.compile(r"oj_sk_[A-Za-z0-9_\-]{20,}")
 
