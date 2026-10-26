@@ -24,6 +24,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
+from openjarvis.fasttrack import contact as contact_mail
 from openjarvis.fasttrack.admin import USER_PREFIX, normalize_code
 from openjarvis.fasttrack.railway import RailwayClient, RailwayError
 from openjarvis.server.legal_routes import DOCS, render_legal
@@ -113,6 +114,7 @@ def create_landing_app(
     *,
     per_ip: Optional[FailureLimiter] = None,
     global_limit: Optional[FailureLimiter] = None,
+    mail_http=None,  # noqa: ANN001 - injected httpx.AsyncClient for tests
 ) -> FastAPI:
     directory = Directory(railway or RailwayClient())
     per_ip = per_ip or FailureLimiter(max_failures=8, window_s=600, block_s=1800)
@@ -120,7 +122,10 @@ def create_landing_app(
     global_limit = global_limit or FailureLimiter(
         max_failures=300, window_s=600, block_s=600
     )
-    contact = os.environ.get("LANDING_CONTACT_URL", "https://aifasttrack.tech")
+    contact = os.environ.get("LANDING_CONTACT_URL", "#contacto")
+    # Contact form: a few messages per IP per hour, and a global ceiling.
+    contact_ip = FailureLimiter(max_failures=3, window_s=3600, block_s=3600)
+    contact_all = FailureLimiter(max_failures=60, window_s=3600, block_s=1800)
     app = FastAPI(title="Jarvis · AI Fast Track", docs_url=None, redoc_url=None)
 
     @app.middleware("http")
@@ -181,6 +186,43 @@ def create_landing_app(
             raise HTTPException(404, "Código no válido. Revísalo o pide uno nuevo.")
         per_ip.succeed(ip)
         return {"url": url}
+
+    @app.post("/api/contacto")
+    async def contact_form(
+        req: contact_mail.ContactRequest, request: Request
+    ) -> Dict[str, str]:
+        ip = client_ip(request)
+        if req.website:  # honeypot: pretend it worked
+            return {"ok": "1"}
+        if contact_ip.blocked(ip) or contact_all.blocked("*"):
+            raise HTTPException(
+                429,
+                "Has enviado varios mensajes. Escríbenos a hola@aifasttrack.tech.",
+            )
+        try:
+            data = contact_mail.validate(req)
+        except contact_mail.ContactError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        if not contact_mail.configured():
+            raise HTTPException(
+                503,
+                "El formulario no está disponible ahora. "
+                "Escríbenos a hola@aifasttrack.tech.",
+            )
+        try:
+            await contact_mail.send(
+                contact_mail.build_payload(data, ip=ip), http=mail_http
+            )
+        except Exception:
+            raise HTTPException(
+                502,
+                "No hemos podido enviar tu mensaje. "
+                "Escríbenos a hola@aifasttrack.tech.",
+            )
+        # Every accepted message counts toward the per-IP / global ceilings.
+        contact_ip.fail(ip)
+        contact_all.fail("*")
+        return {"ok": "1"}
 
     return app
 

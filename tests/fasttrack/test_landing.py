@@ -122,3 +122,80 @@ class TestSite:
             ).status_code
             == 200
         )
+
+
+# ---------------------------------------------------------------------------
+# Contact form
+# ---------------------------------------------------------------------------
+
+import json  # noqa: E402
+
+import httpx  # noqa: E402
+
+FORM = {
+    "name": "Ana Pérez",
+    "email": "ana@empresa.com",
+    "company": "Empresa <b>",
+    "message": "Quiero un Jarvis para mi equipo de ventas.",
+    "consent": True,
+}
+
+
+@pytest.fixture
+def mail(monkeypatch):
+    monkeypatch.setenv("MAILJET_API_KEY", "k")
+    monkeypatch.setenv("MAILJET_SECRET_KEY", "s")
+    sent = []
+
+    def handler(request):
+        sent.append((request.headers["authorization"], json.loads(request.content)))
+        return httpx.Response(200, json={"Messages": [{"Status": "success"}]})
+
+    app = create_landing_app(
+        FakeRailway(),
+        mail_http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    return TestClient(app), sent
+
+
+class TestContact:
+    def test_sends_to_hola(self, mail):
+        client, sent = mail
+        assert client.post("/api/contacto", json=FORM).status_code == 200
+        auth, payload = sent[0]
+        msg = payload["Messages"][0]
+        assert auth.startswith("Basic ")
+        assert msg["To"][0]["Email"] == "hola@aifasttrack.tech"
+        assert msg["ReplyTo"]["Email"] == "ana@empresa.com"
+        assert "Empresa &lt;b&gt;" in msg["HTMLPart"]  # escaped
+
+    def test_validation(self, mail):
+        client, sent = mail
+        bad = {**FORM, "email": "no-es-email"}
+        assert client.post("/api/contacto", json=bad).status_code == 400
+        no_consent = {**FORM, "consent": False}
+        assert client.post("/api/contacto", json=no_consent).status_code == 400
+        assert sent == []
+
+    def test_honeypot_silently_dropped(self, mail):
+        client, sent = mail
+        assert (
+            client.post("/api/contacto", json={**FORM, "website": "x"}).status_code
+            == 200
+        )
+        assert sent == []
+
+    def test_rate_limited(self, mail):
+        client, sent = mail
+        for _ in range(3):
+            assert client.post("/api/contacto", json=FORM).status_code == 200
+        assert client.post("/api/contacto", json=FORM).status_code == 429
+        assert len(sent) == 3
+
+    def test_not_configured(self, monkeypatch):
+        monkeypatch.delenv("MAILJET_API_KEY", raising=False)
+        client = TestClient(create_landing_app(FakeRailway()))
+        resp = client.post("/api/contacto", json=FORM)
+        assert (
+            resp.status_code == 503 and "hola@aifasttrack.tech" in resp.json()["detail"]
+        )
