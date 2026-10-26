@@ -28,17 +28,25 @@ param(
   [string]$AllowedNumbers = "",
   # Vacías = usar las variables compartidas del proyecto.
   [string]$OpenAIKey = "",
-  [string]$AnthropicKey = ""
+  [string]$AnthropicKey = "",
+  # Sube el código de esta carpeta (railway up) en vez de enlazar el repo de
+  # GitHub. Útil si Railway no tiene acceso a GitHub; sin auto-deploy al hacer push.
+  [switch]$Local
 )
 
 $ErrorActionPreference = "Stop"
 
-$railway = if (Get-Command railway -ErrorAction SilentlyContinue) { @("railway") } else { @("npx", "-y", "@railway/cli@latest") }
+# Always an array (a one-element if/else result unrolls to a string). Prefer
+# railway.cmd over the npm railway.ps1 shim.
+$railway = @(if (Get-Command railway.cmd -ErrorAction SilentlyContinue) { @("railway.cmd") } elseif (Get-Command railway -ErrorAction SilentlyContinue) { @("railway") } else { @("npx.cmd", "-y", "@railway/cli@latest") })
 function Invoke-Railway {
+  # Flatten: accepts loose words or one array of words (no splatting, which
+  # PowerShell 5.1 mangles for "--flag" style arguments).
+  $words = @($args | ForEach-Object { $_ })
   $exe = $railway[0]
-  $rest = @($railway | Select-Object -Skip 1) + $args
-  & $exe @rest
-  if ($LASTEXITCODE -ne 0) { throw "railway $($args -join ' ') falló (código $LASTEXITCODE)" }
+  $rest = @($railway | Select-Object -Skip 1) + $words
+  & $exe $rest
+  if ($LASTEXITCODE -ne 0) { throw "railway $($words -join ' ') falló (código $LASTEXITCODE)" }
 }
 
 $slug = ($Name.ToLower() -replace "[^a-z0-9-]", "-").Trim("-")
@@ -53,6 +61,8 @@ $anthropic = if ($AnthropicKey) { $AnthropicKey } else { '${{shared.ANTHROPIC_AP
 
 $vars = @(
   "PORT=8000",
+  # railway.toml is not always honoured (e.g. on `railway up`); this is.
+  "RAILWAY_DOCKERFILE_PATH=deploy/railway/Dockerfile",
   "OPENJARVIS_API_KEY=$apiKey",
   "JARVIS_MODEL=$Model",
   "JARVIS_ASSISTANT_NAME=$AssistantName",
@@ -62,18 +72,51 @@ $vars = @(
 )
 if ($AllowedNumbers) { $vars += "WHATSAPP_ALLOWED_NUMBERS=$AllowedNumbers" }
 
-Write-Host "==> Creando servicio $service desde $Repo ($Branch)..."
-$addArgs = @("add", "--service", $service, "--repo", $Repo, "--branch", $Branch)
+if ($Local) {
+  Write-Host "==> Creando servicio $service (código local)..."
+  $addArgs = @("add", "--service", $service)
+} else {
+  Write-Host "==> Creando servicio $service desde $Repo ($Branch)..."
+  $addArgs = @("add", "--service", $service, "--repo", $Repo, "--branch", $Branch)
+}
 foreach ($v in $vars) { $addArgs += @("--variables", $v) }
-Invoke-Railway @addArgs
+Invoke-Railway $addArgs
+
+# Volume and domain go through Railway's GraphQL API with the CLI's login:
+# `railway volume add` panics on a service that has never been deployed.
+function Invoke-RailwayApi([string]$Query) {
+  $cfg = Get-Content (Join-Path $HOME ".railway/config.json") -Raw | ConvertFrom-Json
+  $token = if ($cfg.user.accessToken) { $cfg.user.accessToken } else { $cfg.user.token }
+  $body = @{ query = $Query } | ConvertTo-Json -Compress
+  $res = Invoke-RestMethod -Method Post -Uri "https://backboard.railway.com/graphql/v2" `
+    -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" `
+    -Body ([Text.Encoding]::UTF8.GetBytes($body))
+  if ($res.errors) { throw "Railway API: $($res.errors[0].message)" }
+  $res.data
+}
+
+$status = (& $railway[0] @(@($railway | Select-Object -Skip 1) + @("status", "--json"))) -join "`n" | ConvertFrom-Json
+$projectId = $status.id
+$envNode = @($status.environments.edges | ForEach-Object { $_.node })
+$environmentId = (@($envNode | Where-Object { $_.name -eq "production" }) + $envNode)[0].id
+$serviceId = (Invoke-RailwayApi "{ project(id:`"$projectId`"){ services{ edges{ node{ id name } } } } }").project.services.edges |
+  ForEach-Object { $_.node } | Where-Object { $_.name -eq $service } | Select-Object -First 1 -ExpandProperty id
+if (-not $serviceId) { throw "No encuentro el servicio $service recién creado" }
 
 Write-Host "==> Añadiendo volumen persistente en /data..."
-Invoke-Railway volume --service $service add --mount-path /data
+Invoke-RailwayApi "mutation{ volumeCreate(input:{projectId:`"$projectId`", serviceId:`"$serviceId`", environmentId:`"$environmentId`", mountPath:`"/data`"}){ id } }" | Out-Null
 
 Write-Host "==> Generando dominio público..."
-$domainJson = (& $railway[0] @(@($railway | Select-Object -Skip 1) + @("domain", "--service", $service, "--port", "8000", "--json"))) -join "`n"
 $domain = ""
-if ($domainJson -match "([a-z0-9-]+\.up\.railway\.app)") { $domain = $Matches[1] }
+try {
+  $domain = (Invoke-RailwayApi "mutation{ serviceDomainCreate(input:{serviceId:`"$serviceId`", environmentId:`"$environmentId`", targetPort:8000}){ domain } }").serviceDomainCreate.domain
+} catch { Write-Host "  $_" -ForegroundColor Yellow }
+
+if ($Local) {
+  Write-Host "==> Subiendo el código y lanzando el despliegue..."
+  Push-Location (Resolve-Path "$PSScriptRoot/../..")
+  try { Invoke-Railway @("up", "--service", $service, "--detach") } finally { Pop-Location }
+}
 
 Write-Host ""
 Write-Host "Instancia creada: $service" -ForegroundColor Green

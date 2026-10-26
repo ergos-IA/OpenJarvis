@@ -95,6 +95,43 @@ genera un QR nuevo automáticamente.
 > nulo: WhatsApp no lo soporta oficialmente. La alternativa oficial está en
 > [META-WHATSAPP.md](META-WHATSAPP.md).
 
+## Correo: Outlook (Microsoft 365) y Gmail
+
+Cada instancia puede conectar **una cuenta de Outlook / Microsoft 365 y una de
+Gmail** desde `https://<dominio>/correo` (la página del QR lleva un enlace).
+Con ellas Jarvis:
+
+- **te avisa por WhatsApp** de los correos nuevos importantes (Gmail: pestaña
+  *Principal*; Outlook: bandeja *Prioritarios*), con una referencia (`o3`,
+  `g7`) para pedirle «léeme el o3» o «respóndele que sí»;
+- **busca y resume** («¿qué correos tengo sin leer?», «busca la factura de X»);
+- **redacta correos y respuestas** que solo se envían cuando contestas «sí»
+  en WhatsApp, igual que los mensajes.
+
+**Gmail**: activa la verificación en dos pasos y crea una
+[contraseña de aplicación](https://myaccount.google.com/apppasswords); en
+`/correo` pegas tu dirección y esa contraseña (no tu contraseña normal).
+
+**Outlook / Microsoft 365**: se inicia sesión con un código (como en una
+tele): `/correo` → *Conectar Outlook* → abres microsoft.com/devicelogin, pones
+el código y aceptas. Requiere, una sola vez por empresa, registrar una app en
+Microsoft Entra:
+
+1. [portal.azure.com](https://portal.azure.com) → *Microsoft Entra ID* →
+   *Registros de aplicaciones* → *Nuevo registro*. Nombre «Jarvis»,
+   «Solo cuentas de este directorio organizativo». Sin URI de redirección.
+2. *Autenticación* → *Permitir flujos de clientes públicos*: **Sí** → Guardar.
+3. *Permisos de API* → *Microsoft Graph* → *Permisos delegados*:
+   `Mail.ReadWrite`, `Mail.Send`, `User.Read`, `offline_access` →
+   *Conceder consentimiento de administrador*.
+4. Copia el *Id. de aplicación (cliente)* y el *Id. de directorio (inquilino)*
+   a las variables compartidas `MS_CLIENT_ID` y `MS_TENANT_ID` del proyecto
+   en Railway (valen para todas las instancias de la empresa).
+
+La contraseña de Gmail y el acceso de Outlook se guardan en el volumen de la
+instancia (`/data/mail`). Lo que Jarvis lee de un correo para contestarte se
+envía al proveedor del modelo (OpenAI / Anthropic).
+
 ## Primera vez: preparar el proyecto en Railway
 
 1. Entra en [railway.com](https://railway.com) y crea un proyecto vacío
@@ -162,7 +199,7 @@ El primer despliegue tarda unos 10-15 minutos (compila la imagen).
 | `JARVIS_ENGINE` | `cloud` | Motor de inferencia |
 | `JARVIS_ASSISTANT_NAME` | `Jarvis` | Nombre del asistente |
 | `JARVIS_CHANNEL_AGENT` | `orchestrator` | Agente que responde por WhatsApp (`orchestrator` usa herramientas; `simple` solo conversa) |
-| `JARVIS_TOOLS` | `think,calculator,web_search,whatsapp_*` | Herramientas disponibles |
+| `JARVIS_TOOLS` | `think,calculator,web_search,whatsapp_*,email_*` | Herramientas disponibles |
 | `TZ` | `Europe/Madrid` | Zona horaria para las horas de los mensajes |
 | `WHATSAPP_ENABLED` | `true` | `false` para desactivar WhatsApp |
 | `WHATSAPP_MODE` | `self` | `self` = número personal, chat contigo mismo · `own` = número dedicado |
@@ -170,6 +207,9 @@ El primer despliegue tarda unos 10-15 minutos (compila la imagen).
 | `WHATSAPP_NOTIFY` | `all` | Avisos de mensajes entrantes: `all`, `contacts` o `none` |
 | `WHATSAPP_CONFIRM_SENDS` | `true` | Pedir «sí» antes de enviar mensajes a otros |
 | `WHATSAPP_DEFAULT_COUNTRY_CODE` | `34` | Prefijo para números de 9 cifras |
+| `MS_CLIENT_ID` / `MS_TENANT_ID` | — | App de Microsoft Entra para conectar Outlook (ver «Correo») |
+| `EMAIL_NOTIFY` | `important` | Avisos de correo nuevo: `important`, `all` o `none` |
+| `EMAIL_POLL_SECONDS` | `120` | Cada cuánto se mira si hay correo nuevo |
 
 Modelos que reconoce el motor cloud: `gpt-4o-mini`, `gpt-4o`, `gpt-5`,
 `gpt-5-mini`, `claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-opus-4-6`, ...

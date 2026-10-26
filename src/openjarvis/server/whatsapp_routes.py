@@ -112,6 +112,7 @@ _PAGE = """<!doctype html>
     <p id="me"></p>
     <p id="howto"></p>
     <button id="logout" class="secondary">Desvincular</button>
+    <p><a href="/correo">Conectar también tu correo (Outlook / Gmail) →</a></p>
   </section>
 
   <section id="info" class="hidden"><p id="infotext"></p></section>
