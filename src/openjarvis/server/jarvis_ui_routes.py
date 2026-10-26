@@ -15,6 +15,7 @@ resources.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -46,6 +47,26 @@ async def legacy_whatsapp_page() -> RedirectResponse:
 @router.get("/correo", include_in_schema=False)
 async def legacy_mail_page() -> RedirectResponse:
     return RedirectResponse("/?paso=correo", status_code=307)
+
+
+@router.get("/api/jarvis/info")
+async def jarvis_info() -> dict:
+    """Who this Jarvis is for and which model it runs (shown on the page)."""
+    from openjarvis.fasttrack.models import describe
+
+    return {
+        "assistant_name": os.environ.get("JARVIS_ASSISTANT_NAME", "Jarvis"),
+        "user_name": os.environ.get("JARVIS_USER_NAME", ""),
+        **describe(
+            os.environ.get("JARVIS_MODEL", ""), os.environ.get("JARVIS_ENGINE", "")
+        ),
+    }
+
+
+@router.get("/privacidad", response_class=HTMLResponse, include_in_schema=False)
+async def privacy_page() -> HTMLResponse:
+    html = (_UI_DIR / "privacidad.html").read_text(encoding="utf-8")
+    return HTMLResponse(html)
 
 
 @router.get("/jarvis-ui/{name}", include_in_schema=False)

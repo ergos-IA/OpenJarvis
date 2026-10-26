@@ -1,5 +1,6 @@
 #!/bin/sh
-# Railway entrypoint for one OpenJarvis instance.
+# Railway entrypoint for one Jarvis instance (or, with JARVIS_ROLE=admin,
+# the AI Fast Track admin console).
 #
 #  1. Ensures $OPENJARVIS_HOME (the Railway volume) is writable by the
 #     unprivileged openjarvis user -- Railway mounts volumes owned by root.
@@ -12,6 +13,15 @@ set -eu
 : "${JARVIS_ENGINE:=cloud}"
 : "${JARVIS_MODEL:=gpt-4o-mini}"
 export OPENJARVIS_HOME
+
+# Same image, second role: the AI Fast Track admin console (no volume,
+# no WhatsApp). It provisions the per-user instances through Railway's API.
+if [ "${JARVIS_ROLE:-}" = "admin" ]; then
+  if [ "$(id -u)" = "0" ]; then
+    exec setpriv --reuid=openjarvis --regid=openjarvis --init-groups       python3 -m openjarvis.fasttrack --port "$PORT"
+  fi
+  exec python3 -m openjarvis.fasttrack --port "$PORT"
+fi
 
 if [ -z "${OPENJARVIS_API_KEY:-}" ]; then
   echo "ERROR: OPENJARVIS_API_KEY no está definida. Genera una clave y añádela" >&2

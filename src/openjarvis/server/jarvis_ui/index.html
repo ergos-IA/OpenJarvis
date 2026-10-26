@@ -324,7 +324,7 @@ footer img { width: 22px; height: 22px; }
           <div class="readout tl">Núcleo<b id="ro-core">98.7%</b></div>
           <div class="readout tr">Latencia<b id="ro-lat">42 ms</b></div>
           <div class="readout bl">Enlace<b id="ro-link">Cifrado</b></div>
-          <div class="readout br">Modelo<b>Claude</b></div>
+          <div class="readout br">Modelo<b id="ro-model">—</b></div>
         </div>
         <h1 class="title">JARVIS</h1>
         <p class="tagline"><span id="tagline"></span><span class="caret">&nbsp;</span></p>
@@ -568,6 +568,7 @@ footer img { width: 22px; height: 22px; }
         <div class="stat"><small>WhatsApp</small><b><span class="dot" id="st-wa-dot"></span><span id="st-wa">—</span></b><span id="st-wa-sub"></span></div>
         <div class="stat"><small>Outlook</small><b><span class="dot" id="st-o-dot"></span><span id="st-o">—</span></b><span id="st-o-sub"></span></div>
         <div class="stat"><small>Gmail</small><b><span class="dot" id="st-g-dot"></span><span id="st-g">—</span></b><span id="st-g-sub"></span></div>
+        <div class="stat"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
       </div>
       <div class="eyebrow" style="margin-top:6px">Pruébalo · toca una frase</div>
       <p style="color:var(--t2);margin:6px 0 0" id="try-hint">Se abrirá WhatsApp con la frase escrita en tu chat «Tú». Solo tienes que enviarla.</p>
@@ -582,7 +583,7 @@ footer img { width: 22px; height: 22px; }
 
 <footer>
   <img src="/jarvis-ui/aifasttrack-mark.svg" alt="">
-  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b></span>
+  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/privacidad" style="color:var(--t2)">Privacidad</a></span>
 </footer>
 <div class="toast" id="toast" role="status"></div>
 
@@ -687,7 +688,7 @@ footer img { width: 22px; height: 22px; }
   }
 
   // ---------- state ----------
-  var wa = null, mail = null, step = 0, timer = null, prevConnected = null;
+  var wa = null, mail = null, info = null, step = 0, timer = null, prevConnected = null;
 
   function setSysChip() {
     var dot = $("sys-dot"), txt = $("sys-text");
@@ -699,6 +700,7 @@ footer img { width: 22px; height: 22px; }
   function refresh() {
     if (!key) return Promise.resolve();
     return Promise.all([
+      info ? null : api("GET", "/api/jarvis/info").then(function (s) { info = s; }, function () {}),
       api("GET", "/api/whatsapp/status").then(function (s) { wa = s; }),
       api("GET", "/api/mail/status").then(function (s) { mail = s; }, function () { mail = null; })
     ]).then(render, function (e) {
@@ -898,8 +900,18 @@ footer img { width: 22px; height: 22px; }
     show("try-hint", !!(wa && wa.me));
   }
 
+  function renderInfo() {
+    if (!info) return;
+    $("ro-model").textContent = info.label;
+    $("st-m").textContent = info.label;
+    $("st-m-sub").textContent = info.provider_label + (info.open_source ? " · open source" : "");
+    if (info.assistant_name && info.assistant_name !== "Jarvis") {
+      document.querySelector("h1.title").textContent = info.assistant_name.toUpperCase();
+      document.title = info.assistant_name + " · AI Fast Track";
+    }
+  }
   function render() {
-    setSysChip();
+    setSysChip(); renderInfo();
     var r = $("reactor");
     if (wa) {
       if (prevConnected === false && wa.connected) {
@@ -923,10 +935,14 @@ footer img { width: 22px; height: 22px; }
   });
 
   // ---------- boot ----------
-  typeInto($("tagline"), "Tu asistente personal. En tu WhatsApp. Siempre activo.", 38);
+  function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function greet() {
+    var first = info && info.user_name ? info.user_name.split(" ")[0] : "";
+    typeInto($("tagline"), (first ? "Hola, " + first + ". " : "") + "Tu asistente personal. En tu WhatsApp. Siempre activo.", 38);
+  }
   function boot() {
     var lines = [
-      '<span class="hl">›</span> Inicializando núcleo de IA ……… <span class="ok">OK</span>',
+      '<span class="hl">›</span> Inicializando núcleo de IA ……… <span class="ok">' + (info ? esc(info.label) : "OK") + '</span>',
       '<span class="hl">›</span> Protocolos de seguridad ……… <span class="ok">OK</span>'
     ];
     if (!key) {
@@ -947,9 +963,9 @@ footer img { width: 22px; height: 22px; }
   var STEP_NAMES = { acceso: 0, whatsapp: 1, correo: 2, estado: 3 };
   var wanted = STEP_NAMES[(new URLSearchParams(location.search).get("paso") || "").toLowerCase()];
   if (key) {
-    refresh().then(function () { boot(); loop(); if (wanted !== undefined) go(wanted); });
+    refresh().then(function () { greet(); boot(); loop(); if (wanted !== undefined) go(wanted); });
   } else {
-    boot(); if (wanted !== undefined) go(0);
+    greet(); boot(); if (wanted !== undefined) go(0);
   }
 })();
 </script>

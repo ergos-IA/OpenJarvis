@@ -119,6 +119,29 @@ class TestPage:
         assert client.get("/jarvis-ui/..%2Fapp.py").status_code == 404
 
 
+class TestJarvisInfo:
+    def test_info_requires_key(self, mock_engine):
+        assert (
+            _client(mock_engine, api_key="k").get("/api/jarvis/info").status_code == 401
+        )
+
+    def test_info(self, mock_engine, monkeypatch):
+        monkeypatch.setenv("JARVIS_MODEL", "claude-sonnet-5-5")
+        monkeypatch.setenv("JARVIS_USER_NAME", "José Miguel")
+        data = (
+            _client(mock_engine, api_key="k")
+            .get("/api/jarvis/info", headers={"Authorization": "Bearer k"})
+            .json()
+        )
+        assert data["label"] == "Claude Sonnet 5.5"
+        assert data["provider_label"] == "Anthropic"
+        assert data["user_name"] == "José Miguel"
+
+    def test_privacy_page_public(self, mock_engine):
+        resp = _client(mock_engine, api_key="k").get("/privacidad")
+        assert resp.status_code == 200 and "AI Fast Track" in resp.text
+
+
 class TestPairingCode:
     def test_requires_channel(self, mock_engine):
         resp = _client(mock_engine).post(

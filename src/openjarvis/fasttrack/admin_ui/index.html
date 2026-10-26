@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080808">
+<meta name="robots" content="noindex, nofollow">
+<title>Consola Jarvis · AI Fast Track</title>
+<link rel="icon" href="/jarvis-ui/aifasttrack-mark.svg" type="image/svg+xml">
+<style>
+@font-face { font-family: "Space Grotesk"; font-weight: 400 700; font-display: swap; src: url("/jarvis-ui/space-grotesk.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400 700; font-display: swap; src: url("/jarvis-ui/inter.woff2") format("woff2"); }
+:root {
+  --bg: #080808; --s1: #0f0f0f; --s2: #141414; --s3: #1c1c1c; --line: #242424;
+  --t1: #fff; --t2: #9a9a9a; --t3: #5a5a5a;
+  --yellow: #ffdb05; --cyan: #00d9ff; --red: #ff3b64; --green: #22c55e;
+  --cyan-a: rgba(0,217,255,.12); --yellow-a: rgba(255,219,5,.12);
+  --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--t1); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(0,217,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,217,255,.04) 1px, transparent 1px);
+  background-size: 48px 48px; mask-image: radial-gradient(ellipse at 50% 0%, #000 10%, transparent 70%); -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 10%, transparent 70%); }
+button, input, select { font: inherit; }
+.hidden { display: none !important; }
+a { color: var(--cyan); }
+
+header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; padding: 14px clamp(16px, 4vw, 32px);
+  background: rgba(8,8,8,.82); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+header img { height: 30px; }
+header .tag { font: 600 11px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--cyan); padding-left: 14px; border-left: 1px solid var(--line); }
+header .sp { flex: 1; }
+main { position: relative; max-width: 1180px; margin: 0 auto; padding: 26px clamp(16px, 4vw, 32px) 60px; }
+
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 11px; border: 0; cursor: pointer;
+  font: 700 14px/1 var(--display); text-decoration: none; transition: box-shadow .2s, border-color .2s, color .2s; white-space: nowrap; }
+.btn-primary { background: var(--yellow); color: #0a0a0a; box-shadow: 0 8px 30px -10px rgba(255,219,5,.6); }
+.btn-ghost { background: transparent; color: var(--t1); border: 1px solid var(--line); }
+.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+.btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 9px; }
+.btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(255,59,100,.35); }
+.btn[disabled] { opacity: .5; cursor: default; }
+
+/* login */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login .box { width: min(400px, 100%); background: linear-gradient(180deg, var(--s2), var(--s1)); border: 1px solid var(--line); border-radius: 18px; padding: 30px; text-align: center; }
+.login img { height: 40px; margin-bottom: 18px; }
+.login h1 { font: 700 24px var(--display); margin: 0 0 4px; }
+.login p { color: var(--t2); margin: 0 0 18px; }
+.input, select.input { width: 100%; padding: 12px 14px; border-radius: 11px; border: 1px solid var(--line); background: var(--bg); color: var(--t1); outline: none; }
+.input:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px var(--cyan-a); }
+.err { color: #ff7a95; font-size: 14px; margin-top: 10px; }
+
+/* top */
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.eyebrow { font: 600 11px var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--cyan); }
+h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.kpi { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
+.kpi small { font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--t3); }
+.kpi b { display: block; font: 700 28px var(--display); margin-top: 4px; }
+.creds { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.cred { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--s1); font-size: 13px; color: var(--t2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t3); flex: none; }
+.dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.dot.warn { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+.dot.bad { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.notice { padding: 14px 16px; border-radius: 12px; background: var(--yellow-a); color: #fff3a8; border: 1px solid rgba(255,219,5,.25); margin-bottom: 18px; }
+
+/* users */
+.users { display: grid; gap: 12px; }
+.user { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.1fr) minmax(0, 1.2fr) auto; gap: 16px; align-items: center;
+  padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(180deg, var(--s2), var(--s1)); }
+@media (max-width: 900px) { .user { grid-template-columns: 1fr; } }
+.who b { font: 700 17px var(--display); display: block; }
+.who span { color: var(--t2); font-size: 13px; overflow-wrap: anywhere; }
+.av { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--cyan-a); color: var(--cyan); font: 700 16px var(--display); flex: none; }
+.row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--s3); font-size: 12px; color: var(--t2); white-space: nowrap; }
+.chip.os { background: var(--yellow-a); color: var(--yellow); }
+.model b { display: block; font-weight: 600; }
+.model span { font-size: 12px; color: var(--t3); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.empty { text-align: center; padding: 50px 16px; border: 1px dashed var(--line); border-radius: 16px; color: var(--t2); }
+
+/* modal */
+.modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.7); backdrop-filter: blur(6px); }
+.sheet { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: linear-gradient(180deg, #161616, #0e0e0e); border: 1px solid var(--line); border-radius: 18px; padding: 26px; position: relative; }
+.sheet h2 { font: 700 22px var(--display); margin: 4px 0 14px; }
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--t2); }
+.field small { color: var(--t3); font-size: 12px; }
+.models { display: grid; gap: 8px; }
+.mopt { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 11px; border: 1px solid var(--line); cursor: pointer; background: var(--s1); }
+.mopt:hover { border-color: rgba(0,217,255,.4); }
+.mopt input { accent-color: var(--yellow); }
+.mopt.off { opacity: .45; cursor: not-allowed; }
+.mopt b { font-weight: 600; } .mopt span { display: block; font-size: 12px; color: var(--t3); }
+.group { font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--t3); margin: 10px 0 2px; }
+.sheet .foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.linkbox { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 11px; background: var(--bg); border: 1px solid var(--line); font: 12px var(--mono); color: var(--cyan); overflow-wrap: anywhere; }
+.ok-big { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: var(--yellow-a); color: var(--yellow); margin: 0 auto 10px; font-size: 28px; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(16px); opacity: 0; padding: 11px 16px; border-radius: 11px; background: var(--s3); border: 1px solid var(--line); transition: all .25s; z-index: 20; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,217,255,.25); border-top-color: var(--cyan); animation: spin .8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<section class="login hidden" id="login">
+  <div class="box">
+    <img src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track">
+    <h1>Consola Jarvis</h1>
+    <p>Acceso solo para administradores de AI Fast Track.</p>
+    <input class="input" id="pw" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <button class="btn btn-primary" id="pw-go" style="width:100%;justify-content:center;margin-top:12px">Entrar</button>
+    <div class="err hidden" id="pw-err"></div>
+  </div>
+</section>
+
+<div id="app" class="hidden">
+  <header>
+    <img src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track">
+    <span class="tag">Consola Jarvis</span>
+    <span class="sp"></span>
+    <button class="btn btn-ghost btn-sm" id="logout">Salir</button>
+  </header>
+  <main>
+    <div class="top">
+      <div>
+        <div class="eyebrow">// Usuarios</div>
+        <h1 class="h">Asistentes Jarvis</h1>
+      </div>
+      <button class="btn btn-primary" id="new">＋ Nuevo usuario</button>
+    </div>
+
+    <div class="notice hidden" id="no-railway">Falta <b>RAILWAY_API_TOKEN</b> en esta consola: créalo en railway.com/account/tokens (workspace de la empresa) y añádelo como variable compartida del proyecto.</div>
+
+    <div class="kpis">
+      <div class="kpi"><small>Usuarios</small><b id="k-users">—</b></div>
+      <div class="kpi"><small>WhatsApp conectados</small><b id="k-wa">—</b></div>
+      <div class="kpi"><small>Con correo</small><b id="k-mail">—</b></div>
+      <div class="kpi"><small>En línea</small><b id="k-online">—</b></div>
+    </div>
+    <div class="creds" id="creds"></div>
+    <div class="users" id="users"><div class="empty"><span class="spinner"></span> Cargando…</div></div>
+  </main>
+</div>
+
+<!-- new user -->
+<div class="modal hidden" id="m-new">
+  <div class="sheet">
+    <div id="new-form">
+      <div class="eyebrow">Nuevo usuario</div>
+      <h2>Crear un Jarvis</h2>
+      <div class="field"><label for="n-name">Nombre</label><input class="input" id="n-name" placeholder="María López"></div>
+      <div class="field"><label for="n-email">Email <small>(opcional, para tu control)</small></label><input class="input" id="n-email" type="email" placeholder="maria@empresa.com"></div>
+      <div class="field"><label for="n-asst">Nombre del asistente</label><input class="input" id="n-asst" value="Jarvis"></div>
+      <div class="field"><label>Modelo de IA</label><div class="models" id="n-models"></div></div>
+      <div class="err hidden" id="n-err"></div>
+      <div class="foot">
+        <button class="btn btn-ghost" data-close>Cancelar</button>
+        <button class="btn btn-primary" id="n-go">Crear Jarvis</button>
+      </div>
+    </div>
+    <div id="new-done" class="hidden" style="text-align:center">
+      <div class="ok-big">✓</div>
+      <h2 id="d-title">Jarvis creado</h2>
+      <p style="color:var(--t2)">Se está construyendo (10-15 min la primera vez). Envía este enlace personal al usuario: con él configura su WhatsApp y su correo.</p>
+      <div class="linkbox" id="d-link"></div>
+      <p class="err hidden" id="d-warn" style="text-align:left"></p>
+      <div class="foot" style="justify-content:center">
+        <button class="btn btn-ghost" id="d-copy">Copiar enlace</button>
+        <a class="btn btn-ghost" id="d-wa" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+        <a class="btn btn-ghost" id="d-mail">Enviar por email</a>
+        <button class="btn btn-primary" data-close>Hecho</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- change model -->
+<div class="modal hidden" id="m-model">
+  <div class="sheet">
+    <div class="eyebrow">Cambiar modelo</div>
+    <h2 id="cm-title">Modelo</h2>
+    <div class="models" id="cm-models"></div>
+    <p style="color:var(--t3);font-size:13px">Jarvis se reinicia (1-2 min). WhatsApp, correo y memoria se conservan.</p>
+    <div class="err hidden" id="cm-err"></div>
+    <div class="foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-primary" id="cm-go">Guardar</button></div>
+  </div>
+</div>
+
+<!-- delete -->
+<div class="modal hidden" id="m-del">
+  <div class="sheet">
+    <div class="eyebrow" style="color:var(--red)">Dar de baja</div>
+    <h2 id="del-title">Eliminar</h2>
+    <p style="color:var(--t2)">Se borra su Jarvis y <b>todos sus datos</b> (sesión de WhatsApp, correos guardados, recordatorios, memoria). No se puede deshacer.</p>
+    <div class="field"><label for="del-confirm">Escribe <b id="del-word" style="color:var(--t1)"></b> para confirmar</label><input class="input" id="del-confirm" autocomplete="off"></div>
+    <div class="err hidden" id="del-err"></div>
+    <div class="foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-danger btn" id="del-go">Eliminar definitivamente</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (id, on) { $(id).classList.toggle("hidden", !on); };
+  var data = null, current = null;
+
+  function api(method, path, body) {
+    var opts = { method: method, headers: { "X-Requested-With": "fasttrack" }, credentials: "same-origin" };
+    if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    return fetch(path, opts).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (r.status === 401 && path !== "/api/login") { showLogin(); throw new Error("auth"); }
+        if (!r.ok) throw new Error(d.detail || ("Error " + r.status));
+        return d;
+      });
+    });
+  }
+  function toast(t) { var e = $("toast"); e.textContent = t; e.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(function () { e.classList.remove("show"); }, 2200); }
+  function copy(t) { navigator.clipboard.writeText(t).then(function () { toast("Copiado ✓"); }, function () { prompt("Copia:", t); }); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function err(id, msg) { $(id).textContent = msg || ""; show(id, !!msg); }
+
+  // ---------- session ----------
+  function showLogin() { show("app", false); show("login", true); $("pw").focus(); }
+  function login() {
+    err("pw-err", "");
+    api("POST", "/api/login", { password: $("pw").value }).then(function () { $("pw").value = ""; show("login", false); show("app", true); load(); },
+      function (e) { err("pw-err", e.message); });
+  }
+  $("pw-go").onclick = login;
+  $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") login(); });
+  $("logout").onclick = function () { api("POST", "/api/logout").then(showLogin); };
+
+  // ---------- overview ----------
+  var DEPLOY = { SUCCESS: ["ok", "Activo"], BUILDING: ["warn", "Construyendo"], DEPLOYING: ["warn", "Desplegando"], INITIALIZING: ["warn", "Iniciando"],
+    QUEUED: ["warn", "En cola"], WAITING: ["warn", "En cola"], FAILED: ["bad", "Error"], CRASHED: ["bad", "Caído"], REMOVED: ["", "Retirado"], "SIN DESPLEGAR": ["bad", "Sin desplegar"] };
+  function load() {
+    api("GET", "/api/overview").then(function (d) { data = d; render(); }, function (e) {
+      if (e.message !== "auth") $("users").innerHTML = '<div class="empty">' + esc(e.message) + "</div>";
+    });
+  }
+  function render() {
+    show("no-railway", !data.railway);
+    var users = data.users || [];
+    $("k-users").textContent = users.length;
+    $("k-wa").textContent = users.filter(function (u) { return u.whatsapp; }).length;
+    $("k-mail").textContent = users.filter(function (u) { return u.mail && u.mail.length; }).length;
+    $("k-online").textContent = users.filter(function (u) { return u.online; }).length;
+
+    var c = data.credentials || {}, prov = data.providers || {};
+    $("creds").innerHTML = Object.keys(prov).map(function (k) {
+      var on = c[prov[k].credential];
+      return '<span class="cred" title="' + esc(prov[k].credential) + '"><span class="dot ' + (on ? "ok" : "") + '"></span>' + esc(prov[k].label) + (on ? "" : " · falta clave") + "</span>";
+    }).join("");
+
+    if (!users.length) { $("users").innerHTML = '<div class="empty">Aún no hay usuarios. Pulsa <b>Nuevo usuario</b> para crear el primero.</div>'; return; }
+    $("users").innerHTML = users.map(function (u, i) {
+      var d = DEPLOY[u.deploy_status] || ["warn", u.deploy_status];
+      var initials = (u.name || "?").split(/\s+/).map(function (w) { return w[0]; }).join("").slice(0, 2).toUpperCase();
+      var wa = u.online ? (u.whatsapp ? '<span class="chip"><span class="dot ok"></span>WhatsApp +' + esc(u.phone) + "</span>" : '<span class="chip"><span class="dot warn"></span>WhatsApp sin vincular</span>') : "";
+      var mail = (u.mail || []).map(function (m) { return '<span class="chip"><span class="dot ok"></span>' + (m === "outlook" ? "Outlook" : "Gmail") + "</span>"; }).join("");
+      return '<div class="user">' +
+        '<div class="row"><div class="av">' + esc(initials) + '</div><div class="who"><b>' + esc(u.name) + "</b><span>" + esc(u.email || u.service) + "</span></div></div>" +
+        '<div class="model"><b>' + esc(u.model.label) + "</b><span>" + esc(u.model.provider_label) + (u.assistant !== "Jarvis" ? " · asistente «" + esc(u.assistant) + "»" : "") + "</span></div>" +
+        '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + wa + mail + "</div>" +
+        '<div class="actions">' +
+          (u.link ? '<button class="btn btn-ghost btn-sm" data-act="copy" data-i="' + i + '">Copiar enlace</button>' : "") +
+          '<button class="btn btn-ghost btn-sm" data-act="model" data-i="' + i + '">Modelo</button>' +
+          '<button class="btn btn-ghost btn-sm" data-act="rotate" data-i="' + i + '" title="Invalida el enlace anterior">Nuevo enlace</button>' +
+          '<button class="btn btn-ghost btn-sm" data-act="redeploy" data-i="' + i + '">Redesplegar</button>' +
+          '<button class="btn btn-danger btn-sm" data-act="delete" data-i="' + i + '">Baja</button>' +
+        "</div></div>";
+    }).join("");
+  }
+  $("users").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]"); if (!b) return;
+    var u = data.users[+b.getAttribute("data-i")], act = b.getAttribute("data-act");
+    current = u;
+    if (act === "copy") copy(u.link);
+    if (act === "model") openModel(u);
+    if (act === "rotate") {
+      if (!confirm("¿Generar un enlace nuevo para " + u.name + "? El anterior dejará de funcionar y Jarvis se reinicia (1-2 min).")) return;
+      api("POST", "/api/users/" + u.id + "/rotate-key").then(function (r) { copy(r.link); toast("Enlace nuevo copiado ✓"); load(); }, function (x) { toast(x.message); });
+    }
+    if (act === "redeploy") api("POST", "/api/users/" + u.id + "/redeploy").then(function () { toast("Redespliegue lanzado"); setTimeout(load, 1500); }, function (x) { toast(x.message); });
+    if (act === "delete") { $("del-title").textContent = "Eliminar a " + u.name; $("del-word").textContent = u.service.replace(/^jarvis-/, ""); $("del-confirm").value = ""; err("del-err", ""); show("m-del", true); }
+  });
+
+  // ---------- model picker ----------
+  function modelOptions(boxId, selected) {
+    var c = data.credentials || {}, prov = data.providers || {}, html = "", last = "";
+    (data.models || []).forEach(function (m) {
+      if (m.provider !== last) { html += '<div class="group">' + esc(prov[m.provider].label) + "</div>"; last = m.provider; }
+      var ok = !!c[prov[m.provider].credential];
+      html += '<label class="mopt' + (ok ? "" : " off") + '"><input type="radio" name="' + boxId + '" value="' + esc(m.id) + '"' + (ok ? "" : " disabled") + (m.id === selected && ok ? " checked" : "") + '>' +
+        "<div><b>" + esc(m.label) + "</b><span>" + esc(m.note) + "</span></div>" + (ok ? "" : '<span class="chip">falta clave</span>') + "</label>";
+    });
+    $(boxId).innerHTML = html;
+    if (!$(boxId).querySelector("input:checked")) { var first = $(boxId).querySelector("input:not([disabled])"); if (first) first.checked = true; }
+  }
+  function picked(boxId) { var i = $(boxId).querySelector("input:checked"); return i ? i.value : ""; }
+
+  // ---------- new user ----------
+  $("new").onclick = function () {
+    if (!data || !data.railway) { toast("Configura primero RAILWAY_API_TOKEN"); return; }
+    show("new-form", true); show("new-done", false); err("n-err", "");
+    $("n-name").value = ""; $("n-email").value = ""; $("n-asst").value = "Jarvis";
+    modelOptions("n-models", "claude-sonnet-5-5"); show("m-new", true); $("n-name").focus();
+  };
+  $("n-go").onclick = function () {
+    var b = this, name = $("n-name").value.trim();
+    if (!name) { err("n-err", "Escribe el nombre."); return; }
+    if (!picked("n-models")) { err("n-err", "Elige un modelo (falta configurar alguna clave)."); return; }
+    b.disabled = true; b.innerHTML = '<span class="spinner"></span> Creando…'; err("n-err", "");
+    api("POST", "/api/users", { name: name, email: $("n-email").value.trim(), assistant_name: $("n-asst").value.trim(), model: picked("n-models") })
+      .then(function (r) {
+        show("new-form", false); show("new-done", true);
+        $("d-title").textContent = "Jarvis de " + name + " creado";
+        $("d-link").textContent = r.link;
+        var msg = "Hola " + name.split(" ")[0] + ", aquí tienes tu asistente Jarvis de AI Fast Track. Abre este enlace y sigue los pasos: " + r.link;
+        $("d-wa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
+        $("d-mail").href = "mailto:" + encodeURIComponent($("n-email").value.trim()) + "?subject=" + encodeURIComponent("Tu asistente Jarvis") + "&body=" + encodeURIComponent(msg);
+        $("d-copy").onclick = function () { copy(r.link); };
+        err("d-warn", r.build_error ? "⚠️ No se pudo conectar el código: " + r.build_error + ". Conecta GitHub en Railway y pulsa «Redesplegar»." : "");
+        load();
+      }, function (e) { err("n-err", e.message); })
+      .then(function () { b.disabled = false; b.textContent = "Crear Jarvis"; });
+  };
+
+  // ---------- change model ----------
+  function openModel(u) { $("cm-title").textContent = "Modelo de " + u.name; err("cm-err", ""); modelOptions("cm-models", u.model.model); show("m-model", true); }
+  $("cm-go").onclick = function () {
+    var b = this; b.disabled = true;
+    api("PATCH", "/api/users/" + current.id, { model: picked("cm-models") }).then(function () { show("m-model", false); toast("Modelo cambiado. Reiniciando…"); load(); },
+      function (e) { err("cm-err", e.message); }).then(function () { b.disabled = false; });
+  };
+
+  // ---------- delete ----------
+  $("del-go").onclick = function () {
+    var b = this; b.disabled = true;
+    api("DELETE", "/api/users/" + current.id, { confirm: $("del-confirm").value }).then(function () { show("m-del", false); toast("Usuario eliminado"); load(); },
+      function (e) { err("del-err", e.message); }).then(function () { b.disabled = false; });
+  };
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-close]"), function (b) { b.onclick = function () { b.closest(".modal").classList.add("hidden"); }; });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") Array.prototype.forEach.call(document.querySelectorAll(".modal"), function (m) { m.classList.add("hidden"); }); });
+
+  api("GET", "/api/overview").then(function (d) { data = d; show("app", true); render(); setInterval(load, 30000); }, function () {});
+})();
+</script>
+</body>
+</html>
