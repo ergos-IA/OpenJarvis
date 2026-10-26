@@ -234,8 +234,11 @@ def access_ready(
             ]
         ),
         _note(
-            "Para empezar, escríbete a ti mismo en WhatsApp (el chat «Tú») algo como "
-            "<i>«¿Qué tengo mañana?»</i> o <i>«Recuérdame llamar a Ana a las 5»</i>."
+            "<b style='color:#f1f4f6'>Cómo hablar con Jarvis:</b> en WhatsApp, abre tu chat "
+            "contigo mismo. Aparece como <b style='color:#f1f4f6'>«Tú»</b>, «Yo» o «Mensaje "
+            "para ti», con tu foto. ¿No lo ves? En Android toca el botón de nuevo chat 💬 y "
+            "elige tu número «(Tú)»; en iPhone toca ✏️ y elige tu nombre «(Tú)». Escribe "
+            "<i>«Hola Jarvis»</i> y fija el chat para tenerlo siempre arriba."
         ),
     ]
     text = _plain(
@@ -247,6 +250,9 @@ def access_ready(
         + ai_step[0].lower()
         + ai_step[1:]
         + " Vincula tu WhatsApp y, si quieres, tu correo y tus herramientas.",
+        "Cómo hablar con Jarvis: en WhatsApp abre tu chat contigo mismo (aparece como "
+        "«Tú», «Yo» o «Mensaje para ti»). Android: botón de nuevo chat → tu número "
+        "«(Tú)». iPhone: ✏️ → tu nombre «(Tú)». Escribe «Hola Jarvis».",
     )
     html_body = _layout(
         preheader=f"Tu código de acceso: {code}",

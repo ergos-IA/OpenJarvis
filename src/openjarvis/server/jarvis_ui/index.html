@@ -31,6 +31,15 @@ button { font: inherit; }
 .hidden { display: none !important; }
 
 
+
+/* ---------- how to talk to Jarvis (chat with yourself) ---------- */
+.selfchat { text-align: left; margin: 18px 0 0; padding: 18px; border-radius: 14px; border: 1px solid rgba(0,217,255,.3); background: rgba(0,217,255,.05); }
+.selfchat p { color: var(--t2); margin: 8px 0 14px; line-height: 1.55; }
+.selfchat p b, .selfchat li b { color: var(--t1); }
+.selfchat details { margin-top: 14px; }
+.selfchat summary { cursor: pointer; color: var(--cyan); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.selfchat ol { margin: 6px 0 0; padding-left: 22px; color: var(--t2); display: grid; gap: 10px; line-height: 1.5; }
+
 /* ---------- connectors ---------- */
 .conn-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 18px; }
 .conn-tools .input { flex: 1 1 220px; max-width: 320px; padding: 11px 14px; }
@@ -626,6 +635,20 @@ footer img { width: 22px; height: 22px; }
         <div class="big">Enlace establecido</div>
         <p class="lead" id="wa-number" style="margin:0 0 6px"></p>
         <p style="color:var(--t2);margin:0">Jarvis ya está en tu chat «Tú» de WhatsApp.</p>
+      <div class="selfchat">
+        <div class="eyebrow">Cómo hablar con Jarvis</div>
+        <p>Jarvis vive en <b>tu chat contigo mismo</b> de WhatsApp. Según el móvil aparece como <b>«Tú»</b>, <b>«Yo»</b> o <b>«Mensaje para ti»</b>, con tu propia foto. No tienes que añadir ningún contacto.</p>
+        <a class="btn btn-primary selfchat-open" href="https://wa.me/" target="_blank" rel="noopener">Abrir mi chat con Jarvis →</a>
+        <details>
+          <summary>¿No te aparece ese chat? Sácalo así</summary>
+          <ol>
+            <li><b>Android:</b> toca el botón verde de nuevo chat 💬 (abajo a la derecha). Arriba del todo sale tu número con tu foto y el texto <b>«(Tú)»</b> o <b>«Envíate un mensaje»</b>. Tócalo.</li>
+            <li><b>iPhone:</b> toca el lápiz ✏️ (arriba a la derecha) o «Nuevo chat». Tu nombre sale arriba con <b>«(Tú)»</b>. Si no, escribe tu propio nombre en el buscador.</li>
+            <li>Escribe cualquier cosa, por ejemplo <i>«Hola Jarvis»</i>. Desde ese momento el chat queda en tu lista: mantenlo pulsado y elige <b>📌 Fijar</b> para tenerlo siempre arriba.</li>
+            <li>¿Sigue sin salir? Actualiza WhatsApp desde la Play Store o la App Store, o usa el botón amarillo: abre ese chat directamente.</li>
+          </ol>
+        </details>
+      </div>
         <p style="margin:14px 0 0"><button class="btn-danger" id="wa-logout">Desvincular este WhatsApp</button></p>
       </div>
       <p class="err hidden" id="wa-err"></p>
@@ -749,8 +772,22 @@ footer img { width: 22px; height: 22px; }
         <div class="stat"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
         <div class="stat" style="cursor:pointer" data-goto="2.5"><small>Conectores</small><b><span class="dot" id="st-c-dot"></span><span id="st-c">—</span></b><span id="st-c-sub">Toca para gestionarlos</span></div>
       </div>
-      <div class="eyebrow" style="margin-top:6px">Pruébalo · toca una frase</div>
-      <p style="color:var(--t2);margin:6px 0 0" id="try-hint">Se abrirá WhatsApp con la frase escrita en tu chat «Tú». Solo tienes que enviarla.</p>
+      <div class="selfchat">
+        <div class="eyebrow">Cómo hablar con Jarvis</div>
+        <p>Jarvis vive en <b>tu chat contigo mismo</b> de WhatsApp. Según el móvil aparece como <b>«Tú»</b>, <b>«Yo»</b> o <b>«Mensaje para ti»</b>, con tu propia foto. No tienes que añadir ningún contacto.</p>
+        <a class="btn btn-primary selfchat-open" href="https://wa.me/" target="_blank" rel="noopener">Abrir mi chat con Jarvis →</a>
+        <details>
+          <summary>¿No te aparece ese chat? Sácalo así</summary>
+          <ol>
+            <li><b>Android:</b> toca el botón verde de nuevo chat 💬 (abajo a la derecha). Arriba del todo sale tu número con tu foto y el texto <b>«(Tú)»</b> o <b>«Envíate un mensaje»</b>. Tócalo.</li>
+            <li><b>iPhone:</b> toca el lápiz ✏️ (arriba a la derecha) o «Nuevo chat». Tu nombre sale arriba con <b>«(Tú)»</b>. Si no, escribe tu propio nombre en el buscador.</li>
+            <li>Escribe cualquier cosa, por ejemplo <i>«Hola Jarvis»</i>. Desde ese momento el chat queda en tu lista: mantenlo pulsado y elige <b>📌 Fijar</b> para tenerlo siempre arriba.</li>
+            <li>¿Sigue sin salir? Actualiza WhatsApp desde la Play Store o la App Store, o usa el botón amarillo: abre ese chat directamente.</li>
+          </ol>
+        </details>
+      </div>
+      <div class="eyebrow" style="margin-top:22px">Pruébalo · toca una frase</div>
+      <p style="color:var(--t2);margin:6px 0 0" id="try-hint">Se abrirá WhatsApp con la frase escrita en tu chat «Tú» (o «Yo»). Solo tienes que enviarla.</p>
       <div class="tries" id="tries"></div>
       <div class="nav">
         <button class="btn-link" data-goto="2.5">← Conectores</button>
@@ -1270,6 +1307,7 @@ footer img { width: 22px; height: 22px; }
     $("wa-next").disabled = !wa.connected;
     if (wa.connected) {
       $("wa-number").textContent = wa.me ? "+" + wa.me : "";
+      renderSelfChat();
       return;
     }
     if (wa.qr_svg && wa.qr_svg !== lastSvg) {
@@ -1378,6 +1416,13 @@ footer img { width: 22px; height: 22px; }
       });
     }
     show("try-hint", !!(wa && wa.me));
+    renderSelfChat();
+  }
+  function renderSelfChat() {
+    qsa(".selfchat-open").forEach(function (a) {
+      show(a, !!(wa && wa.me));
+      if (wa && wa.me) a.href = "https://wa.me/" + wa.me;
+    });
   }
 
   function renderInfo() {
