@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080808">
+<title>Jarvis · AI Fast Track</title>
+<link rel="icon" href="/jarvis-ui/aifasttrack-mark.svg" type="image/svg+xml">
+<style>
+@font-face { font-family: "Space Grotesk"; font-weight: 400 700; font-display: swap;
+  src: url("/jarvis-ui/space-grotesk.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400 700; font-display: swap;
+  src: url("/jarvis-ui/inter.woff2") format("woff2"); }
+
+:root {
+  --bg: #080808; --s1: #0f0f0f; --s2: #141414; --s3: #1c1c1c; --line: #242424;
+  --t1: #ffffff; --t2: #9a9a9a; --t3: #5a5a5a;
+  --yellow: #ffdb05; --cyan: #00d9ff; --red: #ff0040; --green: #22c55e;
+  --cyan-a: rgba(0, 217, 255, .14); --yellow-a: rgba(255, 219, 5, .14);
+  --radius: 14px;
+  --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--t1);
+  font: 16px/1.55 var(--body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: var(--cyan); }
+button { font: inherit; }
+.hidden { display: none !important; }
+
+/* ---------- background: HUD grid, glow, particles ---------- */
+.bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.bg-grid { background-image:
+    linear-gradient(rgba(0,217,255,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,217,255,.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 35%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 35%, #000 20%, transparent 75%); }
+.bg-glow { background:
+    radial-gradient(600px 400px at 50% 30%, rgba(0,217,255,.12), transparent 70%),
+    radial-gradient(500px 300px at 85% 90%, rgba(255,219,5,.06), transparent 70%); }
+.bg-scan { background: linear-gradient(180deg, transparent, rgba(0,217,255,.06) 50%, transparent);
+  height: 180px; top: -180px; animation: scan 7s linear infinite; }
+@keyframes scan { to { transform: translateY(calc(100vh + 180px)); } }
+#particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .7; }
+
+/* ---------- top bar ---------- */
+header { position: relative; z-index: 2; display: flex; align-items: center;
+  justify-content: space-between; gap: 16px; padding: 18px clamp(16px, 4vw, 40px); }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand img { height: 34px; width: auto; display: block; }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 999px; background: rgba(15,15,15,.7);
+  font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--t2);
+  backdrop-filter: blur(8px); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan); animation: blink 2s ease-in-out infinite; }
+.dot.ok { background: var(--green); box-shadow: 0 0 10px var(--green); }
+.dot.warn { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+.dot.off { background: var(--t3); box-shadow: none; animation: none; }
+@keyframes blink { 50% { opacity: .35; } }
+
+main { position: relative; z-index: 1; }
+
+/* ---------- hero ---------- */
+.hero { min-height: calc(100vh - 80px); display: grid; place-items: center;
+  padding: 0 16px 48px; text-align: center; }
+.reactor-wrap { position: relative; width: min(340px, 78vw); aspect-ratio: 1; margin: 8px auto 6px; }
+.reactor { width: 100%; height: 100%; overflow: visible; }
+.r-spin { transform-origin: 200px 200px; animation: spin 24s linear infinite; }
+.r-spin.rev { animation-duration: 16s; animation-direction: reverse; }
+.r-spin.fast { animation-duration: 6s; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.r-core { transform-origin: 200px 200px; animation: pulse 3.2s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.06); opacity: .85; } }
+.reactor-wrap.linked .r-tint { stroke: var(--yellow); }
+.reactor-wrap.linked .r-fill { fill: var(--yellow); }
+.reactor-wrap.burst::after { content: ""; position: absolute; inset: 20%; border-radius: 50%;
+  border: 2px solid var(--yellow); animation: burst 1.1s ease-out forwards; }
+@keyframes burst { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
+
+.readout { position: absolute; font: 600 10px/1.3 var(--mono); letter-spacing: .14em;
+  color: var(--cyan); text-transform: uppercase; opacity: .8; text-align: left; }
+.readout b { display: block; color: var(--t1); font-size: 13px; letter-spacing: .06em; }
+.readout.tl { top: 6%; left: -18%; } .readout.tr { top: 6%; right: -18%; text-align: right; }
+.readout.bl { bottom: 8%; left: -20%; } .readout.br { bottom: 8%; right: -20%; text-align: right; }
+@media (max-width: 640px) { .readout { display: none; } }
+
+h1.title { font: 700 clamp(52px, 12vw, 120px)/.95 var(--display); letter-spacing: .18em;
+  margin: 10px 0 6px; padding-left: .18em;
+  background: linear-gradient(180deg, #fff 30%, #9fefff 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 40px rgba(0,217,255,.25); }
+.tagline { font: 500 clamp(17px, 2.6vw, 22px)/1.4 var(--display); color: var(--t2); margin: 0 auto;
+  max-width: 34ch; min-height: 1.4em; }
+.tagline .caret { display: inline-block; width: .55ch; background: var(--yellow);
+  animation: blink 1s steps(1) infinite; margin-left: 2px; }
+.boot { font: 12px/1.9 var(--mono); color: var(--t3); margin: 22px auto 26px; text-align: left;
+  width: min(420px, 100%); min-height: 7em; }
+.boot .ok { color: var(--green); } .boot .wait { color: var(--yellow); } .boot .hl { color: var(--cyan); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px 26px; border-radius: 12px; border: 0; cursor: pointer; text-decoration: none;
+  font: 700 16px/1 var(--display); letter-spacing: .02em; transition: transform .15s, box-shadow .2s, background .2s; }
+.btn:active { transform: translateY(1px) scale(.99); }
+.btn-primary { background: var(--yellow); color: #0a0a0a;
+  box-shadow: 0 0 0 1px rgba(255,219,5,.4), 0 10px 40px -10px rgba(255,219,5,.55); }
+.btn-primary:hover { box-shadow: 0 0 0 1px rgba(255,219,5,.6), 0 12px 50px -8px rgba(255,219,5,.75); }
+.btn-ghost { background: transparent; color: var(--t1); border: 1px solid var(--line); }
+.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+.btn-link { background: none; border: 0; color: var(--t2); cursor: pointer; padding: 8px;
+  text-decoration: underline; text-underline-offset: 3px; }
+.btn-danger { background: none; border: 1px solid var(--line); color: var(--red);
+  padding: 9px 14px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.btn[disabled] { opacity: .55; cursor: default; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.scroll-hint { margin-top: 36px; font: 600 11px var(--mono); letter-spacing: .2em; color: var(--t3);
+  text-transform: uppercase; }
+
+/* ---------- capabilities ---------- */
+.section { padding: 40px clamp(16px, 4vw, 40px) 80px; max-width: 1120px; margin: 0 auto; }
+.eyebrow { font: 600 12px var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--cyan); }
+h2 { font: 700 clamp(28px, 4.5vw, 44px)/1.1 var(--display); margin: 10px 0 28px; letter-spacing: -.01em; }
+h2 em { font-style: normal; color: var(--yellow); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.card { position: relative; padding: 22px; border-radius: var(--radius); background: linear-gradient(180deg, var(--s2), var(--s1));
+  border: 1px solid var(--line); overflow: hidden; transition: border-color .25s, transform .25s;
+  opacity: 0; transform: translateY(18px); }
+.card.in { opacity: 1; transform: none; transition: opacity .6s, transform .6s, border-color .25s; }
+.card:hover { border-color: rgba(0,217,255,.45); }
+.card::before { content: ""; position: absolute; inset: -1px; background: radial-gradient(400px 120px at var(--mx, 50%) 0%, rgba(0,217,255,.12), transparent 70%);
+  opacity: 0; transition: opacity .3s; pointer-events: none; }
+.card:hover::before { opacity: 1; }
+.card .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--cyan-a); color: var(--cyan); margin-bottom: 14px; }
+.card .ico.y { background: var(--yellow-a); color: var(--yellow); }
+.card h3 { font: 700 19px/1.25 var(--display); margin: 0 0 6px; }
+.card p { margin: 0; color: var(--t2); font-size: 15px; }
+.card q { display: block; margin-top: 12px; font: 13px/1.45 var(--mono); color: var(--t1);
+  padding: 10px 12px; background: rgba(0,0,0,.35); border-left: 2px solid var(--yellow); border-radius: 6px; quotes: "«" "»"; }
+
+footer { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 26px 16px 40px; color: var(--t3); font-size: 13px; }
+footer img { width: 22px; height: 22px; }
+
+/* ---------- wizard ---------- */
+.wizard { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
+.steps { display: flex; align-items: center; gap: 0; margin: 6px 0 26px; padding: 0; list-style: none; }
+.steps li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative;
+  font: 600 12px var(--mono); letter-spacing: .08em; color: var(--t3); text-transform: uppercase; text-align: center; }
+.steps li::before { content: ""; position: absolute; top: 17px; left: -50%; width: 100%; height: 2px; background: var(--line); z-index: -1; }
+.steps li:first-child::before { display: none; }
+.steps li.done::before, .steps li.on::before { background: linear-gradient(90deg, var(--cyan), var(--cyan)); }
+.steps .n { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--s2); border: 1px solid var(--line); color: var(--t2); font: 700 14px var(--display); transition: all .3s; }
+.steps li.on { color: var(--t1); }
+.steps li.on .n { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 0 4px var(--cyan-a), 0 0 22px rgba(0,217,255,.35); }
+.steps li.done .n { background: var(--cyan); border-color: var(--cyan); color: #001318; }
+@media (max-width: 520px) { .steps li span.lbl { display: none; } }
+
+.panel { position: relative; background: linear-gradient(180deg, rgba(20,20,20,.92), rgba(12,12,12,.92));
+  border: 1px solid var(--line); border-radius: 18px; padding: clamp(20px, 4vw, 34px);
+  backdrop-filter: blur(10px); animation: rise .45s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+.panel .corner { position: absolute; width: 18px; height: 18px; border-color: var(--cyan); border-style: solid; opacity: .8; }
+.corner.a { top: -1px; left: -1px; border-width: 2px 0 0 2px; border-top-left-radius: 18px; }
+.corner.b { top: -1px; right: -1px; border-width: 2px 2px 0 0; border-top-right-radius: 18px; }
+.corner.c { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; border-bottom-left-radius: 18px; }
+.corner.d { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; border-bottom-right-radius: 18px; }
+.panel h2 { font-size: clamp(24px, 4vw, 32px); margin: 6px 0 8px; }
+.lead { color: var(--t2); margin: 0 0 22px; font-size: 17px; }
+.nav { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 26px; }
+
+.tabs { display: inline-grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--s1); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 20px; }
+.tabs button { border: 0; background: transparent; color: var(--t2); padding: 10px 14px; border-radius: 9px; cursor: pointer; font-weight: 600; font-size: 14px; }
+@media (max-width: 520px) { .tabs { display: grid; width: 100%; } .tabs button { padding: 10px 6px; font-size: 13px; } }
+.tabs button.on { background: var(--s3); color: var(--t1); box-shadow: inset 0 0 0 1px var(--line); }
+
+.howto { display: grid; gap: 12px; margin: 0 0 22px; padding: 0; list-style: none; counter-reset: h; }
+.howto li { counter-increment: h; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; color: var(--t2); }
+.howto li::before { content: counter(h); width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--yellow-a); color: var(--yellow); font: 700 15px var(--display); }
+.howto b { color: var(--t1); font-weight: 600; }
+.kbd { display: inline-block; padding: 1px 8px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px;
+  background: var(--s2); color: var(--t1); font-size: .92em; white-space: nowrap; }
+
+.qr-zone { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; align-items: center; }
+@media (max-width: 680px) { .qr-zone { grid-template-columns: 1fr; } }
+.qr-frame { position: relative; width: min(290px, 100%); aspect-ratio: 1; margin: 0 auto; padding: 14px;
+  border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 0 60px -10px rgba(0,217,255,.45); overflow: hidden; }
+.qr-frame svg { width: 100%; height: 100%; display: block; }
+.qr-frame .laser { position: absolute; left: 6%; right: 6%; height: 3px; top: 8%;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent); box-shadow: 0 0 14px var(--cyan);
+  animation: laser 2.6s ease-in-out infinite; }
+@keyframes laser { 50% { top: 90%; } }
+.qr-frame .wait { position: absolute; inset: 0; display: grid; place-items: center; color: #333; font: 600 14px var(--body); background: #fff; }
+.qr-caption { text-align: center; color: var(--t3); font-size: 13px; margin-top: 10px; }
+
+.field { display: grid; gap: 8px; margin: 14px 0; }
+.field label { font-weight: 600; font-size: 14px; color: var(--t2); }
+.input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--t1); font: 16px var(--body); outline: none; transition: border-color .2s, box-shadow .2s; }
+.input:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px var(--cyan-a); }
+.phone { display: flex; gap: 8px; }
+.phone .cc { width: 92px; flex: none; text-align: center; }
+
+.code { display: flex; justify-content: center; gap: clamp(3px, 1vw, 6px); margin: 18px 0 8px; }
+.code span { width: clamp(26px, 7.2vw, 48px); height: clamp(40px, 11vw, 62px); display: grid; place-items: center;
+  border-radius: 10px; background: var(--s2); border: 1px solid rgba(0,217,255,.45); color: var(--cyan);
+  font: 700 clamp(18px, 5.4vw, 32px) var(--mono); box-shadow: 0 0 20px -6px rgba(0,217,255,.6); animation: rise .4s ease-out backwards; }
+.code span.sep { width: 10px; border: 0; background: none; box-shadow: none; color: var(--t3); }
+
+.success { text-align: center; padding: 10px 0 4px; }
+.success .big { font: 700 26px var(--display); color: var(--yellow); margin: 8px 0 4px; }
+.check { width: 74px; height: 74px; border-radius: 50%; margin: 0 auto; display: grid; place-items: center;
+  background: var(--yellow-a); color: var(--yellow); box-shadow: 0 0 0 6px rgba(255,219,5,.06), 0 0 40px rgba(255,219,5,.35); animation: pop .5s cubic-bezier(.2,1.6,.4,1); }
+@keyframes pop { from { transform: scale(.3); opacity: 0; } }
+
+.accounts { display: grid; gap: 14px; }
+.acc { border: 1px solid var(--line); border-radius: 14px; background: var(--s1); overflow: hidden; transition: border-color .2s; }
+.acc.open { border-color: rgba(0,217,255,.45); }
+.acc-head { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: none; border: 0;
+  color: var(--t1); cursor: pointer; text-align: left; }
+.acc-logo { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; background: #fff; flex: none; }
+.acc-title { flex: 1; min-width: 0; }
+.acc-title b { display: block; font: 700 17px var(--display); }
+.acc-title small { color: var(--t2); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.badge { font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px;
+  background: var(--s3); color: var(--t2); white-space: nowrap; }
+.badge.ok { background: rgba(34,197,94,.14); color: var(--green); }
+.badge.wait { background: var(--yellow-a); color: var(--yellow); }
+.acc-body { padding: 0 18px 20px; }
+.substeps { display: grid; gap: 14px; margin: 4px 0 6px; }
+.sub { display: grid; grid-template-columns: 30px 1fr; gap: 12px; }
+.sub .k { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line);
+  font: 700 13px var(--display); color: var(--t2); }
+.sub p { margin: 3px 0 10px; color: var(--t2); }
+.sub b { color: var(--t1); }
+.tip { display: block; padding: 12px 14px; border-radius: 12px; background: var(--cyan-a); color: #bff4ff; font-size: 14px; margin: 10px 0; }
+.err { color: #ff6b8a; font-size: 14px; margin: 10px 0 0; }
+
+.status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; margin-bottom: 24px; }
+.stat { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
+.stat small { font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--t3); }
+.stat b { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 700 16px var(--display); }
+.stat span { display: block; color: var(--t2); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+.tries { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 4px; }
+.try { padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--s2); color: var(--t1);
+  font-size: 14px; cursor: pointer; text-decoration: none; transition: all .2s; }
+.try:hover { border-color: var(--yellow); color: var(--yellow); box-shadow: 0 0 20px -6px rgba(255,219,5,.6); }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0;
+  padding: 12px 18px; border-radius: 12px; background: var(--s3); border: 1px solid var(--line); color: var(--t1);
+  font-size: 14px; z-index: 10; transition: all .3s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(0,217,255,.25); border-top-color: var(--cyan);
+  animation: spin .8s linear infinite; display: inline-block; vertical-align: middle; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .card { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+<div class="bg bg-grid"></div>
+<div class="bg bg-glow"></div>
+<div class="bg bg-scan"></div>
+<canvas id="particles" aria-hidden="true"></canvas>
+
+<header>
+  <a class="brand" href="/" aria-label="AI Fast Track — inicio">
+    <img src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track">
+  </a>
+  <span class="chip" id="sys-chip"><span class="dot" id="sys-dot"></span><span id="sys-text">Sistema en línea</span></span>
+</header>
+
+<main>
+  <!-- =============== LANDING =============== -->
+  <section id="landing">
+    <div class="hero">
+      <div>
+        <div class="reactor-wrap" id="reactor">
+          <svg class="reactor" viewBox="0 0 400 400" aria-hidden="true">
+            <defs>
+              <radialGradient id="core" cx="50%" cy="50%" r="50%">
+                <stop offset="0" stop-color="#ffffff"/>
+                <stop offset=".35" stop-color="#9ff3ff"/>
+                <stop offset=".7" stop-color="#00d9ff" stop-opacity=".55"/>
+                <stop offset="1" stop-color="#00d9ff" stop-opacity="0"/>
+              </radialGradient>
+              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <g class="r-spin">
+              <circle cx="200" cy="200" r="186" fill="none" stroke="#00d9ff" stroke-opacity=".25" stroke-width="1"/>
+              <circle class="r-tint" cx="200" cy="200" r="178" fill="none" stroke="#00d9ff" stroke-width="6"
+                      stroke-dasharray="2 9" stroke-opacity=".7"/>
+            </g>
+            <g class="r-spin rev">
+              <circle class="r-tint" cx="200" cy="200" r="150" fill="none" stroke="#00d9ff" stroke-width="10"
+                      stroke-dasharray="70 24" stroke-opacity=".9" filter="url(#glow)"/>
+            </g>
+            <g class="r-spin fast">
+              <circle cx="200" cy="200" r="124" fill="none" stroke="#ffdb05" stroke-width="2"
+                      stroke-dasharray="30 360" stroke-linecap="round" filter="url(#glow)"/>
+            </g>
+            <g class="r-spin">
+              <circle cx="200" cy="200" r="112" fill="none" stroke="#00d9ff" stroke-opacity=".35" stroke-width="1"/>
+              <g id="spokes" stroke="#00d9ff" stroke-opacity=".75" stroke-width="3" stroke-linecap="round"></g>
+            </g>
+            <g class="r-core">
+              <circle cx="200" cy="200" r="96" fill="url(#core)"/>
+              <circle class="r-tint" cx="200" cy="200" r="62" fill="none" stroke="#e6fbff" stroke-width="3" filter="url(#glow)"/>
+              <polygon class="r-fill" points="200,160 235,180 235,220 200,240 165,220 165,180" fill="#00d9ff" fill-opacity=".25"
+                       stroke="#ffffff" stroke-width="2"/>
+              <circle cx="200" cy="200" r="16" fill="#ffffff" filter="url(#glow)"/>
+            </g>
+          </svg>
+          <div class="readout tl">Núcleo<b id="ro-core">98.7%</b></div>
+          <div class="readout tr">Latencia<b id="ro-lat">42 ms</b></div>
+          <div class="readout bl">Enlace<b id="ro-link">Cifrado</b></div>
+          <div class="readout br">Modelo<b>Claude</b></div>
+        </div>
+        <h1 class="title">JARVIS</h1>
+        <p class="tagline"><span id="tagline"></span><span class="caret">&nbsp;</span></p>
+        <div class="boot" id="boot" aria-live="polite"></div>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="cta">Activar a Jarvis <span aria-hidden="true">→</span></button>
+          <a class="btn btn-ghost" href="#capacidades">¿Qué puede hacer?</a>
+        </div>
+        <div class="scroll-hint">▼ Desliza</div>
+      </div>
+    </div>
+
+    <div class="section" id="capacidades">
+      <div class="eyebrow">// Capacidades</div>
+      <h2>Tu asistente personal, <em>dentro de WhatsApp</em>.</h2>
+      <div class="cards" id="cards">
+        <article class="card">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-13.4 7.9L3 21l1.2-4.4A9 9 0 1 1 21 12z"/><path d="M8.5 10.5h7M8.5 13.5h4.5"/></svg></div>
+          <h3>Habla con él por WhatsApp</h3>
+          <p>Escríbele en tu chat «Tú», como si fuera una nota. Responde al momento, con búsqueda en internet incluida.</p>
+          <q>¿Qué tiempo hará el sábado en Valencia?</q>
+        </article>
+        <article class="card">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+          <h3>Te avisa de lo que te llega</h3>
+          <p>WhatsApp de contactos o desconocidos y correos importantes: te lo resume y te dice quién es.</p>
+          <q>¿Qué tengo sin leer de hoy?</q>
+        </article>
+        <article class="card">
+          <div class="ico y"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></svg></div>
+          <h3>Envía por ti… con tu «sí»</h3>
+          <p>Redacta WhatsApp y correos a tus contactos. Nada sale sin que lo confirmes con un «sí».</p>
+          <q>Dile a Laura que llego 10 minutos tarde</q>
+        </article>
+        <article class="card">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>
+          <h3>Correo Outlook y Gmail</h3>
+          <p>Busca facturas, resume hilos y responde correos. Te avisa solo de lo importante.</p>
+          <q>Busca la factura de Iberdrola y dime el importe</q>
+        </article>
+        <article class="card">
+          <div class="ico y"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M5 3 2 6M22 6l-3-3"/></svg></div>
+          <h3>Recordatorios y tareas</h3>
+          <p>Te recuerda cosas a su hora y hace tareas programadas: cada mañana, cada lunes…</p>
+          <q>Cada día a las 8 resúmeme correos y WhatsApp</q>
+        </article>
+        <article class="card">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24A2.5 2.5 0 0 0 14.5 2z"/></svg></div>
+          <h3>Memoria</h3>
+          <p>Recuerda lo que le cuentas de ti y tus preferencias, y lo tiene en cuenta siempre.</p>
+          <q>Acuérdate de que prefiero respuestas cortas</q>
+        </article>
+      </div>
+      <div style="text-align:center;margin-top:34px">
+        <button class="btn btn-primary" data-start>Empezar ahora <span aria-hidden="true">→</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============== WIZARD =============== -->
+  <section id="wizard" class="wizard hidden">
+    <ol class="steps" id="steps">
+      <li data-s="0"><span class="n">1</span><span class="lbl">Acceso</span></li>
+      <li data-s="1"><span class="n">2</span><span class="lbl">WhatsApp</span></li>
+      <li data-s="2"><span class="n">3</span><span class="lbl">Correo</span></li>
+      <li data-s="3"><span class="n">4</span><span class="lbl">¡Listo!</span></li>
+    </ol>
+
+    <!-- step 0: access key -->
+    <div class="panel hidden" data-step="0">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Paso 1 · Acceso</div>
+      <h2>Identifícate</h2>
+      <p class="lead">Escribe la clave de tu Jarvis. Te la ha enviado quien te lo ha instalado (empieza por <span class="kbd">oj_sk_</span>).</p>
+      <div class="field">
+        <label for="key">Clave de acceso</label>
+        <input class="input" id="key" type="password" autocomplete="current-password" placeholder="oj_sk_…">
+      </div>
+      <p class="err hidden" id="key-err"></p>
+      <div class="nav"><span></span><button class="btn btn-primary" id="key-go">Entrar →</button></div>
+    </div>
+
+    <!-- step 1: WhatsApp -->
+    <div class="panel hidden" data-step="1">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Paso 2 · WhatsApp</div>
+
+      <div id="wa-linking">
+        <h2>Conecta tu WhatsApp</h2>
+        <p class="lead">Jarvis vivirá en tu chat «Tú» (mensajes contigo mismo). Elige cómo conectarlo:</p>
+        <div class="tabs" role="tablist">
+          <button role="tab" data-tab="qr">💻 Lo veo en el ordenador</button>
+          <button role="tab" data-tab="code">📱 Estoy en el móvil</button>
+        </div>
+
+        <div data-pane="qr">
+          <div class="qr-zone">
+            <ol class="howto">
+              <li><span>Abre <b>WhatsApp</b> en tu móvil.</span></li>
+              <li><span>Toca <span class="kbd">⋮</span> (Android) o <span class="kbd">Ajustes</span> (iPhone) → <b>Dispositivos vinculados</b>.</span></li>
+              <li><span>Toca <b>Vincular un dispositivo</b> y apunta la cámara a este código.</span></li>
+            </ol>
+            <div>
+              <div class="qr-frame" id="qr"><div class="wait"><span><span class="spinner"></span>&nbsp; Preparando código…</span></div></div>
+              <div class="qr-caption">El código se renueva solo. No hace falta recargar.</div>
+            </div>
+          </div>
+        </div>
+
+        <div data-pane="code" class="hidden">
+          <div id="pc-ask">
+            <ol class="howto">
+              <li><span>Escribe tu número de WhatsApp aquí abajo y pulsa <b>Pedir código</b>.</span></li>
+              <li><span>Te saldrá un código de <b>8 letras</b>. WhatsApp te enviará una notificación: tócala y escribe ese código.</span></li>
+            </ol>
+            <div class="field">
+              <label for="pc-phone">Tu número de WhatsApp</label>
+              <div class="phone">
+                <input class="input cc" id="pc-cc" inputmode="tel" value="+34" aria-label="Prefijo">
+                <input class="input" id="pc-phone" inputmode="tel" placeholder="600 123 456" autocomplete="tel-national">
+              </div>
+            </div>
+            <button class="btn btn-primary" id="pc-go">Pedir código</button>
+          </div>
+          <div id="pc-show" class="hidden">
+            <p class="lead" style="margin:0">Tu código de vinculación:</p>
+            <div class="code" id="pc-code"></div>
+            <div style="text-align:center"><button class="btn btn-ghost" id="pc-copy">Copiar código</button></div>
+            <div class="tip">💡 ¿No te llega la notificación? En WhatsApp: <b>Dispositivos vinculados → Vincular un dispositivo → Vincular con número de teléfono</b> y escribe el código.</div>
+            <div style="text-align:center"><span class="spinner"></span>&nbsp; <span style="color:var(--t2)">Esperando a que lo escribas en el móvil…</span></div>
+          </div>
+          <p class="err hidden" id="pc-err"></p>
+        </div>
+      </div>
+
+      <div id="wa-done" class="hidden success">
+        <div class="check"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <div class="big">Enlace establecido</div>
+        <p class="lead" id="wa-number" style="margin:0 0 6px"></p>
+        <p style="color:var(--t2);margin:0">Jarvis ya está en tu chat «Tú» de WhatsApp.</p>
+        <p style="margin:14px 0 0"><button class="btn-danger" id="wa-logout">Desvincular este WhatsApp</button></p>
+      </div>
+      <p class="err hidden" id="wa-err"></p>
+
+      <div class="nav">
+        <button class="btn-link" data-back>← Inicio</button>
+        <button class="btn btn-primary" id="wa-next" disabled>Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- step 2: email -->
+    <div class="panel hidden" data-step="2">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Paso 3 · Correo (opcional)</div>
+      <h2>Conecta tu correo</h2>
+      <p class="lead">Para que Jarvis te avise de correos importantes y los pueda buscar y responder. Puedes conectar uno, los dos o ninguno.</p>
+
+      <div class="accounts">
+        <div class="acc" id="acc-outlook">
+          <button class="acc-head" data-acc="outlook">
+            <span class="acc-logo"><svg width="26" height="26" viewBox="0 0 24 24"><rect x="2" y="5" width="12" height="14" rx="2" fill="#0a64d6"/><rect x="10" y="7" width="12" height="10" rx="1.5" fill="#28a8ea"/><path d="m10 8.5 6 4 6-4" stroke="#fff" stroke-width="1.3" fill="none"/><circle cx="8" cy="12" r="3.2" fill="none" stroke="#fff" stroke-width="1.8"/></svg></span>
+            <span class="acc-title"><b>Outlook / Microsoft 365</b><small id="o-sub">Correo de empresa o personal de Microsoft</small></span>
+            <span class="badge" id="o-badge">—</span>
+          </button>
+          <div class="acc-body hidden" id="o-body">
+            <div id="o-unavailable" class="hidden">
+              <div class="tip">🛠️ Tu administrador todavía está activando Outlook para esta instancia. En cuanto esté, aparecerá aquí el botón para conectarlo.</div>
+            </div>
+            <div id="o-off" class="hidden">
+              <div class="substeps">
+                <div class="sub"><span class="k">1</span><div><p>Pulsa el botón. Te daremos un <b>código corto</b>.</p></div></div>
+                <div class="sub"><span class="k">2</span><div><p>Se abrirá la página de Microsoft: <b>pega el código</b> e inicia sesión con tu cuenta.</p></div></div>
+                <div class="sub"><span class="k">3</span><div><p>Acepta los permisos. Esta pantalla se actualizará sola.</p></div></div>
+              </div>
+              <button class="btn btn-primary" id="o-start">Conectar con Microsoft</button>
+            </div>
+            <div id="o-pending" class="hidden">
+              <p class="lead" style="margin:0">Tu código de Microsoft:</p>
+              <div class="code" id="o-code"></div>
+              <div class="hero-actions" style="margin-top:10px">
+                <button class="btn btn-ghost" id="o-copy">Copiar código</button>
+                <a class="btn btn-primary" id="o-link" target="_blank" rel="noopener">Abrir Microsoft →</a>
+              </div>
+              <p style="text-align:center;color:var(--t2);margin-top:16px"><span class="spinner"></span>&nbsp; Esperando a que inicies sesión…</p>
+            </div>
+            <div id="o-on" class="hidden">
+              <p>✅ Conectado como <b id="o-email"></b>.</p>
+              <button class="btn-danger" id="o-out">Desconectar Outlook</button>
+            </div>
+            <p class="err hidden" id="o-err"></p>
+          </div>
+        </div>
+
+        <div class="acc" id="acc-gmail">
+          <button class="acc-head" data-acc="gmail">
+            <span class="acc-logo"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M3 7v11h4V10l5 4 5-4v8h4V7l-2-2-7 5.5L5 5z" fill="#ea4335"/><path d="M3 7v11h4V10z" fill="#4285f4"/><path d="M17 10v8h4V7z" fill="#34a853"/><path d="M21 7l-2-2-2 1.5V10z" fill="#fbbc04"/></svg></span>
+            <span class="acc-title"><b>Gmail</b><small id="g-sub">Tu cuenta de Google</small></span>
+            <span class="badge" id="g-badge">—</span>
+          </button>
+          <div class="acc-body hidden" id="g-body">
+            <div id="g-off">
+              <div class="substeps">
+                <div class="sub"><span class="k">1</span><div>
+                  <p>Activa la <b>verificación en dos pasos</b> de Google (si ya la tienes, sáltate esto).</p>
+                  <a class="btn btn-ghost" href="https://myaccount.google.com/signinoptions/twosv" target="_blank" rel="noopener">Abrir verificación en dos pasos ↗</a>
+                </div></div>
+                <div class="sub"><span class="k">2</span><div>
+                  <p>Crea una <b>contraseña de aplicación</b>: ponle de nombre <span class="kbd">Jarvis</span> y pulsa <b>Crear</b>. Google te mostrará <b>16 letras</b>: cópialas.</p>
+                  <a class="btn btn-ghost" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Crear contraseña de aplicación ↗</a>
+                </div></div>
+                <div class="sub"><span class="k">3</span><div>
+                  <p>Pega aquí tu correo y esas 16 letras (<b>no</b> tu contraseña normal).</p>
+                  <div class="field"><input class="input" id="g-email" type="email" autocomplete="email" placeholder="tu.nombre@gmail.com"></div>
+                  <div class="field"><input class="input" id="g-pass" type="password" autocomplete="off" placeholder="abcd efgh ijkl mnop"></div>
+                  <button class="btn btn-primary" id="g-save">Conectar Gmail</button>
+                </div></div>
+              </div>
+            </div>
+            <div id="g-on" class="hidden">
+              <p>✅ Conectado como <b id="g-email-on"></b>.</p>
+              <button class="btn-danger" id="g-out">Desconectar Gmail</button>
+            </div>
+            <p class="err hidden" id="g-err"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <button class="btn-link" data-goto="1">← Atrás</button>
+        <button class="btn btn-primary" data-goto="3" id="mail-next">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- step 3: done / status -->
+    <div class="panel hidden" data-step="3">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Paso 4 · Sistemas</div>
+      <h2 id="done-title">Jarvis está listo</h2>
+      <p class="lead">Este es el estado de tus conexiones. Puedes volver aquí cuando quieras.</p>
+      <div class="status-grid">
+        <div class="stat"><small>WhatsApp</small><b><span class="dot" id="st-wa-dot"></span><span id="st-wa">—</span></b><span id="st-wa-sub"></span></div>
+        <div class="stat"><small>Outlook</small><b><span class="dot" id="st-o-dot"></span><span id="st-o">—</span></b><span id="st-o-sub"></span></div>
+        <div class="stat"><small>Gmail</small><b><span class="dot" id="st-g-dot"></span><span id="st-g">—</span></b><span id="st-g-sub"></span></div>
+      </div>
+      <div class="eyebrow" style="margin-top:6px">Pruébalo · toca una frase</div>
+      <p style="color:var(--t2);margin:6px 0 0" id="try-hint">Se abrirá WhatsApp con la frase escrita en tu chat «Tú». Solo tienes que enviarla.</p>
+      <div class="tries" id="tries"></div>
+      <div class="nav">
+        <button class="btn-link" data-goto="2">← Correo</button>
+        <button class="btn btn-ghost" data-goto="1">WhatsApp</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <img src="/jarvis-ui/aifasttrack-mark.svg" alt="">
+  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b></span>
+</footer>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var qsa = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+  var show = function (el, on) { (typeof el === "string" ? $(el) : el).classList.toggle("hidden", !on); };
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var mobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 700;
+
+  // ---------- access key (from #key=… or storage) ----------
+  var STORE = "openjarvis.apiKey";
+  var key = "";
+  var m = location.hash.match(/key=([^&]+)/);
+  if (m) {
+    key = decodeURIComponent(m[1]);
+    try { localStorage.setItem(STORE, key); } catch (e) {}
+    history.replaceState(null, "", location.pathname + location.search);
+  } else {
+    try { key = localStorage.getItem(STORE) || ""; } catch (e) {}
+  }
+
+  function api(method, path, body) {
+    var opts = { method: method, headers: { Authorization: "Bearer " + key } };
+    if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    return fetch(path, opts).then(function (r) {
+      if (r.status === 401) { var e = new Error("auth"); e.auth = true; throw e; }
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) throw new Error((d && d.detail) || ("Error " + r.status));
+        return d;
+      });
+    });
+  }
+
+  function toast(text) {
+    var t = $("toast"); t.textContent = text; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+  function copy(text) {
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+      .then(function () { toast("Copiado ✓"); }, function () { toast(text); });
+  }
+  function codeBoxes(el, code) {
+    el.innerHTML = "";
+    var clean = (code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    clean.split("").forEach(function (ch, i) {
+      if (i === 4 && clean.length === 8) { var s = document.createElement("span"); s.className = "sep"; s.textContent = "–"; el.appendChild(s); }
+      var b = document.createElement("span"); b.textContent = ch; b.style.animationDelay = (i * 50) + "ms"; el.appendChild(b);
+    });
+  }
+
+  // ---------- particles ----------
+  (function particles() {
+    var c = $("particles"); if (!c || reduced) return;
+    var ctx = c.getContext("2d"), pts = [], W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    function size() { W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr; c.style.width = innerWidth + "px"; c.style.height = innerHeight + "px"; }
+    size(); addEventListener("resize", size);
+    var n = Math.min(70, Math.floor(innerWidth / 18));
+    for (var i = 0; i < n; i++) pts.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .25 * dpr, vy: (Math.random() - .5) * .25 * dpr, r: (Math.random() * 1.4 + .4) * dpr, y2: Math.random() < .12 });
+    (function tick() {
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < pts.length; i++) {
+        var p = pts[i]; p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1; if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fillStyle = p.y2 ? "rgba(255,219,5,.7)" : "rgba(0,217,255,.55)"; ctx.fill();
+        for (var j = i + 1; j < pts.length; j++) {
+          var q = pts[j], dx = p.x - q.x, dy = p.y - q.y, d = dx * dx + dy * dy, lim = 130 * dpr;
+          if (d < lim * lim) { ctx.strokeStyle = "rgba(0,217,255," + (0.12 * (1 - Math.sqrt(d) / lim)) + ")"; ctx.lineWidth = dpr * .6; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
+        }
+      }
+      requestAnimationFrame(tick);
+    })();
+  })();
+
+  // ---------- reactor spokes + live readouts ----------
+  (function reactor() {
+    var g = $("spokes"), svgNS = "http://www.w3.org/2000/svg";
+    for (var i = 0; i < 24; i++) {
+      var a = i / 24 * Math.PI * 2, l = document.createElementNS(svgNS, "line"), r1 = i % 2 ? 100 : 104, r2 = 110;
+      l.setAttribute("x1", 200 + Math.cos(a) * r1); l.setAttribute("y1", 200 + Math.sin(a) * r1);
+      l.setAttribute("x2", 200 + Math.cos(a) * r2); l.setAttribute("y2", 200 + Math.sin(a) * r2);
+      g.appendChild(l);
+    }
+    setInterval(function () {
+      $("ro-core").textContent = (97 + Math.random() * 2.9).toFixed(1) + "%";
+      $("ro-lat").textContent = Math.round(28 + Math.random() * 30) + " ms";
+    }, 1400);
+  })();
+
+  // ---------- typing tagline + boot log ----------
+  function typeInto(el, text, speed, done) {
+    if (reduced) { el.textContent = text; done && done(); return; }
+    var i = 0; (function step() { el.textContent = text.slice(0, ++i); if (i < text.length) setTimeout(step, speed); else done && done(); })();
+  }
+  function runBoot(lines) {
+    var box = $("boot"); box.innerHTML = "";
+    lines.forEach(function (l, i) {
+      setTimeout(function () { var d = document.createElement("div"); d.innerHTML = l; box.appendChild(d); }, reduced ? 0 : 450 + i * 420);
+    });
+  }
+
+  // ---------- state ----------
+  var wa = null, mail = null, step = 0, timer = null, prevConnected = null;
+
+  function setSysChip() {
+    var dot = $("sys-dot"), txt = $("sys-text");
+    if (!key) { dot.className = "dot"; txt.textContent = "Sistema en línea"; return; }
+    if (wa && wa.connected) { dot.className = "dot ok"; txt.textContent = "Jarvis operativo"; }
+    else { dot.className = "dot warn"; txt.textContent = "Esperando WhatsApp"; }
+  }
+
+  function refresh() {
+    if (!key) return Promise.resolve();
+    return Promise.all([
+      api("GET", "/api/whatsapp/status").then(function (s) { wa = s; }),
+      api("GET", "/api/mail/status").then(function (s) { mail = s; }, function () { mail = null; })
+    ]).then(render, function (e) {
+      if (e.auth) { key = ""; try { localStorage.removeItem(STORE); } catch (x) {} go(0); $("key-err").textContent = "Esa clave no es correcta."; show("key-err", true); }
+    });
+  }
+  function loop() {
+    clearTimeout(timer);
+    refresh().then(function () {
+      var fast = !(wa && wa.connected) || (mail && mail.outlook && mail.outlook.state === "pending");
+      timer = setTimeout(loop, fast ? 2500 : 10000);
+    });
+  }
+
+  // ---------- navigation ----------
+  function go(n) {
+    step = n;
+    show("landing", false); show("wizard", true);
+    qsa("[data-step]").forEach(function (p) { show(p, +p.getAttribute("data-step") === n); });
+    qsa("#steps li").forEach(function (li) {
+      var s = +li.getAttribute("data-s");
+      li.classList.toggle("on", s === n); li.classList.toggle("done", s < n);
+    });
+    window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    render();
+  }
+  function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
+  function start() {
+    if (!key) return go(0);
+    go(wa && wa.connected ? 3 : 1);
+  }
+  $("cta").onclick = start;
+  qsa("[data-start]").forEach(function (b) { b.onclick = start; });
+  qsa("[data-back]").forEach(function (b) { b.onclick = home; });
+  qsa("[data-goto]").forEach(function (b) { b.onclick = function () { go(+b.getAttribute("data-goto")); }; });
+
+  // ---------- step 0 ----------
+  function tryKey() {
+    var v = $("key").value.trim(); if (!v) return;
+    key = v; show("key-err", false);
+    api("GET", "/api/whatsapp/status").then(function (s) {
+      wa = s; try { localStorage.setItem(STORE, key); } catch (e) {}
+      loop(); go(s.connected ? 3 : 1);
+    }, function (e) {
+      key = ""; $("key-err").textContent = e.auth ? "Esa clave no es correcta." : "No puedo conectar con Jarvis ahora mismo."; show("key-err", true);
+    });
+  }
+  $("key-go").onclick = tryKey;
+  $("key").addEventListener("keydown", function (e) { if (e.key === "Enter") tryKey(); });
+
+  // ---------- step 1: WhatsApp ----------
+  var tab = mobile ? "code" : "qr", lastSvg = "";
+  function setTab(t) {
+    tab = t;
+    qsa("[data-tab]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-tab") === t); });
+    qsa("[data-pane]").forEach(function (p) { show(p, p.getAttribute("data-pane") === t); });
+  }
+  qsa("[data-tab]").forEach(function (b) { b.onclick = function () { setTab(b.getAttribute("data-tab")); }; });
+  setTab(tab);
+
+  $("pc-go").onclick = function () {
+    var cc = $("pc-cc").value.replace(/\D/g, ""), num = $("pc-phone").value.replace(/\D/g, "");
+    if (num.length < 6) { $("pc-err").textContent = "Escribe tu número de móvil."; show("pc-err", true); return; }
+    show("pc-err", false); this.disabled = true; var b = this; b.textContent = "Pidiendo código…";
+    api("POST", "/api/whatsapp/pairing-code", { phone: cc + num }).then(function () {
+      wa && (wa.pairing_code = ""); waitCode(0);
+    }, function (e) { $("pc-err").textContent = e.message; show("pc-err", true); })
+      .then(function () { b.disabled = false; b.textContent = "Pedir código"; });
+  };
+  function waitCode(tries) {
+    api("GET", "/api/whatsapp/status").then(function (s) {
+      wa = s; render();
+      if (!s.pairing_code && !s.pairing_error && !s.connected && tries < 12) setTimeout(function () { waitCode(tries + 1); }, 1000);
+    });
+  }
+  $("pc-copy").onclick = function () { copy((wa && wa.pairing_code) || ""); };
+  $("wa-next").onclick = function () { go(2); };
+  $("wa-logout").onclick = function () {
+    if (!confirm("¿Desvincular este WhatsApp de Jarvis? Tendrás que volver a conectarlo.")) return;
+    api("POST", "/api/whatsapp/logout").then(function () { lastSvg = ""; toast("Desvinculado. Generando un código nuevo…"); refresh(); });
+  };
+
+  function renderWhatsApp() {
+    if (!wa) return;
+    if (!wa.enabled) { $("wa-err").textContent = "WhatsApp no está activado en esta instancia."; show("wa-err", true); return; }
+    show("wa-linking", !wa.connected); show("wa-done", wa.connected);
+    $("wa-next").disabled = !wa.connected;
+    if (wa.connected) {
+      $("wa-number").textContent = wa.me ? "+" + wa.me : "";
+      return;
+    }
+    if (wa.qr_svg && wa.qr_svg !== lastSvg) {
+      lastSvg = wa.qr_svg;
+      $("qr").innerHTML = wa.qr_svg + '<div class="laser"></div>';
+    }
+    var hasCode = !!wa.pairing_code;
+    show("pc-show", hasCode); show("pc-ask", !hasCode);
+    if (hasCode && $("pc-code").getAttribute("data-c") !== wa.pairing_code) {
+      $("pc-code").setAttribute("data-c", wa.pairing_code); codeBoxes($("pc-code"), wa.pairing_code);
+    }
+    if (wa.pairing_error) { $("pc-err").textContent = wa.pairing_error; show("pc-err", true); }
+  }
+
+  // ---------- step 2: email ----------
+  var openAcc = "";
+  qsa("[data-acc]").forEach(function (b) {
+    b.onclick = function () { var a = b.getAttribute("data-acc"); openAcc = openAcc === a ? "" : a; renderMail(); };
+  });
+  function friendly(msg) {
+    if (/AUTHENTICATIONFAILED|Invalid credentials|Application-specific password/i.test(msg))
+      return "Google no ha aceptado la contraseña. Usa la contraseña de aplicación de 16 letras (no tu contraseña normal) y revisa el correo.";
+    return msg;
+  }
+  $("g-save").onclick = function () {
+    var b = this; show("g-err", false);
+    var email = $("g-email").value.trim(), pass = $("g-pass").value;
+    if (!email || pass.replace(/\s/g, "").length < 16) { $("g-err").textContent = "Escribe tu correo y las 16 letras de la contraseña de aplicación."; show("g-err", true); return; }
+    b.disabled = true; b.innerHTML = '<span class="spinner"></span>&nbsp; Comprobando…';
+    api("POST", "/api/mail/gmail", { email: email, app_password: pass }).then(function (s) {
+      mail = s; $("g-pass").value = ""; toast("Gmail conectado ✓"); renderMail();
+    }, function (e) { $("g-err").textContent = friendly(e.message); show("g-err", true); })
+      .then(function () { b.disabled = false; b.textContent = "Conectar Gmail"; });
+  };
+  $("g-out").onclick = function () { if (confirm("¿Desconectar Gmail de Jarvis?")) api("DELETE", "/api/mail/gmail").then(function (s) { mail = s; renderMail(); }); };
+  $("o-start").onclick = function () {
+    var b = this; b.disabled = true; show("o-err", false);
+    api("POST", "/api/mail/outlook/start").then(function (s) {
+      mail = s; renderMail();
+      if (s.outlook && s.outlook.verification_uri) window.open(s.outlook.verification_uri, "_blank", "noopener");
+      loop();
+    }, function (e) { $("o-err").textContent = e.message; show("o-err", true); })
+      .then(function () { b.disabled = false; });
+  };
+  $("o-copy").onclick = function () { copy((mail && mail.outlook && mail.outlook.user_code) || ""); };
+  $("o-out").onclick = function () { if (confirm("¿Desconectar Outlook de Jarvis?")) api("DELETE", "/api/mail/outlook").then(function (s) { mail = s; renderMail(); }); };
+
+  function badge(el, state) {
+    var map = { connected: ["Conectado", "badge ok"], pending: ["Esperando", "badge wait"], unavailable: ["Próximamente", "badge"], error: ["Revisar", "badge wait"] };
+    var v = map[state] || ["Sin conectar", "badge"]; el.textContent = v[0]; el.className = v[1];
+  }
+  function renderMail() {
+    if (!mail) return;
+    var o = mail.outlook || {}, g = mail.gmail || {};
+    badge($("o-badge"), o.state); badge($("g-badge"), g.state);
+    $("o-sub").textContent = o.state === "connected" ? o.email : "Correo de empresa o personal de Microsoft";
+    $("g-sub").textContent = g.state === "connected" ? g.email : "Tu cuenta de Google";
+    if (o.state === "pending" && !openAcc) openAcc = "outlook";
+    $("acc-outlook").classList.toggle("open", openAcc === "outlook"); show("o-body", openAcc === "outlook");
+    $("acc-gmail").classList.toggle("open", openAcc === "gmail"); show("g-body", openAcc === "gmail");
+    show("o-unavailable", o.state === "unavailable"); show("o-off", o.state === "disconnected" || o.state === "error");
+    show("o-pending", o.state === "pending"); show("o-on", o.state === "connected");
+    $("o-email").textContent = o.email || "";
+    if (o.state === "pending") {
+      if ($("o-code").getAttribute("data-c") !== o.user_code) { $("o-code").setAttribute("data-c", o.user_code); codeBoxes($("o-code"), o.user_code); }
+      $("o-link").href = o.verification_uri || "https://microsoft.com/devicelogin";
+    }
+    var oerr = o.error || o.warning || "";
+    $("o-err").textContent = oerr; show("o-err", !!oerr);
+    show("g-off", g.state !== "connected"); show("g-on", g.state === "connected");
+    $("g-email-on").textContent = g.email || "";
+    if (g.warning) { $("g-err").textContent = g.warning; show("g-err", true); }
+    $("mail-next").textContent = (o.state === "connected" || g.state === "connected") ? "Siguiente →" : "Lo haré más tarde →";
+  }
+
+  // ---------- step 3: status ----------
+  var TRIES = [
+    "Hola Jarvis, ¿qué sabes hacer?",
+    "Recuérdame en 5 minutos beber agua",
+    "¿Qué tiempo hará mañana en Madrid?",
+    "¿Qué WhatsApp tengo sin leer?",
+    "¿Tengo correos importantes de hoy?",
+    "Cada día a las 8 resúmeme correos y WhatsApp sin leer",
+    "Acuérdate de que prefiero respuestas cortas"
+  ];
+  function stat(id, ok, label, sub, warn) {
+    $("st-" + id).textContent = label; $("st-" + id + "-sub").textContent = sub || "";
+    $("st-" + id + "-dot").className = "dot " + (ok ? "ok" : warn ? "warn" : "off");
+  }
+  function renderStatus() {
+    if (wa) stat("wa", wa.connected, wa.connected ? "Conectado" : "Sin conectar", wa.connected && wa.me ? "+" + wa.me : "", !wa.connected);
+    if (mail) {
+      var o = mail.outlook || {}, g = mail.gmail || {};
+      stat("o", o.state === "connected", o.state === "connected" ? "Conectado" : o.state === "unavailable" ? "Próximamente" : "Sin conectar", o.email || "");
+      stat("g", g.state === "connected", g.state === "connected" ? "Conectado" : "Sin conectar", g.email || "");
+    }
+    $("done-title").textContent = wa && wa.connected ? "Jarvis está listo" : "Casi listo: falta WhatsApp";
+    var box = $("tries");
+    if (!box.childElementCount || box.getAttribute("data-me") !== String(wa && wa.me)) {
+      box.innerHTML = ""; box.setAttribute("data-me", String(wa && wa.me));
+      TRIES.forEach(function (t) {
+        var a = document.createElement("a"); a.className = "try"; a.textContent = "“" + t + "”";
+        if (wa && wa.me) { a.href = "https://wa.me/" + wa.me + "?text=" + encodeURIComponent(t); a.target = "_blank"; a.rel = "noopener"; }
+        else { a.href = "#"; a.onclick = function (e) { e.preventDefault(); copy(t); }; }
+        box.appendChild(a);
+      });
+    }
+    show("try-hint", !!(wa && wa.me));
+  }
+
+  function render() {
+    setSysChip();
+    var r = $("reactor");
+    if (wa) {
+      if (prevConnected === false && wa.connected) {
+        r.classList.add("burst"); setTimeout(function () { r.classList.remove("burst"); }, 1200);
+        toast("¡WhatsApp conectado!");
+      }
+      prevConnected = !!wa.connected;
+      r.classList.toggle("linked", !!wa.connected);
+      $("ro-link").textContent = wa.connected ? "Activo" : "Pendiente";
+    }
+    renderWhatsApp(); renderMail(); renderStatus();
+  }
+
+  // ---------- capability cards: reveal + glow follow ----------
+  var io = "IntersectionObserver" in window ? new IntersectionObserver(function (es) {
+    es.forEach(function (e, i) { if (e.isIntersecting) { setTimeout(function () { e.target.classList.add("in"); }, i * 90); io.unobserve(e.target); } });
+  }, { threshold: .15 }) : null;
+  qsa(".card").forEach(function (c) {
+    io ? io.observe(c) : c.classList.add("in");
+    c.addEventListener("pointermove", function (e) { var b = c.getBoundingClientRect(); c.style.setProperty("--mx", ((e.clientX - b.left) / b.width * 100) + "%"); });
+  });
+
+  // ---------- boot ----------
+  typeInto($("tagline"), "Tu asistente personal. En tu WhatsApp. Siempre activo.", 38);
+  function boot() {
+    var lines = [
+      '<span class="hl">›</span> Inicializando núcleo de IA ……… <span class="ok">OK</span>',
+      '<span class="hl">›</span> Protocolos de seguridad ……… <span class="ok">OK</span>'
+    ];
+    if (!key) {
+      lines.push('<span class="hl">›</span> Identificación ……… <span class="wait">pendiente</span>');
+    } else if (wa) {
+      lines.push('<span class="hl">›</span> Enlace WhatsApp ……… ' + (wa.connected ? '<span class="ok">ACTIVO</span>' : '<span class="wait">esperando</span>'));
+      if (mail) {
+        var n = (mail.outlook && mail.outlook.state === "connected" ? 1 : 0) + (mail.gmail && mail.gmail.state === "connected" ? 1 : 0);
+        lines.push('<span class="hl">›</span> Correo ……… ' + (n ? '<span class="ok">' + n + ' cuenta' + (n > 1 ? 's' : '') + '</span>' : '<span class="wait">sin conectar</span>'));
+      }
+      lines.push(wa.connected ? '<span class="hl">›</span> Todos los sistemas operativos.' : '<span class="hl">›</span> Pulsa «Activar» para completar la configuración.');
+    }
+    runBoot(lines);
+    $("cta").innerHTML = (wa && wa.connected) ? 'Ver estado de Jarvis <span aria-hidden="true">→</span>' : 'Activar a Jarvis <span aria-hidden="true">→</span>';
+  }
+
+  // ?paso=whatsapp|correo|estado opens that wizard step directly.
+  var STEP_NAMES = { acceso: 0, whatsapp: 1, correo: 2, estado: 3 };
+  var wanted = STEP_NAMES[(new URLSearchParams(location.search).get("paso") || "").toLowerCase()];
+  if (key) {
+    refresh().then(function () { boot(); loop(); if (wanted !== undefined) go(wanted); });
+  } else {
+    boot(); if (wanted !== undefined) go(0);
+  }
+})();
+</script>
+</body>
+</html>

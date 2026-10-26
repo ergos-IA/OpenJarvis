@@ -163,6 +163,9 @@ class WhatsAppBaileysChannel(BaseChannel):
         self._runtime_dir = _DEFAULT_RUNTIME_DIR
         self._last_qr: str = ""
         self._last_qr_svg: str = ""
+        # Pairing by code (phone number) instead of QR.
+        self._pairing_code: str = ""
+        self._pairing_error: str = ""
         self._me: str = ""
         self._last_error: str = ""
         self._stderr_thread: Optional[threading.Thread] = None
@@ -595,8 +598,26 @@ class WhatsAppBaileysChannel(BaseChannel):
             "me": self._me if connected else "",
             "mode": "own" if self._assistant_has_own_number else "self",
             "qr_svg": "" if connected else self._last_qr_svg,
+            "pairing_code": "" if connected else self._pairing_code,
+            "pairing_error": "" if connected else self._pairing_error,
             "error": self._last_error,
         }
+
+    def request_pairing_code(self, phone: str) -> bool:
+        """Ask WhatsApp for a code to link by phone number instead of QR.
+
+        The code arrives asynchronously in :meth:`pairing_info`.
+        """
+        if self._process is None:
+            return False
+        self._pairing_code = ""
+        self._pairing_error = ""
+        try:
+            self._write_command({"type": "pairing_code", "phone": phone})
+            return True
+        except Exception:
+            logger.debug("WhatsApp pairing code request failed", exc_info=True)
+            return False
 
     def logout(self) -> bool:
         """Unlink the WhatsApp device; the bridge then offers a new QR."""
@@ -681,6 +702,8 @@ class WhatsAppBaileysChannel(BaseChannel):
                 self._me = event.get("me", "")
                 self._last_qr = ""
                 self._last_qr_svg = ""
+                self._pairing_code = ""
+                self._pairing_error = ""
                 self._last_error = ""
                 logger.info("WhatsApp Baileys bridge connected")
             elif new_status in ("disconnected", "logged_out"):
@@ -688,6 +711,10 @@ class WhatsAppBaileysChannel(BaseChannel):
                 self._me = ""
                 if new_status == "logged_out":
                     logger.info("WhatsApp device unlinked -- waiting for new QR")
+
+        elif event_type == "pairing_code":
+            self._pairing_code = event.get("code", "")
+            self._pairing_error = event.get("error", "")
 
         elif event_type == "qr":
             self._last_qr = event.get("data", "")

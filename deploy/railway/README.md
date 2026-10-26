@@ -22,7 +22,7 @@ ve todo lo de esa instancia. Por eso **una persona = un servicio**.
 |---|---|
 | Imagen con OpenAI + Claude y Node para WhatsApp | `deploy/railway/Dockerfile` |
 | Arranque: puerto `$PORT`, permisos del volumen, `config.toml` desde variables | `deploy/railway/entrypoint.sh`, `bootstrap_config.py` |
-| Página para escanear el QR de WhatsApp | `/whatsapp` (`src/openjarvis/server/whatsapp_routes.py`) |
+| Portada animada y asistente paso a paso (WhatsApp por QR o por código, correo, estado) | `/` (`server/jarvis_ui_routes.py`, `server/jarvis_ui/`) |
 | WhatsApp en modo personal: solo responde en el chat **"Tú" (mensajes a ti mismo)** | `whatsapp_baileys_bridge/src/bridge.ts` |
 | Bandeja de entrada: guarda y avisa de mensajes de otros; contactos | `channels/whatsapp_store.py` |
 | Herramientas: leer mensajes, buscar contactos, enviar con confirmación «sí» | `tools/whatsapp_tools.py` |
@@ -31,7 +31,8 @@ ve todo lo de esa instancia. Por eso **una persona = un servicio**.
 
 ## Cómo funciona WhatsApp (modo `self`, el de por defecto)
 
-1. La persona abre `https://<su-instancia>/whatsapp`, ve un QR y lo escanea
+1. La persona abre `https://<su-instancia>/#key=…`, pulsa *Activar a Jarvis* y escanea el QR
+   (o, si lo abre en el propio móvil, pide un código de 8 letras y lo escribe en WhatsApp)
    desde **WhatsApp → Ajustes → Dispositivos vinculados → Vincular dispositivo**
    (igual que WhatsApp Web).
 2. La sesión se guarda en el volumen (`/data/whatsapp_auth`). Sobrevive a
@@ -98,7 +99,7 @@ genera un QR nuevo automáticamente.
 ## Correo: Outlook (Microsoft 365) y Gmail
 
 Cada instancia puede conectar **una cuenta de Outlook / Microsoft 365 y una de
-Gmail** desde `https://<dominio>/correo` (la página del QR lleva un enlace).
+Gmail** en el paso 3 del asistente (`https://<dominio>/?paso=correo`).
 Con ellas Jarvis:
 
 - **te avisa por WhatsApp** de los correos nuevos importantes (Gmail: pestaña
@@ -110,10 +111,10 @@ Con ellas Jarvis:
 
 **Gmail**: activa la verificación en dos pasos y crea una
 [contraseña de aplicación](https://myaccount.google.com/apppasswords); en
-`/correo` pegas tu dirección y esa contraseña (no tu contraseña normal).
+el asistente pegas tu dirección y esa contraseña (no tu contraseña normal).
 
 **Outlook / Microsoft 365**: se inicia sesión con un código (como en una
-tele): `/correo` → *Conectar Outlook* → abres microsoft.com/devicelogin, pones
+tele): asistente → *Conectar con Microsoft* → abres microsoft.com/devicelogin, pones
 el código y aceptas. Requiere, una sola vez por empresa, registrar una app en
 Microsoft Entra:
 
@@ -177,7 +178,7 @@ genera su clave de acceso, crea un dominio y te imprime el **enlace de
 vinculación**:
 
 ```
-https://jarvis-maria-production.up.railway.app/whatsapp#key=oj_sk_...
+https://jarvis-maria-production.up.railway.app/#key=oj_sk_...
 ```
 
 Envía ese enlace a la persona (por un canal privado: lleva su clave). Al
@@ -202,7 +203,7 @@ El primer despliegue tarda unos 10-15 minutos (compila la imagen).
 
 3. Clic derecho en el servicio → **Attach Volume** → mount path `/data`.
 4. **Settings → Networking → Generate Domain** (puerto 8000).
-5. Abre `https://<dominio>/whatsapp#key=<OPENJARVIS_API_KEY>`.
+5. Abre `https://<dominio>/#key=<OPENJARVIS_API_KEY>`.
 
 ## Variables de entorno
 
@@ -266,7 +267,7 @@ railway variable set JARVIS_MODEL=claude-sonnet-4-6 --service jarvis-maria
 | Síntoma | Causa / solución |
 |---|---|
 | El servicio se reinicia con `OPENJARVIS_API_KEY no está definida` | Falta la variable |
-| `/whatsapp` dice "WhatsApp no está activado" | `WHATSAPP_ENABLED=false`, o el canal no arrancó: mira los logs |
+| El asistente dice "WhatsApp no está activado" | `WHATSAPP_ENABLED=false`, o el canal no arrancó: mira los logs |
 | El QR no aparece | Espera ~30 s tras el arranque; revisa los logs (`Bridge error`) |
 | Tras un redeploy pide QR otra vez | El volumen no está montado en `/data` |
 | Jarvis no contesta | Escribe en el chat **contigo mismo**, no en otro chat (modo `self`) |

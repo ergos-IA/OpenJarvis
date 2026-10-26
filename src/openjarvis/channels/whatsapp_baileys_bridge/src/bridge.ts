@@ -6,6 +6,10 @@
  * Input commands (stdin):
  *   {"type":"send","jid":"<jid>","text":"<message>","request_id":"<id>"?}
  *   {"type":"logout"}       -- unlink the device, wipe auth, emit a new QR
+ *   {"type":"pairing_code","phone":"<digits>"}
+ *                           -- link by typing a code on the phone instead of
+ *                              scanning the QR (for when the page is opened
+ *                              on that same phone)
  *   {"type":"disconnect"}
  *
  * Output events (stdout):
@@ -19,6 +23,7 @@
  *   {"type":"contact","jid":..,"phone":..,"name":..,"push_name":..}
  *   {"type":"send_result","request_id":..,"ok":bool,"jid":..,"error":..}
  *        -- only for sends that carried a request_id
+ *   {"type":"pairing_code","phone":..,"code":"ABCD1234","error":..}
  *
  * Arguments:
  *   --auth-dir <dir>      Baileys multi-file auth state (persist this!)
@@ -371,6 +376,19 @@ async function main(): Promise<void> {
         } else {
           emit({ type: "error", message: `Send failed: ${err.message}` });
         }
+      }
+    } else if (cmd.type === "pairing_code") {
+      const phone = digits(String(cmd.phone || ""));
+      try {
+        if (!sock) throw new Error("WhatsApp todavía está arrancando");
+        if ((sock.authState?.creds as any)?.registered) {
+          throw new Error("Este WhatsApp ya está vinculado");
+        }
+        if (phone.length < 8) throw new Error("Número no válido");
+        const code = await sock.requestPairingCode(phone);
+        emit({ type: "pairing_code", phone, code });
+      } catch (err: any) {
+        emit({ type: "pairing_code", phone, code: "", error: err.message });
       }
     } else if (cmd.type === "logout") {
       try {

@@ -94,7 +94,66 @@ class TestLogout:
 
 
 class TestPage:
-    def test_page_is_public(self, mock_engine):
-        resp = _client(mock_engine, api_key="secret").get("/whatsapp")
+    def test_old_page_redirects_to_home(self, mock_engine):
+        client = _client(mock_engine, api_key="secret")
+        resp = client.get("/whatsapp", follow_redirects=False)
+        assert resp.status_code == 307
+        assert resp.headers["location"] == "/?paso=whatsapp"
+        resp = client.get("/whatsapp")
         assert resp.status_code == 200
-        assert "Vincular WhatsApp" in resp.text
+        assert "Conecta tu WhatsApp" in resp.text
+
+    def test_home_is_public(self, mock_engine):
+        resp = _client(mock_engine, api_key="secret").get("/")
+        assert resp.status_code == 200
+        assert "JARVIS" in resp.text and "/jarvis-ui/aifasttrack-logo.svg" in resp.text
+
+    def test_assets(self, mock_engine):
+        client = _client(mock_engine, api_key="secret")
+        logo = client.get("/jarvis-ui/aifasttrack-logo.svg")
+        assert logo.status_code == 200
+        assert logo.headers["content-type"].startswith("image/svg+xml")
+        font = client.get("/jarvis-ui/inter.woff2")
+        assert font.headers["content-type"] == "font/woff2"
+        assert client.get("/jarvis-ui/index.html").status_code == 404
+        assert client.get("/jarvis-ui/..%2Fapp.py").status_code == 404
+
+
+class TestPairingCode:
+    def test_requires_channel(self, mock_engine):
+        resp = _client(mock_engine).post(
+            "/api/whatsapp/pairing-code", json={"phone": "600111222"}
+        )
+        assert resp.status_code == 404
+
+    def test_spanish_number_gets_prefix(self, mock_engine):
+        ch = WhatsAppBaileysChannel()
+        ch._process = MagicMock()
+        resp = _client(mock_engine, _wrapped(ch)).post(
+            "/api/whatsapp/pairing-code", json={"phone": "600 111 222"}
+        )
+        assert resp.status_code == 200
+        written = ch._process.stdin.write.call_args[0][0]
+        assert '"phone":"34600111222"' in written
+
+    def test_invalid_number(self, mock_engine):
+        ch = WhatsAppBaileysChannel()
+        ch._process = MagicMock()
+        resp = _client(mock_engine, _wrapped(ch)).post(
+            "/api/whatsapp/pairing-code", json={"phone": "123"}
+        )
+        assert resp.status_code == 400
+
+    def test_code_reported_until_connected(self):
+        ch = WhatsAppBaileysChannel()
+        ch._handle_bridge_event({"type": "pairing_code", "code": "ABCD1234"})
+        assert ch.pairing_info()["pairing_code"] == "ABCD1234"
+        ch._handle_bridge_event({"type": "status", "status": "connected", "me": "1"})
+        assert ch.pairing_info()["pairing_code"] == ""
+
+    def test_error_reported(self):
+        ch = WhatsAppBaileysChannel()
+        ch._handle_bridge_event(
+            {"type": "pairing_code", "code": "", "error": "Número no válido"}
+        )
+        assert ch.pairing_info()["pairing_error"] == "Número no válido"

@@ -123,11 +123,11 @@ Write-Host "Instancia creada: $service" -ForegroundColor Green
 Write-Host "  Clave de acceso : $apiKey"
 if ($domain) {
   Write-Host "  Web             : https://$domain"
-  Write-Host "  Vincular WhatsApp (envía este enlace a la persona):"
-  Write-Host "    https://$domain/whatsapp#key=$apiKey" -ForegroundColor Cyan
+  Write-Host "  Asistente de configuración (envía este enlace a la persona):"
+  Write-Host "    https://$domain/#key=$apiKey" -ForegroundColor Cyan
 } else {
   Write-Host "  No pude leer el dominio. Créalo en Railway > $service > Settings > Networking" -ForegroundColor Yellow
-  Write-Host "  y abre https://<dominio>/whatsapp#key=$apiKey"
+  Write-Host "  y abre https://<dominio>/#key=$apiKey"
 }
 Write-Host ""
 Write-Host "El primer despliegue tarda ~10-15 min (compila la imagen). Sigue el progreso con:"
