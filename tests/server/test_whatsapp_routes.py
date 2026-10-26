@@ -137,6 +137,12 @@ class TestJarvisInfo:
         assert data["provider_label"] == "Anthropic"
         assert data["user_name"] == "José Miguel"
 
+    def test_old_service_worker_is_retired(self, mock_engine):
+        resp = _client(mock_engine, api_key="k").get("/sw.js")
+        assert resp.status_code == 200
+        assert "unregister" in resp.text
+        assert resp.headers["cache-control"] == "no-store"
+
     def test_privacy_page_public(self, mock_engine):
         resp = _client(mock_engine, api_key="k").get("/privacidad")
         assert resp.status_code == 200 and "AI Fast Track" in resp.text

@@ -590,6 +590,12 @@ footer img { width: 22px; height: 22px; }
 <script>
 (function () {
   "use strict";
+  // Retire the old OpenJarvis web app's service worker if this browser has it.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (r) { r.unregister(); });
+    }).catch(function () {});
+  }
   var $ = function (id) { return document.getElementById(id); };
   var qsa = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
   var show = function (el, on) { (typeof el === "string" ? $(el) : el).classList.toggle("hidden", !on); };

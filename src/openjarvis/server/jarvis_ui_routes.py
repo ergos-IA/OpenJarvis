@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
 router = APIRouter(tags=["jarvis-ui"])
 
@@ -47,6 +47,37 @@ async def legacy_whatsapp_page() -> RedirectResponse:
 @router.get("/correo", include_in_schema=False)
 async def legacy_mail_page() -> RedirectResponse:
     return RedirectResponse("/?paso=correo", status_code=307)
+
+
+# The upstream SPA installed a PWA service worker (/sw.js) that keeps serving
+# its cached UI. Browsers re-fetch /sw.js to update it: this replacement
+# unregisters itself and reloads open tabs so they get the AI Fast Track page.
+_KILL_SW = """
+self.addEventListener("install", function () { self.skipWaiting(); });
+self.addEventListener("activate", function (event) {
+  event.waitUntil(
+    caches.keys()
+      .then(function (keys) {
+        return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+      })
+      .then(function () { return self.registration.unregister(); })
+      .then(function () { return self.clients.matchAll({ type: "window" }); })
+      .then(function (clients) {
+        clients.forEach(function (c) { c.navigate(c.url); });
+      })
+  );
+});
+"""
+
+
+@router.get("/sw.js", include_in_schema=False)
+@router.get("/service-worker.js", include_in_schema=False)
+async def retire_service_worker() -> Response:
+    return Response(
+        _KILL_SW,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.get("/api/jarvis/info")
