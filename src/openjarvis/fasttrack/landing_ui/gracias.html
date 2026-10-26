@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#040506">
+<meta name="robots" content="noindex">
+<title>Pago completado · Jarvis · AI Fast Track</title>
+<link rel="icon" href="/jarvis-ui/aifasttrack-mark.svg" type="image/svg+xml">
+<style>
+@font-face { font-family: "Space Grotesk"; font-weight: 300 700; font-display: swap; src: url("/jarvis-ui/space-grotesk.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400 600; font-display: swap; src: url("/jarvis-ui/jetbrains-mono.woff2") format("woff2"); }
+:root {
+  --bg: #040506; --panel: #080b0d; --line: #1d242b; --line3: #2a323a;
+  --t1: #e8ecef; --t2: #aab4bd; --t3: #8b96a0;
+  --accent: #00d9ff; --yellow: #ffdb05; --green: #22c55e;
+  --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--t1); font-family: var(--sans); -webkit-font-smoothing: antialiased; display: grid; place-items: center; padding: 24px 16px; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(232,236,239,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(232,236,239,.03) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(ellipse at 50% 40%, #000 20%, transparent 70%); -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 20%, transparent 70%); }
+body::after { content: ""; position: fixed; left: 50%; top: 40%; width: min(900px, 100vw); height: 700px; transform: translate(-50%, -50%); pointer-events: none; background: radial-gradient(closest-side, rgba(0,217,255,.14), transparent); }
+main { position: relative; z-index: 1; width: min(560px, 100%); text-align: center; }
+.logo { height: 24px; margin-bottom: 40px; }
+.ring { position: relative; width: 120px; height: 120px; margin: 0 auto 32px; }
+.ring svg { position: absolute; inset: 0; }
+.ring .track { stroke: var(--line3); }
+.ring .arc { stroke: var(--accent); stroke-dasharray: 339; stroke-dashoffset: 339; animation: draw 1s cubic-bezier(.6,0,.2,1) forwards; filter: drop-shadow(0 0 8px rgba(0,217,255,.6)); }
+.ring .tick { stroke: var(--yellow); stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw .5s .9s ease-out forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .22em; color: var(--accent); }
+h1 { margin: 14px 0 16px; font-weight: 500; font-size: clamp(34px, 8vw, 52px); line-height: 1.02; letter-spacing: -.03em; }
+.lead { margin: 0 auto; max-width: 460px; color: var(--t2); font-size: 17px; line-height: 1.6; }
+.steps { margin: 34px 0 0; padding: 0; list-style: none; text-align: left; border: 1px solid var(--line); background: rgba(8,11,13,.8); }
+.steps li { display: flex; gap: 16px; align-items: flex-start; padding: 16px 18px; color: var(--t2); line-height: 1.5; opacity: 0; transform: translateY(8px); animation: rise .5s forwards; }
+.steps li + li { border-top: 1px solid var(--line); }
+.steps li:nth-child(1) { animation-delay: 1.1s; } .steps li:nth-child(2) { animation-delay: 1.3s; } .steps li:nth-child(3) { animation-delay: 1.5s; }
+.steps b { color: var(--t1); font-weight: 500; }
+.steps .n { font-family: var(--mono); font-size: 12px; color: var(--accent); padding-top: 3px; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+.back { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.btn { min-height: 52px; padding: 0 26px; border: 0; background: var(--yellow); color: var(--bg); font-family: var(--mono); font-weight: 600; font-size: 13px; letter-spacing: .14em; display: inline-flex; align-items: center; text-decoration: none; }
+.btn:hover { background: #ffe94d; color: var(--bg); }
+.count { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; color: var(--t3); }
+.bar { width: 200px; height: 2px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left; animation: shrink var(--secs, 12s) linear forwards; }
+@keyframes shrink { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { *, *::before { animation-duration: .01s !important; animation-delay: 0s !important; } .bar i { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track">
+  <div class="ring" aria-hidden="true">
+    <svg viewBox="0 0 120 120" fill="none" stroke-width="3"><circle class="track" cx="60" cy="60" r="54"/><circle class="arc" cx="60" cy="60" r="54" transform="rotate(-90 60 60)" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 120 120" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="tick" d="M40 62 54 76 82 46"/></svg>
+  </div>
+  <div class="eyebrow">[ PAGO COMPLETADO ]</div>
+  <h1>¡Bienvenido a Jarvis!</h1>
+  <p class="lead">Ya estamos preparando tu asistente personal. No tienes que hacer nada más ahora.</p>
+  <ol class="steps">
+    <li><span class="n">01</span><span><b>Ahora</b>: te llega un email de bienvenida.</span></li>
+    <li><span class="n">02</span><span><b>En unos minutos</b>, cuando tu Jarvis esté listo, recibirás un segundo email con tu <b>código y enlace de acceso</b>.</span></li>
+    <li><span class="n">03</span><span>Entras, vinculas tu WhatsApp y empiezas a hablar con él. Si no ves los emails, revisa la carpeta de spam.</span></li>
+  </ol>
+  <div class="back">
+    <a class="btn" href="/" id="home">VOLVER A LA WEB →</a>
+    <span class="count" id="count" role="status">Volviendo a la web en 12 s</span>
+    <span class="bar" aria-hidden="true"><i></i></span>
+  </div>
+</main>
+<script>
+(function () {
+  "use strict";
+  var secs = 12, el = document.getElementById("count");
+  var t = setInterval(function () {
+    secs -= 1;
+    if (secs <= 0) { clearInterval(t); location.replace("/"); return; }
+    el.textContent = "Volviendo a la web en " + secs + " s";
+  }, 1000);
+})();
+</script>
+</body>
+</html>

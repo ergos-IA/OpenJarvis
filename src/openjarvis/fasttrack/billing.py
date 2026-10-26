@@ -202,7 +202,7 @@ async def signup_session(
                     )
                 }
             },
-            "success_url": f"{base}/?alta=ok",
+            "success_url": f"{base}/gracias",
             "cancel_url": f"{base}/#precios",
         },
     )

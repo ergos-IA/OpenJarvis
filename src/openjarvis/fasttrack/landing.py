@@ -203,6 +203,11 @@ def create_landing_app(
         html = html.replace("{{CONTACT_URL}}", contact)
         return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
+    @app.get("/gracias", response_class=HTMLResponse)
+    async def thanks_page() -> HTMLResponse:
+        html = (_UI_DIR / "gracias.html").read_text(encoding="utf-8")
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
     @app.get("/cuenta", response_class=HTMLResponse)
     async def account_page() -> HTMLResponse:
         html = (_UI_DIR / "cuenta.html").read_text(encoding="utf-8")

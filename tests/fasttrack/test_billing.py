@@ -434,3 +434,12 @@ class TestFulfillment:
     def test_event_dedupe(self):
         ful = billing.Fulfillment(object(), lambda **kw: None)
         assert ful.first_time("evt_a") and not ful.first_time("evt_a")
+
+
+def test_after_paying_customers_land_on_thanks_page(site):
+    client, fake, _ = site()
+    client.post("/api/alta", json={"plan": "own", "interval": "month"})
+    assert fake.sessions()[0]["success_url"].endswith("/gracias")
+    r = client.get("/gracias")
+    assert r.status_code == 200 and "PAGO COMPLETADO" in r.text
+    assert 'location.replace("/")' in r.text  # returns to the site by itself
