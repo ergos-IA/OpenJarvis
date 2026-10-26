@@ -32,6 +32,18 @@ button { font: inherit; }
 
 
 
+/* ---------- notification settings ---------- */
+.notif { margin: 18px 0 0; padding: 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
+.notif p { color: var(--t2); margin: 8px 0 14px; line-height: 1.5; }
+.notif-modes { display: grid; gap: 8px; }
+.notif-modes label { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; padding: 12px; border-radius: 11px; border: 1px solid var(--line); cursor: pointer; }
+.notif-modes label:has(input:checked) { border-color: rgba(255,219,5,.5); background: rgba(255,219,5,.05); }
+.notif-modes input { accent-color: var(--yellow); margin-top: 3px; }
+.notif-modes b { display: block; font-weight: 600; }
+.notif-modes span { color: var(--t3); font-size: 13px; }
+.notif .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.notif .row .input { flex: 1 1 240px; }
+
 /* ---------- how to talk to Jarvis (chat with yourself) ---------- */
 .selfchat { text-align: left; margin: 18px 0 0; padding: 18px; border-radius: 14px; border: 1px solid rgba(0,217,255,.3); background: rgba(0,217,255,.05); }
 .selfchat p { color: var(--t2); margin: 8px 0 14px; line-height: 1.55; }
@@ -777,6 +789,22 @@ footer img { width: 22px; height: 22px; }
         <div class="stat" data-goto="0.5"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
         <div class="stat" data-goto="2.5"><small>Conectores</small><b><span class="dot" id="st-c-dot"></span><span id="st-c">—</span></b><span id="st-c-sub">Calendario, Notion, Todoist…</span></div>
       </div>
+      <div class="notif" id="notif">
+        <div class="eyebrow">Avisos de WhatsApp</div>
+        <p>¿De qué mensajes que te mandan otras personas quieres que Jarvis te avise en tu chat? Los demás se guardan y puedes pedírselos cuando quieras («¿qué WhatsApp tengo sin leer?»).</p>
+        <div class="notif-modes" id="notif-modes">
+          <label><input type="radio" name="notif-mode" value="important"><div><b>Solo lo importante (recomendado)</b><span>Contactos VIP, mensajes urgentes («urgente», «llámame»…), alguien que insiste, o lo que Jarvis considere importante.</span></div></label>
+          <label><input type="radio" name="notif-mode" value="contacts"><div><b>Todo lo de mis contactos</b><span>Cualquier mensaje de alguien que tengas guardado.</span></div></label>
+          <label><input type="radio" name="notif-mode" value="all"><div><b>Todos los mensajes</b><span>Cada mensaje individual que recibas (puede ser mucho).</span></div></label>
+          <label><input type="radio" name="notif-mode" value="none"><div><b>Ninguno</b><span>Jarvis no te avisa; solo te lo cuenta si se lo pides.</span></div></label>
+        </div>
+        <label for="notif-vip" style="display:block;margin-top:16px;font-size:13px;font-weight:600;color:var(--t2)">Contactos VIP: siempre te aviso</label>
+        <div class="row">
+          <input class="input" id="notif-vip" placeholder="Mamá, Ana López, 600123456…" autocomplete="off">
+          <button class="btn btn-primary" id="notif-save" type="button">Guardar</button>
+        </div>
+        <p style="font-size:13px;color:var(--t3);margin:10px 0 0">Separa los nombres con comas. También puedes decírselo por WhatsApp: «avísame siempre de Ana» o «no me avises de nada».</p>
+      </div>
       <div class="selfchat">
         <div class="eyebrow">Cómo hablar con Jarvis</div>
         <p>Jarvis vive en <b>tu chat contigo mismo</b> de WhatsApp. Según el móvil aparece como <b>«Tú»</b>, <b>«Yo»</b> o <b>«Mensaje para ti»</b>, con tu propia foto. No tienes que añadir ningún contacto.</p>
@@ -972,6 +1000,7 @@ footer img { width: 22px; height: 22px; }
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
     render();
     if (n === 2.5) loadConns();
+    if (n === 3) loadNotif();
   }
   function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
   function aiReady() { return !ai || ai.configured; }
@@ -993,6 +1022,32 @@ footer img { width: 22px; height: 22px; }
   qsa("[data-back]").forEach(function (b) { b.onclick = home; });
   qsa("[data-goto]").forEach(function (b) { b.onclick = function () { go(+b.getAttribute("data-goto")); }; });
 
+
+
+  // ---------- notification settings ----------
+  var notifLoaded = false;
+  function loadNotif() {
+    if (!wa || !wa.enabled) { show("notif", false); return; }
+    api("GET", "/api/whatsapp/notify").then(function (st) {
+      show("notif", true);
+      qsa('input[name="notif-mode"]').forEach(function (r) { r.checked = r.value === st.mode; });
+      if (!notifLoaded || document.activeElement !== $("notif-vip")) $("notif-vip").value = (st.vip || []).join(", ");
+      notifLoaded = true;
+    }, function () { show("notif", false); });
+  }
+  $("notif-save").onclick = function () {
+    var b = this, sel = document.querySelector('input[name="notif-mode"]:checked');
+    var vip = $("notif-vip").value.split(",").map(function (x) { return x.trim(); }).filter(Boolean);
+    b.disabled = true;
+    api("POST", "/api/whatsapp/notify", { mode: sel ? sel.value : "important", vip: vip }).then(function () {
+      toast("Avisos guardados ✓");
+    }, function (e) { toast(e.message); }).then(function () { b.disabled = false; });
+  };
+  qsa('input[name="notif-mode"]').forEach(function (r) {
+    r.onchange = function () {
+      api("POST", "/api/whatsapp/notify", { mode: r.value }).then(function (st) { toast("Avisos: " + st.mode_label); }, function (e) { toast(e.message); });
+    };
+  });
 
   // ---------- step 2.5: connectors ----------
   var conns = null, connCat = "all", connCur = null;

@@ -270,15 +270,97 @@ class WhatsAppSendMessageTool(BaseTool):
         return _fail(self.tool_id, f"No se pudo enviar: {result.get('error')}")
 
 
+@ToolRegistry.register("whatsapp_notify_settings")
+class WhatsAppNotifySettingsTool(BaseTool):
+    """See or change which incoming messages Jarvis forwards to the user."""
+
+    tool_id = "whatsapp_notify_settings"
+    is_local = True
+
+    @property
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name="whatsapp_notify_settings",
+            description=(
+                "Consulta o cambia de qué mensajes de WhatsApp recibidos avisas "
+                "al usuario en su chat. Modos: important (solo lo importante: "
+                "VIP, urgente, insistente o que juzgues importante), all (todo), "
+                "contacts (todo lo de sus contactos), none (nada). Usa add_vip / "
+                "remove_vip cuando pida «avísame siempre de X» o «deja de "
+                "avisarme de X», y add_keyword para palabras que siempre "
+                "merecen aviso."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "show",
+                            "set_mode",
+                            "add_vip",
+                            "remove_vip",
+                            "add_keyword",
+                            "remove_keyword",
+                        ],
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Modo, nombre/número de contacto o palabra.",
+                    },
+                },
+                "required": ["action"],
+            },
+            category="channel",
+        )
+
+    def execute(self, **params: Any) -> ToolResult:
+        ch = _channel()
+        if ch is None:
+            return _fail(self.tool_id, _NOT_CONNECTED)
+        policy = ch.notify_policy
+        action = params.get("action", "show")
+        value = str(params.get("value", "") or "").strip()
+        try:
+            if action == "set_mode":
+                policy.update(mode=value)
+            elif action == "add_vip" and value:
+                policy.add_vip(value)
+            elif action == "remove_vip" and value:
+                policy.remove_vip(value)
+            elif action == "add_keyword" and value:
+                policy.update(keywords=policy.settings()["keywords"] + [value])
+            elif action == "remove_keyword" and value:
+                policy.update(
+                    keywords=[
+                        k
+                        for k in policy.settings()["keywords"]
+                        if k.lower() != value.lower()
+                    ]
+                )
+        except ValueError as exc:
+            return _fail(self.tool_id, str(exc))
+        st = policy.settings()
+        lines = [f"Avisos: {st['mode_label']}"]
+        lines.append("VIP (siempre aviso): " + (", ".join(st["vip"]) or "ninguno"))
+        if st["keywords"]:
+            lines.append("Palabras clave: " + ", ".join(st["keywords"]))
+        return ToolResult(
+            tool_name=self.tool_id, content="\n".join(lines), success=True
+        )
+
+
 WHATSAPP_TOOLS: List[str] = [
     "whatsapp_read_messages",
     "whatsapp_find_contact",
     "whatsapp_send_message",
+    "whatsapp_notify_settings",
 ]
 
 __all__ = [
     "WHATSAPP_TOOLS",
     "WhatsAppFindContactTool",
+    "WhatsAppNotifySettingsTool",
     "WhatsAppReadMessagesTool",
     "WhatsAppSendMessageTool",
 ]

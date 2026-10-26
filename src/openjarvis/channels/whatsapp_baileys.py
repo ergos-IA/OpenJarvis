@@ -55,7 +55,7 @@ _RESTART_DELAY_S = 5.0
 
 
 # Notification modes for messages from other chats.
-_NOTIFY_MODES = ("all", "contacts", "none")
+_NOTIFY_MODES = ("important", "all", "contacts", "none")
 
 # A drafted outgoing message waits this long for the user's "sí".
 _PENDING_TTL_S = 600.0
@@ -135,9 +135,11 @@ class WhatsAppBaileysChannel(BaseChannel):
         Phone numbers (with country code) allowed to talk to a dedicated
         assistant number.  Falls back to ``WHATSAPP_ALLOWED_NUMBERS``.
     notify:
-        Forward messages from other chats to the user's own chat:
-        ``"all"`` (default), ``"contacts"`` (address-book contacts only) or
-        ``"none"``.  Group messages are stored but never forwarded.
+        Default for forwarding messages from other chats to the user's own
+        chat: ``"important"`` (default: VIPs, urgent words, insistence, or
+        judged important by the AI), ``"all"``, ``"contacts"`` or ``"none"``.
+        The user can change it at run time (see ``personal.notify_policy``).
+        Group messages are stored but never forwarded.
     confirm_sends:
         If ``True`` (default) messages the assistant drafts for other people
         are only sent after the user answers "sí" in their own chat.
@@ -154,7 +156,7 @@ class WhatsAppBaileysChannel(BaseChannel):
         assistant_name: str = "Jarvis",
         assistant_has_own_number: bool = False,
         allowed_numbers: str | List[str] = "",
-        notify: str = "all",
+        notify: str = "important",
         confirm_sends: bool = True,
         store: Any = None,
         bus: Optional[EventBus] = None,
@@ -182,7 +184,9 @@ class WhatsAppBaileysChannel(BaseChannel):
         self._stderr_thread: Optional[threading.Thread] = None
         # Respawn the bridge if it dies; only once started via connect().
         self._supervise = False
-        self._notify = notify if notify in _NOTIFY_MODES else "all"
+        self._notify = notify if notify in _NOTIFY_MODES else "important"
+        self._notify_policy: Any = None
+        self._system: Any = None
         self._confirm_sends = confirm_sends
         self._store = store
         # Outgoing message waiting for the user's confirmation.
@@ -208,6 +212,7 @@ class WhatsAppBaileysChannel(BaseChannel):
             )
         except Exception:
             logger.debug("Credit meter not attached", exc_info=True)
+        self._system = system
         try:
             from openjarvis.integrations.manager import get_manager
 
@@ -596,22 +601,89 @@ class WhatsAppBaileysChannel(BaseChannel):
                 "from_me": from_me,
             }
         )
-        if not is_new or from_me or is_group or self._notify == "none":
+        if not is_new or from_me or is_group:
             return
         # With a dedicated number there is no "own chat" to notify into.
         if self._assistant_has_own_number:
             return
-        if self._notify == "contacts" and not contact:
-            return
         own = self.self_jid()
         if not own:
             return
+        decision, reason = self.notify_policy.decide(
+            name=contact or push_name,
+            phone=phone,
+            text=event.get("text", ""),
+            is_contact=bool(contact),
+        )
+        if decision == "ask_ai":
+            if self._executor is not None:
+                self._executor.submit(self._triage, own, event, contact)
+            else:
+                self._triage(own, event, contact)
+        elif decision == "notify":
+            self._notify_user(own, event, contact, reason)
+
+    @property
+    def notify_policy(self) -> Any:
+        """Run-time settings for which incoming messages are forwarded."""
+        if self._notify_policy is None:
+            from pathlib import Path
+
+            from openjarvis.personal.notify_policy import NotifyPolicy
+
+            path = (
+                Path(self._auth_dir).parent / "notify.json" if self._auth_dir else None
+            )
+            self._notify_policy = NotifyPolicy(path, default_mode=self._notify)
+        return self._notify_policy
+
+    _REASON_TAGS = {
+        "urgente": "🔴 urgente",
+        "VIP": "⭐",
+        "insiste": "🔁 insiste",
+        "importante": "❗ importante",
+    }
+
+    def _notify_user(
+        self, own: str, event: Dict[str, Any], contact: str, reason: str = ""
+    ) -> None:
+        phone = event.get("phone", "")
         if contact:
             who = f"*{contact}*"
         else:
             label = f"+{phone}" if phone else "número oculto"
-            who = f"*{push_name or label}* ({label}, no está en tus contactos)"
-        self.send(own, f"📩 {who}: {event.get('text', '')}")
+            name = event.get("push_name") or label
+            who = f"*{name}* ({label}, no está en tus contactos)"
+        tag = self._REASON_TAGS.get(reason, "")
+        tag = f" {tag}" if tag else ""
+        self.send(own, f"📩 {who}{tag}: {event.get('text', '')}")
+
+    def _triage(self, own: str, event: Dict[str, Any], contact: str) -> None:
+        """Ask the AI whether a message deserves a notification now."""
+        system = self._system
+        if system is None or _credit_block():
+            return
+        from openjarvis.core.types import Message, Role
+        from openjarvis.personal.notify_policy import TRIAGE_PROMPT
+
+        who = contact or event.get("push_name") or "un número desconocido"
+        text = event.get("text", "")[:1500]
+        try:
+            out = system.engine.generate(
+                [
+                    Message(role=Role.SYSTEM, content=TRIAGE_PROMPT),
+                    Message(role=Role.USER, content=f"De: {who}\nMensaje: {text}"),
+                ],
+                model=system.model,
+                temperature=0,
+                max_tokens=5,
+            )
+        except Exception:
+            logger.debug("Notification triage failed", exc_info=True)
+            return
+        answer = (out.get("content") or "").strip().upper()
+        if answer.startswith(("SI", "SÍ", "YES")):
+            self._notify_user(own, event, contact, "importante")
 
     # Forwarded audios longer than this (characters) also get a summary.
     _SUMMARY_FROM_CHARS = 700

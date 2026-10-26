@@ -131,7 +131,7 @@ class TestStore:
 
 class TestInbox:
     def test_stores_and_notifies_unknown_sender(self, store):
-        ch = _connected(store)
+        ch = _connected(store, notify="all")
         ch._handle_bridge_event(_inbox())
         [row] = store.recent_messages(mark_read=False)
         assert row["sender_name"] == "Pepito"
@@ -142,7 +142,7 @@ class TestInbox:
 
     def test_contact_name_used(self, store):
         store.upsert_contact("34611111111@s.whatsapp.net", name="Pepe Pérez")
-        ch = _connected(store)
+        ch = _connected(store, notify="all")
         ch._handle_bridge_event(_inbox())
         [cmd] = _commands(ch)
         assert cmd["text"].startswith("📩 *Pepe Pérez*:")
@@ -168,7 +168,7 @@ class TestInbox:
         assert _commands(ch) == []
 
     def test_duplicate_not_notified_twice(self, store):
-        ch = _connected(store)
+        ch = _connected(store, notify="all")
         ch._handle_bridge_event(_inbox())
         ch._handle_bridge_event(_inbox())
         assert len(_commands(ch)) == 1
@@ -425,3 +425,63 @@ def test_status_unchanged_by_inbox(store):
     ch = _connected(store)
     ch._handle_bridge_event(_inbox())
     assert ch.status() == ChannelStatus.CONNECTED
+
+
+class TestImportantMode:
+    """Default mode: only VIPs, urgent words, insistence or AI-judged."""
+
+    def _ch(self, store, answer="NO"):
+        from types import SimpleNamespace
+
+        ch = _connected(store)
+        calls = []
+
+        def generate(messages, **kw):
+            calls.append(messages)
+            return {"content": answer}
+
+        ch._system = SimpleNamespace(
+            engine=SimpleNamespace(generate=generate), model="m"
+        )
+        return ch, calls
+
+    def test_chit_chat_is_not_forwarded_but_stored(self, store):
+        ch, calls = self._ch(store, "NO")
+        ch._handle_bridge_event(_inbox(text="jajaja qué bueno el vídeo de ayer"))
+        assert _commands(ch) == [] and len(calls) == 1
+        assert len(store.recent_messages(mark_read=False)) == 1
+
+    def test_urgent_words_skip_the_ai(self, store):
+        ch, calls = self._ch(store)
+        ch._handle_bridge_event(_inbox(text="Llámame cuando puedas, es URGENTE"))
+        [cmd] = _commands(ch)
+        assert "🔴 urgente" in cmd["text"] and calls == []
+
+    def test_ai_judged_important(self, store):
+        ch, _ = self._ch(store, "SÍ")
+        ch._handle_bridge_event(
+            _inbox(text="Mañana a las 9 cambiamos la reunión al despacho")
+        )
+        [cmd] = _commands(ch)
+        assert "❗ importante" in cmd["text"]
+
+    def test_vip_always(self, store):
+        store.upsert_contact("34611111111@s.whatsapp.net", name="Ana López")
+        ch, calls = self._ch(store)
+        ch.notify_policy.add_vip("Ana")
+        ch._handle_bridge_event(_inbox(text="hola"))
+        [cmd] = _commands(ch)
+        assert cmd["text"].startswith("📩 *Ana López* ⭐") and calls == []
+
+    def test_insisting_sender(self, store):
+        ch, _ = self._ch(store)
+        for i in range(3):
+            ch._handle_bridge_event(_inbox(text=f"oye {i}", message_id=f"x{i}"))
+        cmds = _commands(ch)
+        assert len(cmds) == 1 and "🔁 insiste" in cmds[0]["text"]
+
+    def test_mode_can_change_at_runtime(self, store):
+        ch, calls = self._ch(store)
+        ch.notify_policy.update(mode="none")
+        ch._handle_bridge_event(_inbox(text="URGENTE"))
+        assert _commands(ch) == [] and calls == []

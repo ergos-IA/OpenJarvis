@@ -14,8 +14,8 @@ Environment variables (all optional):
   WHATSAPP_PROVIDER          personal (linked device) | meta (official Business API)
   WHATSAPP_MODE              self | own                          (self)
   WHATSAPP_ALLOWED_NUMBERS   numbers allowed in "own" mode, comma-separated
-  WHATSAPP_NOTIFY            all | contacts | none: forward incoming
-                             messages to your own chat           (all)
+  WHATSAPP_NOTIFY            important | all | contacts | none: forward incoming
+                             messages to your own chat           (important)
   WHATSAPP_CONFIRM_SENDS     true/false: "sí" needed to send     (true)
 """
 
@@ -29,6 +29,7 @@ import tomlkit
 _TOOLS = (
     "think,calculator,web_search,"
     "whatsapp_read_messages,whatsapp_find_contact,whatsapp_send_message,"
+    "whatsapp_notify_settings,"
     "email_list,email_read,email_send,"
     "reminder_create,reminder_list,reminder_cancel,remember_fact,forget_fact"
 )
@@ -84,8 +85,9 @@ def main() -> None:
     wa["assistant_has_own_number"] = _env("WHATSAPP_MODE", "self").lower() == "own"
     wa["allowed_numbers"] = _env("WHATSAPP_ALLOWED_NUMBERS")
     wa["auth_dir"] = str(home / "whatsapp_auth")
-    notify = _env("WHATSAPP_NOTIFY", "all").lower()
-    wa["notify"] = notify if notify in ("all", "contacts", "none") else "all"
+    notify = _env("WHATSAPP_NOTIFY", "important").lower()
+    modes = ("important", "all", "contacts", "none")
+    wa["notify"] = notify if notify in modes else "important"
     wa["confirm_sends"] = _truthy(_env("WHATSAPP_CONFIRM_SENDS", "true"))
 
     path.write_text(tomlkit.dumps(doc), encoding="utf-8")

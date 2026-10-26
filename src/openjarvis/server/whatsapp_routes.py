@@ -6,7 +6,7 @@ Linking is by QR code or, when the page is open on the phone itself, by an
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -39,6 +39,34 @@ async def whatsapp_status(request: Request) -> dict:
     if channel is None:
         return {"enabled": False}
     return {"enabled": True, **channel.pairing_info()}
+
+
+class NotifySettings(BaseModel):
+    mode: Optional[str] = None
+    vip: Optional[List[str]] = None
+    keywords: Optional[List[str]] = None
+    ai: Optional[bool] = None
+
+
+@router.get("/api/whatsapp/notify")
+async def whatsapp_notify_get(request: Request) -> dict:
+    channel = _baileys_channel(request)
+    if channel is None:
+        raise HTTPException(status_code=404, detail="WhatsApp is not enabled")
+    return channel.notify_policy.settings()
+
+
+@router.post("/api/whatsapp/notify")
+async def whatsapp_notify_set(request: Request, req: NotifySettings) -> dict:
+    channel = _baileys_channel(request)
+    if channel is None:
+        raise HTTPException(status_code=404, detail="WhatsApp is not enabled")
+    try:
+        return channel.notify_policy.update(
+            mode=req.mode, vip=req.vip, keywords=req.keywords, ai=req.ai
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/api/whatsapp/logout")
