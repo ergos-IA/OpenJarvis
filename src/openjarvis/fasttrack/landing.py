@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import logging
 import os
 import re
 import threading
@@ -20,11 +21,14 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+import httpx
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
+from openjarvis.fasttrack import billing
 from openjarvis.fasttrack import contact as contact_mail
+from openjarvis.fasttrack.plans import PLANS
 from openjarvis.fasttrack.provisioning import USER_PREFIX, normalize_code
 from openjarvis.fasttrack.railway import RailwayClient, RailwayError
 from openjarvis.server.legal_routes import DOCS, render_legal
@@ -39,6 +43,7 @@ _ASSETS = {
     "inter.woff2": "font/woff2",
     "jetbrains-mono.woff2": "font/woff2",
 }
+logger = logging.getLogger(__name__)
 _KEY_RE = re.compile(r"oj_sk_[A-Za-z0-9_\-]{20,}")
 
 
@@ -64,9 +69,15 @@ class Directory:
                 continue
             entries.append(
                 {
+                    "id": svc["id"],
+                    "service": svc["name"],
                     "code": normalize_code(variables.get("JARVIS_ACCESS_CODE", "")),
                     "key": key,
                     "domain": self._rw.domain(svc["id"]),
+                    "customer": variables.get("STRIPE_CUSTOMER_ID", ""),
+                    "plan": variables.get("JARVIS_PLAN", "own"),
+                    "name": variables.get("JARVIS_USER_NAME", ""),
+                    "email": variables.get("JARVIS_USER_EMAIL", ""),
                 }
             )
         self._entries = entries
@@ -85,7 +96,21 @@ class Directory:
                 found = entry
         return found
 
+    def find(self, *, customer: str) -> Optional[Dict[str, str]]:
+        """The instance of a Stripe customer (fresh data: used by billing)."""
+        if not customer:
+            return None
+        with self._lock:
+            self._refresh()
+            return next((e for e in self._entries if e["customer"] == customer), None)
+
     def resolve(self, text: str) -> Optional[str]:
+        entry = self.entry(text)
+        if entry is None:
+            return None
+        return f"https://{entry['domain']}/#key={entry['key']}"
+
+    def entry(self, text: str) -> Optional[Dict[str, str]]:
         text = (text or "").strip()
         key_match = _KEY_RE.search(text)
         key = key_match.group(0) if key_match else ""
@@ -101,13 +126,17 @@ class Directory:
                 # A user created a minute ago: refresh, but not on every miss.
                 self._refresh()
                 entry = self._match(code, key)
-        if entry is None:
-            return None
-        return f"https://{entry['domain']}/#key={entry['key']}"
+        return entry
 
 
 class AccessRequest(BaseModel):
     code: str
+
+
+class SignupRequest(BaseModel):
+    plan: str
+    interval: str = "month"
+    assisted: bool = False
 
 
 def create_landing_app(
@@ -116,8 +145,14 @@ def create_landing_app(
     per_ip: Optional[FailureLimiter] = None,
     global_limit: Optional[FailureLimiter] = None,
     mail_http=None,  # noqa: ANN001 - injected httpx.AsyncClient for tests
+    stripe: Optional[billing.StripeClient] = None,
+    fulfillment: Optional[billing.Fulfillment] = None,
 ) -> FastAPI:
-    directory = Directory(railway or RailwayClient())
+    rw = railway or RailwayClient()
+    directory = Directory(rw)
+    stripe = stripe or billing.StripeClient()
+    fulfillment = fulfillment or billing.Fulfillment(rw, directory.find)
+    signup_ip = FailureLimiter(max_failures=10, window_s=3600, block_s=1800)
     per_ip = per_ip or FailureLimiter(max_failures=8, window_s=600, block_s=1800)
     # Many failures from everywhere at once = distributed guessing: pause all.
     global_limit = global_limit or FailureLimiter(
@@ -150,6 +185,11 @@ def create_landing_app(
     async def home() -> HTMLResponse:
         html = (_UI_DIR / "index.html").read_text(encoding="utf-8")
         html = html.replace("{{CONTACT_URL}}", contact)
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
+    @app.get("/cuenta", response_class=HTMLResponse)
+    async def account_page() -> HTMLResponse:
+        html = (_UI_DIR / "cuenta.html").read_text(encoding="utf-8")
         return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
     @app.get("/legal/{doc}", response_class=HTMLResponse)
@@ -187,6 +227,105 @@ def create_landing_app(
             raise HTTPException(404, "Código no válido. Revísalo o pide uno nuevo.")
         per_ip.succeed(ip)
         return {"url": url}
+
+    async def _entry_for_code(code: str, request: Request) -> Dict[str, str]:
+        ip = client_ip(request)
+        if per_ip.blocked(ip) or global_limit.blocked("*"):
+            raise HTTPException(
+                429, "Demasiados intentos. Por seguridad, espera un rato."
+            )
+        try:
+            entry = await asyncio.to_thread(directory.entry, code[:300])
+        except RailwayError:
+            raise HTTPException(503, "Servicio no disponible. Prueba en unos minutos.")
+        if entry is None:
+            per_ip.fail(ip)
+            global_limit.fail("*")
+            await asyncio.sleep(0.4)
+            raise HTTPException(404, "Código no válido. Revísalo o pide uno nuevo.")
+        per_ip.succeed(ip)
+        return entry
+
+    def _need_stripe() -> None:
+        if not billing.configured():
+            raise HTTPException(
+                503,
+                "El pago online no está disponible ahora. "
+                "Escríbenos a hola@aifasttrack.tech.",
+            )
+
+    @app.post("/api/alta")
+    async def signup(req: SignupRequest, request: Request) -> Dict[str, str]:
+        _need_stripe()
+        ip = client_ip(request)
+        if signup_ip.blocked(ip):
+            raise HTTPException(429, "Demasiados intentos. Espera un rato.")
+        signup_ip.fail(ip)
+        try:
+            url = await billing.signup_session(
+                stripe, plan=req.plan, interval=req.interval, assisted=req.assisted
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except (billing.StripeError, httpx.HTTPError) as exc:
+            logger.warning("Checkout failed: %s", exc)
+            raise HTTPException(502, "No hemos podido abrir el pago. Prueba de nuevo.")
+        return {"url": url}
+
+    @app.post("/api/cuenta/portal")
+    async def account_portal(req: AccessRequest, request: Request) -> Dict[str, str]:
+        _need_stripe()
+        entry = await _entry_for_code(req.code, request)
+        if not entry["customer"]:
+            raise HTTPException(
+                409,
+                "Tu Jarvis no tiene una suscripción online. "
+                "Escríbenos a hola@aifasttrack.tech para gestionarla.",
+            )
+        try:
+            url = await billing.portal_session(stripe, customer=entry["customer"])
+        except (billing.StripeError, httpx.HTTPError) as exc:
+            logger.warning("Portal failed: %s", exc)
+            raise HTTPException(
+                502, "No hemos podido abrir tu cuenta. Prueba de nuevo."
+            )
+        return {"url": url}
+
+    @app.post("/api/cuenta/recarga")
+    async def account_topup(req: AccessRequest, request: Request) -> Dict[str, str]:
+        _need_stripe()
+        entry = await _entry_for_code(req.code, request)
+        if not PLANS.get(entry["plan"], PLANS["own"])["included_ai"]:
+            raise HTTPException(
+                409, "Tu plan usa tu propia cuenta de IA: no necesitas recargas."
+            )
+        try:
+            url = await billing.topup_session(
+                stripe, service_id=entry["id"], customer=entry["customer"]
+            )
+        except (billing.StripeError, httpx.HTTPError) as exc:
+            logger.warning("Top-up checkout failed: %s", exc)
+            raise HTTPException(502, "No hemos podido abrir el pago. Prueba de nuevo.")
+        return {"url": url}
+
+    @app.post("/api/stripe/webhook")
+    async def stripe_webhook(
+        request: Request, background: BackgroundTasks
+    ) -> Dict[str, str]:
+        secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+        if not secret:
+            raise HTTPException(503, "Webhook no configurado")
+        payload = await request.body()
+        try:
+            event = billing.verify_signature(
+                payload, request.headers.get("stripe-signature", ""), secret
+            )
+        except (billing.StripeError, ValueError):
+            raise HTTPException(400, "Firma no válida")
+        if fulfillment.first_time(event.get("id", "")):
+            # Answer Stripe at once; creating an instance takes a while.
+            background.add_task(fulfillment.handle, event)
+        return {"received": "1"}
 
     @app.post("/api/contacto")
     async def contact_form(

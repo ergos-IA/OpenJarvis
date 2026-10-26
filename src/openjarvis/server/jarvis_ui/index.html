@@ -458,6 +458,7 @@ footer img { width: 22px; height: 22px; }
         <div class="credit-bar"><i id="cr-bar" style="width:0"></i></div>
         <p id="cr-note" style="margin: 10px 0 0; font-size: 13px; color: var(--t3)"></p>
       </div>
+      <p id="acct" class="hidden" style="margin: 0 0 16px; font-size: 14px"><a id="acct-link" target="_blank" rel="noopener" style="color: var(--cyan)">Recargar créditos o gestionar tu suscripción →</a></p>
       <div id="ai-switch" class="hidden">
         <label for="ai-switch-model" style="font-size: 14px; font-weight: 600; color: var(--t2)">Modelo</label>
         <div class="model-switch">
@@ -1013,6 +1014,8 @@ footer img { width: 22px; height: 22px; }
   };
   function renderCredits() {
     var cr = ai && ai.credits;
+    show("acct", !!(ai && ai.account_url));
+    if (ai && ai.account_url) $("acct-link").href = ai.account_url;
     show("ai-plan", !!(cr && cr.included_ai));
     if (cr && cr.included_ai) {
       var total = cr.monthly + cr.topup, pct = Math.min(100, cr.percent || 0);

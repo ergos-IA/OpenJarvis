@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#040506">
+<meta name="robots" content="noindex">
+<title>Mi cuenta · Jarvis · AI Fast Track</title>
+<link rel="icon" href="/jarvis-ui/aifasttrack-mark.svg" type="image/svg+xml">
+<style>
+@font-face { font-family: "Space Grotesk"; font-weight: 300 700; font-display: swap; src: url("/jarvis-ui/space-grotesk.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400 600; font-display: swap; src: url("/jarvis-ui/jetbrains-mono.woff2") format("woff2"); }
+:root {
+  --bg: #040506; --panel: #080b0d; --line: #1d242b; --line3: #2a323a;
+  --t1: #e8ecef; --t2: #aab4bd; --t3: #8b96a0;
+  --accent: #00d9ff; --yellow: #ffdb05; --green: #22c55e; --red: #ff7a95;
+  --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--t1); font-family: var(--sans); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; }
+a { color: var(--t1); text-decoration: none; } a:hover { color: var(--accent); }
+button, input { font: inherit; }
+header { border-bottom: 1px solid var(--line); }
+header .in { max-width: 560px; margin: 0 auto; padding: 18px 16px; display: flex; align-items: center; gap: 14px; }
+header img { height: 22px; }
+header span { font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--t3); }
+main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 56px 16px; display: flex; flex-direction: column; gap: 28px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--accent); }
+h1 { margin: 0; font-weight: 500; font-size: clamp(34px, 7vw, 48px); line-height: 1.05; letter-spacing: -.03em; }
+p { margin: 0; color: var(--t2); line-height: 1.6; }
+label { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--t3); }
+input { width: 100%; min-height: 56px; margin-top: 8px; padding: 0 16px; background: var(--panel); border: 1px solid var(--line3); color: var(--t1); font-family: var(--mono); font-size: 20px; letter-spacing: .12em; }
+input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,217,255,.18); }
+.actions { display: grid; gap: 12px; }
+.btn { min-height: 56px; padding: 0 22px; border: 0; background: var(--yellow); color: var(--bg); font-family: var(--mono); font-weight: 600; font-size: 13px; letter-spacing: .12em; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+.btn:hover { background: #ffe94d; }
+.btn.ghost { background: transparent; color: var(--t1); border: 1px solid var(--line3); }
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn small { font-weight: 400; opacity: .75; letter-spacing: .04em; }
+.btn:disabled { opacity: .55; cursor: wait; }
+.status { min-height: 20px; font-family: var(--mono); font-size: 12px; color: var(--t3); }
+.status.err { color: var(--red); } .status.ok { color: var(--green); } .status.wait { color: var(--accent); }
+.note { font-size: 14px; color: var(--t3); border-top: 1px solid var(--line); padding-top: 20px; }
+footer { border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: .14em; color: var(--t3); }
+footer .in { max-width: 560px; margin: 0 auto; padding: 20px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+footer a { color: var(--t3); }
+</style>
+</head>
+<body>
+<header><div class="in"><a href="/"><img src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track"></a><span>JARVIS · MI CUENTA</span></div></header>
+<main>
+  <div>
+    <span class="eyebrow">[ SUSCRIPCIÓN ]</span>
+    <h1 style="margin-top: 14px">Tu cuenta de Jarvis</h1>
+  </div>
+  <p>Escribe tu código de acceso personal (el del email de bienvenida) para gestionar tu suscripción o recargar créditos.</p>
+  <div>
+    <label for="code">CÓDIGO DE ACCESO</label>
+    <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" inputmode="text">
+  </div>
+  <div class="actions">
+    <button class="btn" id="portal" type="button">GESTIONAR SUSCRIPCIÓN <small>tarjeta · facturas · plan · baja</small></button>
+    <button class="btn ghost" id="topup" type="button">RECARGAR +300 CRÉDITOS <small>4,90 € · IVA incl.</small></button>
+  </div>
+  <p class="status" id="status" role="status"></p>
+  <p class="note">Los pagos los gestiona Stripe de forma segura; nosotros no vemos los datos de tu tarjeta. Las recargas son para los planes Esencial y Pro, y los créditos no caducan a fin de mes. ¿Dudas? Escríbenos a <a href="mailto:hola@aifasttrack.tech">hola@aifasttrack.tech</a>.</p>
+</main>
+<footer><div class="in"><a href="/">← JARVIS</a><a href="/legal/terminos">TÉRMINOS</a><a href="/legal/privacidad">PRIVACIDAD</a></div></footer>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var code = $("code"), status = $("status");
+  function setStatus(text, kind) { status.textContent = text; status.className = "status" + (kind ? " " + kind : ""); }
+  function fmt(v) {
+    if (/oj_sk_|https?:/i.test(v)) return v;
+    var c = v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+    return c.replace(/(.{4})(?=.)/g, "$1-");
+  }
+  code.addEventListener("input", function () { code.value = fmt(code.value); setStatus(""); });
+  // Arriving from your own Jarvis: /cuenta#c=CODE (the fragment never reaches the server).
+  var m = /[#&]c=([^&]+)/.exec(location.hash);
+  if (m) { code.value = fmt(decodeURIComponent(m[1])); history.replaceState(null, "", location.pathname + location.search); }
+  if (/[?&]recarga=ok\b/.test(location.search)) setStatus("Recarga completada ✓ Los 300 créditos ya están en tu Jarvis.", "ok");
+
+  function go(path, btn) {
+    var c = code.value.trim();
+    if (!c) { setStatus("Escribe tu código de acceso.", "err"); code.focus(); return; }
+    btn.disabled = true; setStatus("Un momento…", "wait");
+    fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: c }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (r) {
+        if (r.ok && r.d.url) { location.href = r.d.url; return; }
+        btn.disabled = false; setStatus(r.d.detail || "No ha funcionado. Prueba de nuevo.", "err");
+      }, function () { btn.disabled = false; setStatus("Sin conexión. Prueba de nuevo.", "err"); });
+  }
+  $("portal").onclick = function () { go("/api/cuenta/portal", this); };
+  $("topup").onclick = function () { go("/api/cuenta/recarga", this); };
+})();
+</script>
+</body>
+</html>

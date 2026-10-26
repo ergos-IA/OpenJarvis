@@ -82,9 +82,14 @@ def ai_status() -> Dict[str, Any]:
         choices = [m for m in MODELS if m["id"] in allowed]
     else:
         choices = []
+    account_url = ""
+    if os.environ.get("STRIPE_CUSTOMER_ID") and os.environ.get("JARVIS_ACCESS_CODE"):
+        site = os.environ.get("PUBLIC_URL", "https://jarvis.aifasttrack.tech")
+        account_url = f"{site.rstrip('/')}/cuenta#c={os.environ['JARVIS_ACCESS_CODE']}"
     return {
         **info,
         "credits": credits,
+        "account_url": account_url,
         "model_choices": choices,
         "source": source,  # own: the user's account · included: ours · none
         "configured": source != "none",

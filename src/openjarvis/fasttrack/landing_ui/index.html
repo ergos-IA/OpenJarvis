@@ -315,6 +315,15 @@ tbody tr.hl th { color: #fff; }
 .plan li::before { content: "✓"; color: var(--green); font-family: var(--mono); }
 .plan .btn { align-self: flex-start; }
 .plan .addon-amount { font-size: clamp(44px, 5vw, 64px); font-weight: 600; letter-spacing: -.03em; line-height: 1; }
+.checkout-row { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; justify-content: space-between; margin: 22px 0 0; }
+.assist { display: inline-flex; gap: 12px; align-items: center; cursor: pointer; color: var(--t2); font-size: 15px; }
+.assist input { width: 20px; height: 20px; accent-color: var(--yellow); margin: 0; }
+.secure { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; color: var(--t3); }
+.plan .btn[aria-busy="true"] { opacity: .6; pointer-events: none; }
+.banner { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; width: min(560px, calc(100vw - 32px)); padding: 20px 22px; background: var(--panel); border: 1px solid var(--accent); box-shadow: 0 0 40px rgba(0,217,255,.25); display: flex; gap: 16px; align-items: flex-start; }
+.banner b { display: block; font-size: 18px; margin-bottom: 6px; }
+.banner p { margin: 0; color: var(--t2); line-height: 1.5; font-size: 15px; }
+.banner button { margin-left: auto; background: none; border: 0; color: var(--t3); font-size: 22px; cursor: pointer; min-width: 44px; min-height: 44px; }
 .price-notes { margin: 18px 0 0; font-size: 14px; color: var(--t3); line-height: 1.6; }
 
 /* security cascade */
@@ -602,7 +611,7 @@ tbody tr.hl th { color: #fff; }
         <li>Cambia de modelo cuando quieras</li>
         <li>Tutorial paso a paso incluido</li>
       </ul>
-      <a href="#contacto" class="btn" data-plan="own">EMPEZAR GRATIS →</a>
+      <a href="#precios" class="btn" data-plan="own">EMPEZAR GRATIS →</a>
     </div>
     <div class="plan main">
       <span class="pill-tag">IA INCLUIDA</span>
@@ -616,7 +625,7 @@ tbody tr.hl th { color: #fff; }
         <li>400 créditos al mes (≈ 1.000 mensajes)</li>
         <li>Aviso al 80 % y recargas cuando quieras</li>
       </ul>
-      <a href="#contacto" class="btn" data-plan="esencial">EMPEZAR GRATIS →</a>
+      <a href="#precios" class="btn" data-plan="esencial">EMPEZAR GRATIS →</a>
     </div>
     <div class="plan">
       <span class="tagline2">PRO</span>
@@ -629,15 +638,20 @@ tbody tr.hl th { color: #fff; }
         <li>Si se agotan, sigue en modo ahorro sin cortes</li>
         <li>Ideal para correo intenso y tareas encadenadas</li>
       </ul>
-      <a href="#contacto" class="btn" data-plan="pro">EMPEZAR GRATIS →</a>
+      <a href="#precios" class="btn" data-plan="pro">EMPEZAR GRATIS →</a>
     </div>
   </div>
   <div class="extras reveal">
     <div class="extra"><span class="tagline2" style="color: var(--yellow)">RECARGA</span><b>4,90 €</b><span>+300 créditos que no caducan a fin de mes.</span></div>
-    <div class="extra"><span class="tagline2" style="color: var(--yellow)">ALTA ASISTIDA</span><b>49 €</b><span>Te lo dejamos todo funcionando. <a href="#contacto" data-assisted style="border-bottom: 1px solid var(--accent)">Pedirla</a></span></div>
+    <div class="extra"><span class="tagline2" style="color: var(--yellow)">ALTA ASISTIDA</span><b>49 €</b><span>Te lo dejamos todo funcionando. <a href="#precios" data-assisted style="border-bottom: 1px solid var(--accent)">Añadirla</a></span></div>
     <div class="extra"><span class="tagline2" style="color: var(--yellow)">EQUIPOS</span><b>8,90 €</b><span>por usuario y mes con tu IA. <a href="#contacto" data-team style="border-bottom: 1px solid var(--accent)">Pide propuesta</a></span></div>
   </div>
-  <p class="price-notes reveal">Precios por usuario con IVA incluido. El primer mes es gratuito y puedes cancelar antes de que se cobre; sin permanencia. 1 crédito equivale a 1 céntimo de uso real de IA, así que los mensajes que cubre dependen de su longitud. En «Conecta tu IA» pagas tu consumo directamente al proveedor y tú fijas el límite de gasto. En el modo WhatsApp Business oficial, las tarifas de mensajería de Meta se facturan aparte.</p>
+  <div class="checkout-row reveal">
+    <label class="assist"><input type="checkbox" id="assist"> Añadir alta asistida: lo dejamos funcionando contigo (+49 €, pago único)</label>
+    <span class="secure">🔒 PAGO SEGURO CON STRIPE · TARJETA, APPLE PAY, GOOGLE PAY</span>
+  </div>
+  <p class="status" id="price-status" role="status" style="margin-top: 12px"></p>
+  <p class="price-notes reveal">Precios por usuario con IVA incluido. El primer mes es gratuito: pedimos la tarjeta, pero no se cobra nada hasta el día 31 y puedes cancelar antes desde <a href="/cuenta" style="border-bottom: 1px solid var(--accent)">Mi cuenta</a>; sin permanencia. El alta asistida se cobra al contratar. 1 crédito equivale a 1 céntimo de uso real de IA, así que los mensajes que cubre dependen de su longitud. En «Conecta tu IA» pagas tu consumo directamente al proveedor y tú fijas el límite de gasto. En el modo WhatsApp Business oficial, las tarifas de mensajería de Meta se facturan aparte.</p>
 </section>
 
 <section class="wrap section contact" id="contacto" aria-labelledby="contact-title">
@@ -684,6 +698,7 @@ tbody tr.hl th { color: #fff; }
   <div class="wrap">
     <span>JARVIS · UN SERVICIO DE AI FAST TRACK · FAST FACTORY IA ENGINE S.L.</span>
     <nav aria-label="Legal">
+      <a href="/cuenta">MI CUENTA</a>
       <a href="/legal/aviso-legal">AVISO LEGAL</a>
       <a href="/legal/terminos">TÉRMINOS</a>
       <a href="/legal/privacidad">PRIVACIDAD</a>
@@ -873,20 +888,45 @@ tbody tr.hl th { color: #fff; }
   billBtns.forEach(function (b) { b.addEventListener("click", function () { setBilling(b.getAttribute("data-bill")); }); });
   setBilling("month");
   addEventListener("resize", function () { setBilling(billing); });
-  // Plan buttons pre-fill the contact message.
+  // Plan buttons open Stripe Checkout; if online payment is down, fall back
+  // to the contact form with the message pre-filled.
   function prefill(text) { var m = $("c-msg"); if (m && !m.value.trim()) m.value = text; }
   var PLAN_NAMES = { own: "Conecta tu IA", esencial: "Esencial", pro: "Pro" };
+  var priceStatus = $("price-status");
   document.querySelectorAll("[data-plan]").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var k = b.getAttribute("data-plan");
-      prefill("Quiero empezar el mes gratis de Jarvis, plan " + PLAN_NAMES[k] + " (" + (billing === "year" ? PRICES[k].year + "/año" : PRICES[k].month + "/mes") + ").");
+    b.addEventListener("click", function (e) {
+      e.preventDefault();
+      var k = b.getAttribute("data-plan"), assisted = $("assist").checked;
+      b.setAttribute("aria-busy", "true");
+      setStatus(priceStatus, "Abriendo el pago seguro…", "wait");
+      post("/api/alta", { plan: k, interval: billing, assisted: assisted }).then(function (r) {
+        if (r.ok && r.d.url) { location.href = r.d.url; return; }
+        throw new Error(r.d.detail || "No hemos podido abrir el pago.");
+      }).catch(function (err) {
+        b.removeAttribute("aria-busy");
+        setStatus(priceStatus, (err.message || "No hemos podido abrir el pago.") + " Te dejamos el formulario de contacto.", "err");
+        prefill("Quiero empezar el mes gratis de Jarvis, plan " + PLAN_NAMES[k] + " (" + (billing === "year" ? PRICES[k].year + "/año" : PRICES[k].month + "/mes") + ")" + (assisted ? " con alta asistida" : "") + ".");
+        setTimeout(function () { $("contacto").scrollIntoView({ behavior: reduced ? "auto" : "smooth" }); }, 1200);
+      });
     });
   });
+  // Back from Stripe after paying.
+  if (/[?&]alta=ok\b/.test(location.search)) {
+    var ban = document.createElement("div");
+    ban.className = "banner"; ban.setAttribute("role", "status");
+    ban.innerHTML = "<div><b>¡Bienvenido a Jarvis!</b><p>Estamos preparando tu asistente. En unos minutos te llegará un email con tu código de acceso personal. Si no lo ves, revisa la carpeta de spam.</p></div><button type=\"button\" aria-label=\"Cerrar\">×</button>";
+    ban.querySelector("button").onclick = function () { ban.remove(); };
+    document.body.appendChild(ban);
+    history.replaceState(null, "", location.pathname + location.hash);
+  }
   document.querySelector("[data-team]").addEventListener("click", function () {
     prefill("Queremos Jarvis para un equipo de [N] personas (8,90 € por usuario y mes).");
   });
-  document.querySelector("[data-assisted]").addEventListener("click", function () {
-    prefill("Quiero Jarvis con alta asistida (49 €).");
+  document.querySelector("[data-assisted]").addEventListener("click", function (e) {
+    e.preventDefault();
+    $("assist").checked = true;
+    $("precios").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
+    setStatus(priceStatus, "Alta asistida añadida: ahora elige tu plan.", "ok");
   });
 
   // ---------- security cascade ----------
