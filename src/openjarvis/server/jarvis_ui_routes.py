@@ -141,20 +141,18 @@ async def retire_service_worker() -> Response:
 async def jarvis_info() -> dict:
     """Who this Jarvis is for and which model it runs (shown on the page)."""
     from openjarvis.fasttrack.models import describe
+    from openjarvis.server.legal_routes import acceptance
 
+    legal = acceptance()
     return {
         "assistant_name": os.environ.get("JARVIS_ASSISTANT_NAME", "Jarvis"),
         "user_name": os.environ.get("JARVIS_USER_NAME", ""),
+        "legal_version": legal["version"],
+        "legal_accepted": legal["accepted"],
         **describe(
             os.environ.get("JARVIS_MODEL", ""), os.environ.get("JARVIS_ENGINE", "")
         ),
     }
-
-
-@router.get("/privacidad", response_class=HTMLResponse, include_in_schema=False)
-async def privacy_page() -> HTMLResponse:
-    html = (_UI_DIR / "privacidad.html").read_text(encoding="utf-8")
-    return HTMLResponse(html)
 
 
 @router.get("/jarvis-ui/{name}", include_in_schema=False)

@@ -251,6 +251,17 @@ footer img { width: 22px; height: 22px; }
   font-size: 14px; cursor: pointer; text-decoration: none; transition: all .2s; }
 .try:hover { border-color: var(--yellow); color: var(--yellow); box-shadow: 0 0 20px -6px rgba(255,219,5,.6); }
 
+.consent { display: grid; gap: 12px; margin: 6px 0 4px; }
+.consent label { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--s1); cursor: pointer; color: var(--t2); font-size: 15px; transition: border-color .2s; }
+.consent label:hover { border-color: rgba(0,217,255,.4); }
+.consent input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--yellow); }
+.consent b { color: var(--t1); }
+.legal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.legal-item { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--s1); }
+.legal-item h3 { font: 700 15px var(--display); margin: 0 0 6px; color: var(--t1); }
+.legal-item p { margin: 0; color: var(--t2); font-size: 14px; }
+.ai-note { margin-top: 14px; font-size: 13px; color: var(--t3); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0;
   padding: 12px 18px; border-radius: 12px; background: var(--s3); border: 1px solid var(--line); color: var(--t1);
   font-size: 14px; z-index: 10; transition: all .3s; pointer-events: none; }
@@ -333,6 +344,7 @@ footer img { width: 22px; height: 22px; }
           <button class="btn btn-primary" id="cta">Activar a Jarvis <span aria-hidden="true">→</span></button>
           <a class="btn btn-ghost" href="#capacidades">¿Qué puede hacer?</a>
         </div>
+        <div class="ai-note">Jarvis es un sistema de inteligencia artificial y puede cometer errores. Verifica la información importante.</div>
         <div class="scroll-hint">▼ Desliza</div>
       </div>
     </div>
@@ -382,20 +394,52 @@ footer img { width: 22px; height: 22px; }
         <button class="btn btn-primary" data-start>Empezar ahora <span aria-hidden="true">→</span></button>
       </div>
     </div>
+
+    <div class="section" id="legal" style="padding-top:0">
+      <div class="eyebrow">// Información importante</div>
+      <h2 style="font-size:clamp(22px,3.4vw,30px)">Antes de usar Jarvis</h2>
+      <div class="legal-grid">
+        <div class="legal-item"><h3>🤖 Es una inteligencia artificial</h3><p>Sus respuestas se generan automáticamente con modelos de terceros y pueden contener errores. No es asesoramiento profesional: verifica lo importante.</p></div>
+        <div class="legal-item"><h3>📱 WhatsApp no oficial</h3><p>La conexión funciona como «dispositivo vinculado» mediante software no oficial. No es un servicio de Meta ni está respaldado por ella, y Meta puede limitar o bloquear tu número o la conexión en cualquier momento.</p></div>
+        <div class="legal-item"><h3>🔌 Servicios de terceros</h3><p>Jarvis depende de WhatsApp, Google, Microsoft, proveedores de IA y alojamiento, que pueden cambiar o retirar sus servicios. AI Fast Track no controla esas decisiones ni responde de ellas.</p></div>
+        <div class="legal-item"><h3>✋ Tú decides lo que se envía</h3><p>Nada sale en tu nombre sin tu «sí». Eres responsable del contenido que confirmas y de usar Jarvis conforme a la ley: nada de spam, envíos masivos o datos de terceros sin base legal.</p></div>
+        <div class="legal-item"><h3>🔒 Privacidad (RGPD / LOPDGDD)</h3><p>Tus datos se usan solo para prestarte el servicio, no se venden ni se usan para entrenar modelos. Puedes ejercer tus derechos y darte de baja cuando quieras.</p></div>
+        <div class="legal-item"><h3>🔑 Tu enlace es tu llave</h3><p>Quien lo tenga puede entrar en tu Jarvis. No lo compartas y avísanos si crees que alguien lo conoce: lo cambiaremos.</p></div>
+      </div>
+      <p style="color:var(--t2);margin-top:16px">Textos completos: <a href="/legal/terminos">Términos de uso</a> · <a href="/legal/privacidad">Política de privacidad</a> · <a href="/legal/aviso-legal">Aviso legal</a> · <a href="/legal/cookies">Cookies</a></p>
+    </div>
   </section>
 
   <!-- =============== WIZARD =============== -->
   <section id="wizard" class="wizard hidden">
     <ol class="steps" id="steps">
-      <li data-s="1"><span class="n">1</span><span class="lbl">WhatsApp</span></li>
-      <li data-s="2"><span class="n">2</span><span class="lbl">Correo</span></li>
-      <li data-s="3"><span class="n">3</span><span class="lbl">¡Listo!</span></li>
+      <li data-s="0"><span class="n">1</span><span class="lbl">Condiciones</span></li>
+      <li data-s="1"><span class="n">2</span><span class="lbl">WhatsApp</span></li>
+      <li data-s="2"><span class="n">3</span><span class="lbl">Correo</span></li>
+      <li data-s="3"><span class="n">4</span><span class="lbl">¡Listo!</span></li>
     </ol>
+
+    <!-- step 0: terms -->
+    <div class="panel hidden" data-step="0">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Paso 1 · Condiciones</div>
+      <h2>Antes de empezar</h2>
+      <p class="lead">Lee y acepta las condiciones. Son pocas cosas, pero importantes.</p>
+      <div class="consent">
+        <label><input type="checkbox" id="c-terms"><span>He leído y acepto los <a href="/legal/terminos" target="_blank" rel="noopener">Términos de uso</a> y la <a href="/legal/privacidad" target="_blank" rel="noopener">Política de privacidad</a>, y entiendo que <b>Jarvis es una inteligencia artificial que puede equivocarse</b> y que soy responsable de lo que confirmo enviar.</span></label>
+        <label><input type="checkbox" id="c-wa"><span>Entiendo que la conexión con WhatsApp <b>no es un servicio oficial de Meta</b>, que <b>Meta puede limitar o bloquear mi número</b> o cortar la conexión en cualquier momento, y que la uso <b>bajo mi propio riesgo</b>.</span></label>
+      </div>
+      <p class="err hidden" id="c-err"></p>
+      <div class="nav">
+        <button class="btn-link" data-back>← Inicio</button>
+        <button class="btn btn-primary" id="c-go" disabled>Aceptar y continuar →</button>
+      </div>
+    </div>
 
     <!-- step 1: WhatsApp -->
     <div class="panel hidden" data-step="1">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 1 · WhatsApp</div>
+      <div class="eyebrow">Paso 2 · WhatsApp</div>
 
       <div id="wa-linking">
         <h2>Conecta tu WhatsApp</h2>
@@ -463,7 +507,7 @@ footer img { width: 22px; height: 22px; }
     <!-- step 2: email -->
     <div class="panel hidden" data-step="2">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 2 · Correo (opcional)</div>
+      <div class="eyebrow">Paso 3 · Correo (opcional)</div>
       <h2>Conecta tu correo</h2>
       <p class="lead">Para que Jarvis te avise de correos importantes y los pueda buscar y responder. Puedes conectar uno, los dos o ninguno.</p>
 
@@ -546,7 +590,7 @@ footer img { width: 22px; height: 22px; }
     <!-- step 3: done / status -->
     <div class="panel hidden" data-step="3">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 3 · Sistemas</div>
+      <div class="eyebrow">Paso 4 · Sistemas</div>
       <h2 id="done-title">Jarvis está listo</h2>
       <p class="lead">Este es el estado de tus conexiones. Puedes volver aquí cuando quieras.</p>
       <div class="status-grid">
@@ -568,7 +612,7 @@ footer img { width: 22px; height: 22px; }
 
 <footer>
   <img src="/jarvis-ui/aifasttrack-mark.svg" alt="">
-  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/privacidad" style="color:var(--t2)">Privacidad</a> · <a href="#" id="signout" style="color:var(--t2)">Cerrar sesión</a></span>
+  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/legal/aviso-legal" style="color:var(--t2)">Aviso legal</a> · <a href="/legal/terminos" style="color:var(--t2)">Términos</a> · <a href="/legal/privacidad" style="color:var(--t2)">Privacidad</a> · <a href="/legal/cookies" style="color:var(--t2)">Cookies</a> · <a href="#" id="signout" style="color:var(--t2)">Cerrar sesión</a></span>
 </footer>
 <div class="toast" id="toast" role="status"></div>
 
@@ -698,7 +742,9 @@ footer img { width: 22px; height: 22px; }
   }
 
   // ---------- navigation ----------
+  function accepted() { return !info || info.legal_accepted !== false; }
   function go(n) {
+    if (n > 0 && !accepted()) n = 0;
     step = n;
     show("landing", false); show("wizard", true);
     qsa("[data-step]").forEach(function (p) { show(p, +p.getAttribute("data-step") === n); });
@@ -710,7 +756,17 @@ footer img { width: 22px; height: 22px; }
     render();
   }
   function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
-  function start() { go(wa && wa.connected ? 3 : 1); }
+  function start() { go(!accepted() ? 0 : wa && wa.connected ? 3 : 1); }
+
+  // ---------- step 0: terms ----------
+  function consentReady() { $("c-go").disabled = !($("c-terms").checked && $("c-wa").checked); }
+  $("c-terms").onchange = consentReady; $("c-wa").onchange = consentReady;
+  $("c-go").onclick = function () {
+    var b = this; b.disabled = true; show("c-err", false);
+    api("POST", "/api/legal/accept", { version: info.legal_version, terms: true, whatsapp_risk: true }).then(function () {
+      info.legal_accepted = true; toast("Condiciones aceptadas ✓"); go(wa && wa.connected ? 3 : 1);
+    }, function (e) { $("c-err").textContent = e.message; show("c-err", true); b.disabled = false; });
+  };
   $("cta").onclick = start;
   qsa("[data-start]").forEach(function (b) { b.onclick = start; });
   qsa("[data-back]").forEach(function (b) { b.onclick = home; });
@@ -923,9 +979,13 @@ footer img { width: 22px; height: 22px; }
   }
 
   // ?paso=whatsapp|correo|estado opens that wizard step directly.
-  var STEP_NAMES = { whatsapp: 1, correo: 2, estado: 3 };
+  var STEP_NAMES = { condiciones: 0, whatsapp: 1, correo: 2, estado: 3 };
   var wanted = STEP_NAMES[(new URLSearchParams(location.search).get("paso") || "").toLowerCase()];
-  refresh().then(function () { greet(); boot(); loop(); if (wanted !== undefined) go(wanted); });
+  refresh().then(function () {
+    greet(); boot(); loop();
+    if (wanted !== undefined) go(wanted);
+    else if (!accepted()) go(0);
+  });
 
   // ---------- sign out of this browser ----------
   $("signout").onclick = function (e) {

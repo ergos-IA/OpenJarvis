@@ -25,6 +25,7 @@ from openjarvis.server.connectors_router import create_connectors_router
 from openjarvis.server.dashboard import dashboard_router
 from openjarvis.server.digest_routes import create_digest_router
 from openjarvis.server.jarvis_ui_routes import router as jarvis_ui_router
+from openjarvis.server.legal_routes import router as legal_router
 from openjarvis.server.mail_routes import router as mail_router
 from openjarvis.server.research_router import router as research_router
 from openjarvis.server.routes import router
@@ -488,6 +489,7 @@ def create_app(
     app.include_router(whatsapp_router)
     app.include_router(mail_router)
     app.include_router(jarvis_ui_router)
+    app.include_router(legal_router)
     include_all_routes(app)
 
     # Restore SendBlue channel bindings from database on startup

@@ -271,11 +271,12 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
       var d = DEPLOY[u.deploy_status] || ["warn", u.deploy_status];
       var initials = (u.name || "?").split(/\s+/).map(function (w) { return w[0]; }).join("").slice(0, 2).toUpperCase();
       var wa = u.online ? (u.whatsapp ? '<span class="chip"><span class="dot ok"></span>WhatsApp +' + esc(u.phone) + "</span>" : '<span class="chip"><span class="dot warn"></span>WhatsApp sin vincular</span>') : "";
+      var legal = u.online ? (u.legal_accepted ? '<span class="chip"><span class="dot ok"></span>Condiciones aceptadas</span>' : '<span class="chip"><span class="dot warn"></span>Condiciones pendientes</span>') : "";
       var mail = (u.mail || []).map(function (m) { return '<span class="chip"><span class="dot ok"></span>' + (m === "outlook" ? "Outlook" : "Gmail") + "</span>"; }).join("");
       return '<div class="user">' +
         '<div class="row"><div class="av">' + esc(initials) + '</div><div class="who"><b>' + esc(u.name) + "</b><span>" + esc(u.email || u.service) + "</span></div></div>" +
         '<div class="model"><b>' + esc(u.model.label) + "</b><span>" + esc(u.model.provider_label) + (u.assistant !== "Jarvis" ? " · asistente «" + esc(u.assistant) + "»" : "") + "</span></div>" +
-        '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + wa + mail + "</div>" +
+        '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + wa + mail + legal + "</div>" +
         '<div class="actions">' +
           (u.link ? '<button class="btn btn-ghost btn-sm" data-act="copy" data-i="' + i + '">Copiar enlace</button>' : "") +
           '<button class="btn btn-ghost btn-sm" data-act="model" data-i="' + i + '">Modelo</button>' +

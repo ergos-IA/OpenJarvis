@@ -144,9 +144,12 @@ class TestJarvisInfo:
         assert "unregister" in resp.text
         assert resp.headers["cache-control"] == "no-store"
 
-    def test_privacy_page_public(self, mock_engine):
-        resp = _client(mock_engine, api_key="k").get("/privacidad")
-        assert resp.status_code == 200 and "AI Fast Track" in resp.text
+    def test_old_privacy_url_redirects(self, mock_engine):
+        resp = _client(mock_engine, api_key="k").get(
+            "/privacidad", follow_redirects=False
+        )
+        assert resp.status_code == 301
+        assert resp.headers["location"] == "/legal/privacidad"
 
 
 class TestPairingCode:

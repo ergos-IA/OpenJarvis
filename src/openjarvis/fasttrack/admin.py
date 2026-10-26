@@ -55,6 +55,16 @@ _ASSETS = {
     "inter.woff2": "font/woff2",
 }
 _CREDENTIALS = [p["credential"] for p in PROVIDERS.values()]
+_LEGAL_VARS = [
+    "LEGAL_COMPANY",
+    "LEGAL_NIF",
+    "LEGAL_ADDRESS",
+    "LEGAL_REGISTRY",
+    "LEGAL_EMAIL",
+    "LEGAL_DPO",
+    "LEGAL_JURISDICTION",
+    "LEGAL_HOSTING",
+]
 
 
 def slugify(name: str) -> str:
@@ -238,11 +248,14 @@ def create_admin_app(
         base = f"https://{domain}"
         out: Dict[str, Any] = {"online": False}
         try:
-            wa, mail = await asyncio.gather(
+            wa, mail, info = await asyncio.gather(
                 client.get(base + "/api/whatsapp/status", headers=headers),
                 client.get(base + "/api/mail/status", headers=headers),
+                client.get(base + "/api/jarvis/info", headers=headers),
                 return_exceptions=True,
             )
+            if isinstance(info, httpx.Response) and info.status_code == 200:
+                out["legal_accepted"] = bool(info.json().get("legal_accepted"))
             if isinstance(wa, httpx.Response) and wa.status_code == 200:
                 data = wa.json()
                 out.update(
@@ -341,9 +354,10 @@ def create_admin_app(
             "WHATSAPP_MODE": "self",
             **_model_vars(req.model, req.provider),
         }
-        # Every provider's credential comes from the project's shared vars.
-        for credential in _CREDENTIALS:
-            variables[credential] = "${{shared.%s}}" % credential
+        # Provider credentials and the company's legal data come from the
+        # project's shared variables, filled in once for every user.
+        for name in _CREDENTIALS + _LEGAL_VARS:
+            variables[name] = "${{shared.%s}}" % name
 
         def provision() -> Dict[str, str]:
             sid = rw.create_service(service_name)
