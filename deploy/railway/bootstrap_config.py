@@ -10,7 +10,8 @@ Environment variables (all optional):
   JARVIS_ASSISTANT_NAME      channel.whatsapp_baileys.assistant_name (Jarvis)
   JARVIS_CHANNEL_AGENT       channel.default_agent               (orchestrator)
   JARVIS_TOOLS               tools.enabled, comma-separated      (see _TOOLS)
-  WHATSAPP_ENABLED           true/false: start the Baileys channel (true)
+  WHATSAPP_ENABLED           true/false: start the WhatsApp channel (true)
+  WHATSAPP_PROVIDER          personal (linked device) | meta (official Business API)
   WHATSAPP_MODE              self | own                          (self)
   WHATSAPP_ALLOWED_NUMBERS   numbers allowed in "own" mode, comma-separated
   WHATSAPP_NOTIFY            all | contacts | none: forward incoming
@@ -67,9 +68,14 @@ def main() -> None:
     analytics["choice_recorded"] = True
 
     whatsapp_on = _truthy(_env("WHATSAPP_ENABLED", "true"))
+    # personal = Baileys linked device; meta = official WhatsApp Business API
+    provider = _env("WHATSAPP_PROVIDER", "personal").lower()
+    wa_channel = (
+        "whatsapp_cloud" if provider in ("meta", "business") else "whatsapp_baileys"
+    )
     channel = _table(doc, "channel")
     channel["enabled"] = whatsapp_on
-    channel["default_channel"] = "whatsapp_baileys" if whatsapp_on else ""
+    channel["default_channel"] = wa_channel if whatsapp_on else ""
     channel["default_agent"] = _env("JARVIS_CHANNEL_AGENT", "orchestrator")
     _table(doc, "tools")["enabled"] = _env("JARVIS_TOOLS", _TOOLS)
 

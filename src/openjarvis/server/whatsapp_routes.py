@@ -23,13 +23,14 @@ async def _start_reminders() -> None:
 
 
 def _baileys_channel(request: Request) -> Optional[Any]:
+    """The instance's WhatsApp channel: Baileys (personal) or Cloud API."""
     bridge = getattr(request.app.state, "channel_bridge", None)
     if bridge is None:
         return None
-    if getattr(bridge, "channel_id", "") == "whatsapp_baileys":
+    if getattr(bridge, "channel_id", "") in ("whatsapp_baileys", "whatsapp_cloud"):
         return bridge
     channels = getattr(bridge, "_channels", None) or {}
-    return channels.get("whatsapp_baileys")
+    return channels.get("whatsapp_baileys") or channels.get("whatsapp_cloud")
 
 
 @router.get("/api/whatsapp/status")

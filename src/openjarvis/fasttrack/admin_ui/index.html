@@ -161,6 +161,12 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
       <div class="field"><label for="n-name">Nombre</label><input class="input" id="n-name" placeholder="María López"></div>
       <div class="field"><label for="n-email">Email <small>(opcional, para tu control)</small></label><input class="input" id="n-email" type="email" placeholder="maria@empresa.com"></div>
       <div class="field"><label for="n-asst">Nombre del asistente</label><input class="input" id="n-asst" value="Jarvis"></div>
+      <div class="field"><label>WhatsApp</label>
+        <div class="models">
+          <label class="mopt"><input type="radio" name="n-wa" value="personal" checked><div><b>Personal (dispositivo vinculado)</b><span>Usa su propio número en el móvil. Conexión no oficial, para uso de trabajo personal; no para envíos comerciales.</span></div></label>
+          <label class="mopt"><input type="radio" name="n-wa" value="meta"><div><b>WhatsApp Business oficial (API de Meta)</b><span>Jarvis con número de empresa propio. Ese número no puede usarse a la vez en la app del móvil. Requiere app de Meta.</span></div></label>
+        </div>
+      </div>
       <div class="field"><label>Modelo de IA</label><div class="models" id="n-models"></div></div>
       <div class="err hidden" id="n-err"></div>
       <div class="foot">
@@ -273,12 +279,13 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
       var d = DEPLOY[u.deploy_status] || ["warn", u.deploy_status];
       var initials = (u.name || "?").split(/\s+/).map(function (w) { return w[0]; }).join("").slice(0, 2).toUpperCase();
       var wa = u.online ? (u.whatsapp ? '<span class="chip"><span class="dot ok"></span>WhatsApp +' + esc(u.phone) + "</span>" : '<span class="chip"><span class="dot warn"></span>WhatsApp sin vincular</span>') : "";
+      var waKind = u.whatsapp_provider === "meta" ? '<span class="chip os">WhatsApp Business API</span>' : "";
       var legal = u.online ? (u.legal_accepted ? '<span class="chip"><span class="dot ok"></span>Condiciones aceptadas</span>' : '<span class="chip"><span class="dot warn"></span>Condiciones pendientes</span>') : "";
       var mail = (u.mail || []).map(function (m) { return '<span class="chip"><span class="dot ok"></span>' + (m === "outlook" ? "Outlook" : "Gmail") + "</span>"; }).join("");
       return '<div class="user">' +
         '<div class="row"><div class="av">' + esc(initials) + '</div><div class="who"><b>' + esc(u.name) + "</b><span>" + esc(u.email || u.service) + "</span></div></div>" +
         '<div class="model"><b>' + esc(u.model.label) + "</b><span>" + esc(u.model.provider_label) + (u.assistant !== "Jarvis" ? " · asistente «" + esc(u.assistant) + "»" : "") + "</span></div>" +
-        '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + wa + mail + legal + "</div>" +
+        '<div class="chips"><span class="chip"><span class="dot ' + d[0] + '"></span>' + esc(d[1]) + "</span>" + waKind + wa + mail + legal + "</div>" +
         '<div class="actions">' +
           (u.access_code ? '<button class="btn btn-ghost btn-sm" data-act="code" data-i="' + i + '" title="' + esc(u.access_code) + '">Copiar código</button>' : "") +
           (u.link ? '<button class="btn btn-ghost btn-sm" data-act="copy" data-i="' + i + '">Copiar enlace</button>' : "") +
@@ -330,7 +337,8 @@ h1.h { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 6px 0 0; }
     if (!name) { err("n-err", "Escribe el nombre."); return; }
     if (!picked("n-models")) { err("n-err", "Elige un modelo (falta configurar alguna clave)."); return; }
     b.disabled = true; b.innerHTML = '<span class="spinner"></span> Creando…'; err("n-err", "");
-    api("POST", "/api/users", { name: name, email: $("n-email").value.trim(), assistant_name: $("n-asst").value.trim(), model: picked("n-models") })
+    var waSel = document.querySelector('input[name="n-wa"]:checked');
+    api("POST", "/api/users", { name: name, email: $("n-email").value.trim(), assistant_name: $("n-asst").value.trim(), model: picked("n-models"), whatsapp: waSel ? waSel.value : "personal" })
       .then(function (r) {
         show("new-form", false); show("new-done", true);
         $("d-title").textContent = "Jarvis de " + name + " creado";

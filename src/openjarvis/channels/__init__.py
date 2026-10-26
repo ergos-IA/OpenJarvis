@@ -28,6 +28,7 @@ _CHANNEL_MODULES = [
     "feishu",
     "bluebubbles",
     "whatsapp_baileys",
+    "whatsapp_cloud",
     "line_channel",
     "viber_channel",
     "messenger_channel",

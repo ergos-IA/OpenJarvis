@@ -281,6 +281,35 @@ h1.glitch { animation: glitch 1.1s steps(1) 1; }
 tbody tr { transition: background .3s; } tbody tr.hl { background: rgba(0,217,255,.05); }
 tbody tr.hl th { color: #fff; }
 
+/* pricing */
+.billing { display: inline-flex; padding: 4px; border: 1px solid var(--line3); background: #06080a; margin-bottom: 28px; position: relative; }
+.billing button { position: relative; z-index: 1; border: 0; background: transparent; color: var(--t3); font-family: var(--mono); font-size: 12px; letter-spacing: .14em; padding: 12px 18px; cursor: pointer; min-height: 44px; transition: color .3s; }
+.billing button.on { color: var(--bg); }
+.billing .pill { position: absolute; top: 4px; bottom: 4px; left: 4px; background: var(--accent); box-shadow: 0 0 18px rgba(0,217,255,.45); transition: transform .45s cubic-bezier(.6,0,.2,1), width .45s cubic-bezier(.6,0,.2,1); }
+.billing .save { margin-left: 8px; padding: 2px 6px; background: var(--yellow); color: var(--bg); font-size: 10px; letter-spacing: .08em; }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 0; border: 1px solid var(--line); }
+.plan { position: relative; padding: clamp(24px, 4vw, 40px); display: flex; flex-direction: column; gap: 18px; overflow: hidden; }
+.plan + .plan { border-left: 1px solid var(--line); }
+@media (max-width: 760px) { .plan + .plan { border-left: 0; border-top: 1px solid var(--line); } }
+.plan.main { background: radial-gradient(600px 300px at 0% 0%, rgba(0,217,255,.10), transparent 70%), #070a0c; }
+.plan.main::before { content: ""; position: absolute; inset: 0; border: 1px solid rgba(0,217,255,.45); pointer-events: none; }
+.plan .tagline2 { font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: var(--accent); }
+.plan .price { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.plan .amount { font-size: clamp(56px, 7vw, 88px); font-weight: 600; letter-spacing: -.04em; line-height: 1; color: #f4fdff; text-shadow: 0 0 40px var(--glow); }
+.plan .amount.flip { animation: flip .5s cubic-bezier(.2,.7,.2,1); }
+@keyframes flip { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } }
+.plan .per { font-family: var(--mono); font-size: 14px; color: var(--t3); }
+.plan .equiv { font-family: var(--mono); font-size: 13px; color: var(--t2); min-height: 1.4em; }
+.free { display: inline-flex; align-self: flex-start; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--yellow); color: var(--yellow); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; }
+.free i { width: 7px; height: 7px; background: var(--yellow); box-shadow: 0 0 10px var(--yellow); animation: blink 1.6s steps(1) infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.plan ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.plan li { display: flex; gap: 12px; font-size: 15px; color: var(--t1); }
+.plan li::before { content: "✓"; color: var(--green); font-family: var(--mono); }
+.plan .btn { align-self: flex-start; }
+.plan .addon-amount { font-size: clamp(44px, 5vw, 64px); font-weight: 600; letter-spacing: -.03em; line-height: 1; }
+.price-notes { margin: 18px 0 0; font-size: 14px; color: var(--t3); line-height: 1.6; }
+
 /* security cascade */
 .sec { position: relative; overflow: hidden; }
 .sec::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--green); box-shadow: 0 0 12px var(--green); transform: scaleX(0); transform-origin: left; }
@@ -312,7 +341,8 @@ tbody tr.hl th { color: #fff; }
       <a href="#sistema">[01] SISTEMA</a>
       <a href="#demo">[02] EN ACCIÓN</a>
       <a href="#seguridad">[03] SEGURIDAD</a>
-      <a href="#contacto">[04] CONTACTO</a>
+      <a href="#precios">[04] PRECIOS</a>
+      <a href="#contacto">[05] CONTACTO</a>
     </nav>
     <a class="ghost" href="#acceso"><span class="dot"></span>ACCEDER</a>
   </div>
@@ -472,7 +502,7 @@ tbody tr.hl th { color: #fff; }
     <ol class="steps">
       <li><span class="label">T+0</span><span class="ttl">Recibes tu código</span><span class="txt">Cada persona tiene su propio Jarvis, privado y aislado.</span></li>
       <li><span class="label">T+1</span><span class="ttl">Aceptas condiciones</span><span class="txt">Lees lo esencial y lo confirmas en un paso.</span></li>
-      <li><span class="label">T+2</span><span class="ttl">Vinculas WhatsApp</span><span class="txt">Con un QR o un código de 8 letras desde el móvil.</span></li>
+      <li><span class="label">T+2</span><span class="ttl">Conectas WhatsApp</span><span class="txt">Tu número con un QR, o un número de empresa con la API oficial de WhatsApp Business.</span></li>
       <li><span class="label">T+3</span><span class="ttl">Le hablas</span><span class="txt">En tu chat «Tú». Correo opcional cuando quieras.</span></li>
     </ol>
   </div>
@@ -540,9 +570,53 @@ tbody tr.hl th { color: #fff; }
   </div>
 </section>
 
+<section class="wrap section" id="precios" aria-labelledby="price-title">
+  <div class="head-split reveal" style="margin-bottom: 40px">
+    <div class="stack"><span class="eyebrow">[04] PRECIOS</span><h2 id="price-title">Un precio. Todo incluido.</h2></div>
+    <p class="lead">Todas las funciones, sin letra pequeña. Empieza gratis el primer mes y decide después.</p>
+  </div>
+  <div class="reveal">
+    <div class="billing" role="group" aria-label="Periodo de facturación">
+      <span class="pill" id="pill" aria-hidden="true"></span>
+      <button type="button" class="on" data-bill="month" aria-pressed="true">MENSUAL</button>
+      <button type="button" data-bill="year" aria-pressed="false">ANUAL<span class="save">−17%</span></button>
+    </div>
+  </div>
+  <div class="plans reveal">
+    <div class="plan main">
+      <span class="tagline2">JARVIS PERSONAL</span>
+      <div class="price"><span class="amount" id="price-amount">9,90 €</span><span class="per" id="price-per">/ mes</span></div>
+      <span class="equiv" id="price-equiv">Sin permanencia. Cancela cuando quieras.</span>
+      <span class="free"><i></i>PRIMER MES GRATIS</span>
+      <ul>
+        <li>Tu propio Jarvis, privado y aislado</li>
+        <li>WhatsApp: avisos, resúmenes y respuestas con tu «sí»</li>
+        <li>Correo Outlook / Microsoft 365 y Gmail</li>
+        <li>Recordatorios, tareas programadas y memoria</li>
+        <li>Búsqueda en internet</li>
+      </ul>
+      <a href="#contacto" class="btn" data-plan>EMPEZAR GRATIS →</a>
+      <span class="equiv">¿Para un equipo? <b style="color: var(--t1); font-weight: 500">8,90 € por usuario y mes</b>. <a href="#contacto" data-team style="border-bottom: 1px solid var(--accent)">Pide propuesta</a></span>
+    </div>
+    <div class="plan">
+      <span class="tagline2" style="color: var(--yellow)">OPCIONAL · PAGO ÚNICO</span>
+      <div class="price"><span class="addon-amount">49 €</span><span class="per">alta asistida</span></div>
+      <span class="equiv">Lo dejamos todo funcionando por ti.</span>
+      <ul>
+        <li>Sesión guiada para vincular WhatsApp</li>
+        <li>Conexión de tu correo (Outlook o Gmail)</li>
+        <li>Configuración de avisos, recordatorios y memoria</li>
+        <li>Primeros pasos y buenas prácticas</li>
+      </ul>
+      <a href="#contacto" class="ghost" data-assisted style="align-self: flex-start">QUIERO ALTA ASISTIDA →</a>
+    </div>
+  </div>
+  <p class="price-notes reveal">Precios por usuario con IVA incluido. El primer mes es gratuito; después se renueva al precio elegido salvo que canceles antes. En el modo WhatsApp Business oficial, las tarifas de mensajería de Meta se facturan aparte.</p>
+</section>
+
 <section class="wrap section contact" id="contacto" aria-labelledby="contact-title">
   <div class="stack reveal">
-    <span class="eyebrow">[04] CONTACTO</span>
+    <span class="eyebrow">[05] CONTACTO</span>
     <h2 id="contact-title">¿Quieres tu<br>Jarvis?</h2>
     <p class="lead">Cuéntanos para quién es y cómo lo usarías. Te respondemos desde AI Fast Track con una propuesta.</p>
     <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px" class="mono">
@@ -571,7 +645,7 @@ tbody tr.hl th { color: #fff; }
   <div class="stack reveal" style="margin-bottom: 40px"><span class="eyebrow" style="color: var(--yellow)">AVISOS</span><h2 id="notice-title" style="font-size: clamp(30px, 3.6vw, 44px)">Lo que debes saber.</h2></div>
   <ol class="notices reveal">
     <li><span class="ttl"><span>A</span>Es una inteligencia artificial</span><span class="txt">Puede equivocarse. No es asesoramiento profesional: verifica lo importante.</span></li>
-    <li><span class="ttl"><span>B</span>WhatsApp no oficial</span><span class="txt">Se conecta como dispositivo vinculado mediante software no oficial. No es un servicio de Meta, que puede limitar o bloquear la cuenta o la conexión.</span></li>
+    <li><span class="ttl"><span>B</span>Dos formas de conectar WhatsApp</span><span class="txt">Modo personal: tu número, como dispositivo vinculado mediante software no oficial; solo para trabajo personal, y Meta puede limitarlo o bloquearlo. Modo Business: API oficial de Meta con un número dedicado, que no puede usarse a la vez en la app del móvil.</span></li>
     <li><span class="ttl"><span>C</span>Servicios de terceros</span><span class="txt">Depende de WhatsApp, Google, Microsoft y proveedores de IA y alojamiento, que pueden cambiar o retirar sus servicios.</span></li>
     <li><span class="ttl"><span>D</span>Uso responsable</span><span class="txt">Eres responsable de lo que confirmas enviar. Prohibido el spam y los envíos masivos.</span></li>
   </ol>
@@ -747,6 +821,38 @@ tbody tr.hl th { color: #fff; }
   cores.addEventListener("mouseleave", function () { if (!corePaused) scheduleCore(); });
   selectCore(0, false);
   onVisible(cores, function (v) { coreVisible = v; if (v) scheduleCore(); else clearTimeout(coreTimer); }, .3);
+
+  // ---------- pricing toggle ----------
+  var PRICES = {
+    month: { amount: "9,90 €", per: "/ mes", equiv: "Sin permanencia. Cancela cuando quieras." },
+    year: { amount: "99 €", per: "/ año", equiv: "Equivale a 8,25 €/mes · ahorras 19,80 € al año." }
+  };
+  var pill = $("pill"), billBtns = document.querySelectorAll("[data-bill]"), billing = "month";
+  function setBilling(kind) {
+    billing = kind;
+    billBtns.forEach(function (b) {
+      var on = b.getAttribute("data-bill") === kind;
+      b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+      if (on) { pill.style.width = b.offsetWidth + "px"; pill.style.transform = "translateX(" + (b.offsetLeft - 4) + "px)"; }
+    });
+    var p = PRICES[kind], amt = $("price-amount");
+    amt.textContent = p.amount; $("price-per").textContent = p.per; $("price-equiv").textContent = p.equiv;
+    amt.classList.remove("flip"); void amt.offsetWidth; amt.classList.add("flip");
+  }
+  billBtns.forEach(function (b) { b.addEventListener("click", function () { setBilling(b.getAttribute("data-bill")); }); });
+  setBilling("month");
+  addEventListener("resize", function () { setBilling(billing); });
+  // Plan buttons pre-fill the contact message.
+  function prefill(text) { var m = $("c-msg"); if (m && !m.value.trim()) m.value = text; }
+  document.querySelector("[data-plan]").addEventListener("click", function () {
+    prefill("Quiero empezar el mes gratis de Jarvis (plan " + (billing === "year" ? "anual, 99 €/año" : "mensual, 9,90 €/mes") + ").");
+  });
+  document.querySelector("[data-team]").addEventListener("click", function () {
+    prefill("Queremos Jarvis para un equipo de [N] personas (8,90 € por usuario y mes).");
+  });
+  document.querySelector("[data-assisted]").addEventListener("click", function () {
+    prefill("Quiero Jarvis con alta asistida (49 €).");
+  });
 
   // ---------- security cascade ----------
   var sg = $("sec-grid");

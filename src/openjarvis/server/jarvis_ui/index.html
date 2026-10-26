@@ -427,7 +427,7 @@ footer img { width: 22px; height: 22px; }
       <p class="lead">Lee y acepta las condiciones. Son pocas cosas, pero importantes.</p>
       <div class="consent">
         <label><input type="checkbox" id="c-terms"><span>He leído y acepto los <a href="/legal/terminos" target="_blank" rel="noopener">Términos de uso</a> y la <a href="/legal/privacidad" target="_blank" rel="noopener">Política de privacidad</a>, y entiendo que <b>Jarvis es una inteligencia artificial que puede equivocarse</b> y que soy responsable de lo que confirmo enviar.</span></label>
-        <label><input type="checkbox" id="c-wa"><span>Entiendo que la conexión con WhatsApp <b>no es un servicio oficial de Meta</b>, que <b>Meta puede limitar o bloquear mi número</b> o cortar la conexión en cualquier momento, y que la uso <b>bajo mi propio riesgo</b>.</span></label>
+        <label><input type="checkbox" id="c-wa"><span>Entiendo las condiciones de mi conexión con WhatsApp: en <b>modo personal</b> no es un servicio oficial de Meta, que <b>puede limitar o bloquear mi número</b>, y la uso <b>bajo mi propio riesgo</b> para trabajo personal; en <b>modo Business oficial</b> el número queda dedicado a la API y <b>no puedo usarlo a la vez en la app del móvil</b>.</span></label>
       </div>
       <p class="err hidden" id="c-err"></p>
       <div class="nav">
@@ -487,6 +487,37 @@ footer img { width: 22px; height: 22px; }
           </div>
           <p class="err hidden" id="pc-err"></p>
         </div>
+      </div>
+
+      <div id="wa-meta" class="hidden">
+        <h2>WhatsApp Business oficial</h2>
+        <p class="lead">Tu Jarvis usa la API oficial de Meta: tiene <b>su propio número de empresa</b> y tú le escribes desde tu WhatsApp personal.</p>
+        <div class="tip" style="background: rgba(255,219,5,.08); color: #fff3a8">
+          <b>Antes de nada, ten en cuenta:</b>
+          <ul style="margin: 8px 0 0; padding-left: 18px; line-height: 1.6">
+            <li>Un número dado de alta en la API <b>no puede usarse a la vez en la app de WhatsApp del móvil</b>: o API, o móvil. Usa un número dedicado para Jarvis.</li>
+            <li>Jarvis solo ve los mensajes que llegan a <b>su</b> número, no tus chats personales.</li>
+            <li>WhatsApp solo deja escribir libremente a quien haya escrito al número en las últimas 24 h; fuera de ese plazo hace falta una plantilla aprobada por Meta.</li>
+            <li>Meta factura las conversaciones según sus tarifas de WhatsApp Business.</li>
+          </ul>
+        </div>
+        <div class="field"><label for="m-owner">Tu número personal de WhatsApp (el que hablará con Jarvis)</label><input class="input" id="m-owner" inputmode="tel" placeholder="+34 600 123 456"></div>
+        <div class="field"><label for="m-pnid">ID del número de teléfono (Meta → WhatsApp → Configuración de la API)</label><input class="input" id="m-pnid" inputmode="numeric" placeholder="123456789012345"></div>
+        <div class="field"><label for="m-token">Token de acceso permanente (usuario del sistema)</label><input class="input" id="m-token" type="password" autocomplete="off" placeholder="EAAG…"></div>
+        <div class="field"><label for="m-secret">Clave secreta de la app (para verificar el webhook)</label><input class="input" id="m-secret" type="password" autocomplete="off" placeholder="App secret"></div>
+        <div class="field"><label for="m-tpl">Plantilla para avisos fuera de 24 h (opcional, un parámetro)</label><input class="input" id="m-tpl" autocomplete="off" placeholder="jarvis_aviso"></div>
+        <div class="tip">
+          <b>Webhook en tu app de Meta</b> (WhatsApp → Configuración → Webhook, suscribe el campo <span class="kbd">messages</span>):
+          <div style="margin-top: 10px; display: grid; gap: 8px">
+            <div>URL: <span class="kbd" id="m-hook" style="word-break: break-all"></span> <button class="btn-link" id="m-hook-copy">Copiar</button></div>
+            <div>Token de verificación: <span class="kbd" id="m-vtok" style="word-break: break-all"></span> <button class="btn-link" id="m-vtok-copy">Copiar</button></div>
+          </div>
+        </div>
+        <div class="hero-actions" style="justify-content: flex-start; margin-top: 8px">
+          <button class="btn btn-primary" id="m-save">Guardar y comprobar</button>
+          <button class="btn btn-ghost" id="m-test">Enviar mensaje de prueba</button>
+        </div>
+        <p id="m-state" style="margin: 14px 0 0; color: var(--t2)"></p>
       </div>
 
       <div id="wa-done" class="hidden success">
@@ -804,9 +835,48 @@ footer img { width: 22px; height: 22px; }
     api("POST", "/api/whatsapp/logout").then(function () { lastSvg = ""; toast("Desvinculado. Generando un código nuevo…"); refresh(); });
   };
 
+  var metaFilled = false;
+  function renderMeta() {
+    show("wa-linking", false); show("wa-done", false); show("wa-meta", true);
+    $("wa-next").disabled = !wa.connected;
+    $("m-hook").textContent = location.origin + "/meta/whatsapp/webhook";
+    $("m-vtok").textContent = wa.verify_token || "";
+    if (!metaFilled) {
+      metaFilled = true;
+      if (wa.owner) $("m-owner").value = "+" + wa.owner;
+      if (wa.phone_number_id) $("m-pnid").value = wa.phone_number_id;
+      if (wa.template_name) $("m-tpl").value = wa.template_name;
+      if (wa.configured) { $("m-token").placeholder = "Guardado · escribe uno nuevo para cambiarlo"; }
+      if (wa.has_app_secret) { $("m-secret").placeholder = "Guardada · escribe otra para cambiarla"; }
+    }
+    $("m-state").innerHTML = wa.connected
+      ? '<span style="color: var(--green)">✓ Conectado</span> · número de Jarvis +' + (wa.me || "") + (wa.has_app_secret ? "" : ' · <span style="color: var(--yellow)">falta la clave secreta: no llegarán mensajes</span>')
+      : (wa.error ? '<span style="color: #ff6b8a">' + wa.error.replace(/</g, "&lt;") + "</span>" : "Sin configurar.");
+  }
+  $("m-hook-copy").onclick = function () { copy($("m-hook").textContent); };
+  $("m-vtok-copy").onclick = function () { copy($("m-vtok").textContent); };
+  $("m-save").onclick = function () {
+    var b = this, token = $("m-token").value.trim();
+    if (!token && !(wa && wa.configured)) { toast("Falta el token de acceso"); return; }
+    b.disabled = true; b.textContent = "Comprobando con Meta…";
+    api("POST", "/api/whatsapp/meta/config", {
+      owner_number: $("m-owner").value, phone_number_id: $("m-pnid").value,
+      access_token: token, app_secret: $("m-secret").value, template_name: $("m-tpl").value
+    }).then(function (s) { wa = s; $("m-token").value = ""; $("m-secret").value = ""; metaFilled = false; toast("Conectado con WhatsApp Business ✓"); render(); },
+      function (e) { $("m-state").innerHTML = '<span style="color: #ff6b8a">' + e.message.replace(/</g, "&lt;") + "</span>"; })
+      .then(function () { b.disabled = false; b.textContent = "Guardar y comprobar"; });
+  };
+  $("m-test").onclick = function () {
+    var b = this; b.disabled = true;
+    api("POST", "/api/whatsapp/meta/test").then(function () { toast("Mensaje de prueba enviado a tu WhatsApp ✓"); },
+      function (e) { $("m-state").innerHTML = '<span style="color: #ff6b8a">' + e.message.replace(/</g, "&lt;") + "</span>"; })
+      .then(function () { b.disabled = false; });
+  };
+
   function renderWhatsApp() {
     if (!wa) return;
     if (!wa.enabled) { $("wa-err").textContent = "WhatsApp no está activado en esta instancia."; show("wa-err", true); return; }
+    if (wa.provider === "meta") { renderMeta(); return; }
     show("wa-linking", !wa.connected); show("wa-done", wa.connected);
     $("wa-next").disabled = !wa.connected;
     if (wa.connected) {

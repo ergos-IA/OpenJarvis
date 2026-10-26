@@ -144,6 +144,7 @@ class NewUser(BaseModel):
     model: str = DEFAULT_MODEL
     provider: str = ""  # only needed for model ids outside the catalog
     assistant_name: str = "Jarvis"
+    whatsapp: str = "personal"  # personal (linked device) | meta (Business API)
 
 
 class ModelChange(BaseModel):
@@ -308,6 +309,7 @@ def create_admin_app(
             or svc["name"][len(USER_PREFIX) :],
             "email": variables.get("JARVIS_USER_EMAIL", ""),
             "assistant": variables.get("JARVIS_ASSISTANT_NAME", "Jarvis"),
+            "whatsapp_provider": variables.get("WHATSAPP_PROVIDER", "personal"),
             "model": describe(model, variables.get("JARVIS_ENGINE", "")),
             "created_at": svc["created_at"],
             "deploy_status": svc["deploy_status"] or "SIN DESPLEGAR",
@@ -371,6 +373,7 @@ def create_admin_app(
             "JARVIS_USER_NAME": name,
             "JARVIS_USER_EMAIL": req.email.strip(),
             "WHATSAPP_MODE": "self",
+            "WHATSAPP_PROVIDER": "meta" if req.whatsapp == "meta" else "personal",
             **_model_vars(req.model, req.provider),
         }
         # Provider credentials and the company's legal data come from the
