@@ -214,6 +214,9 @@ class WhatsAppBaileysChannel(BaseChannel):
             get_manager().attach(system)
         except Exception:
             logger.exception("Connected tools not attached")
+        from openjarvis.personal.voice import prefetch
+
+        threading.Thread(target=prefetch, daemon=True, name="voice-prefetch").start()
 
     # -- bridge lifecycle -------------------------------------------------------
 
@@ -431,7 +434,9 @@ class WhatsAppBaileysChannel(BaseChannel):
             "al usuario. Puedes crear recordatorios y tareas programadas "
             "(reminder_create, reminder_list, reminder_cancel) que le llegan "
             "por este chat, y guardar u olvidar datos del usuario "
-            "(remember_fact, forget_fact) cuando te lo pida."
+            "(remember_fact, forget_fact) cuando te lo pida. Entiendes notas de "
+            "voz: te llegan transcritas, marcadas como «Nota de voz»; si te "
+            "reenvían un audio, se lo transcribes al usuario automáticamente."
         )
         return prompt + self._personal_context()
 
@@ -608,6 +613,77 @@ class WhatsAppBaileysChannel(BaseChannel):
             who = f"*{push_name or label}* ({label}, no está en tus contactos)"
         self.send(own, f"📩 {who}: {event.get('text', '')}")
 
+    # Forwarded audios longer than this (characters) also get a summary.
+    _SUMMARY_FROM_CHARS = 700
+
+    def _handle_audio(self, event: Dict[str, Any]) -> None:
+        """Voice note in the assistant chat: transcribe it.
+
+        Forwarded audios are transcribed for the user (plus a summary when
+        long); the user's own voice notes are handled like typed messages.
+        """
+        import base64
+
+        from openjarvis.personal.voice import VoiceError, duration_label, transcribe
+
+        jid = event.get("jid", "")
+        forwarded = bool(event.get("forwarded"))
+        seconds = float(event.get("seconds") or 0)
+        error = event.get("error", "")
+        if error == "too_long":
+            self.send(
+                jid, "🎙️ El audio es demasiado largo: transcribo hasta 15 minutos."
+            )
+            return
+        if error or not event.get("data"):
+            self.send(jid, "🎙️ No he podido descargar el audio. ¿Me lo reenvías?")
+            return
+        if seconds > 45:
+            self.send(jid, f"🎙️ Escuchando el audio ({duration_label(seconds)})…")
+        try:
+            text = transcribe(
+                base64.b64decode(event["data"]), event.get("mimetype", "audio/ogg")
+            )
+        except VoiceError as exc:
+            self.send(jid, f"🎙️ {exc} ¿Me lo escribes?")
+            return
+        if not text:
+            self.send(jid, "🎙️ No he oído nada en el audio.")
+            return
+
+        if forwarded:
+            reply = (
+                f"📝 *Transcripción del audio reenviado* ({duration_label(seconds)}):"
+                f"\n\n{text}"
+            )
+            if len(text) >= self._SUMMARY_FROM_CHARS and self.task_runner is not None:
+                try:
+                    summary = self.task_runner(
+                        "Resume en 2-4 viñetas breves, en español, lo esencial de "
+                        "esta transcripción de un audio de WhatsApp (quién pide qué, "
+                        f"fechas, tareas):\n\n{text}"
+                    )
+                    if summary and summary.strip():
+                        reply += f"\n\n*Resumen:*\n{summary.strip()}"
+                except Exception:
+                    logger.debug("Audio summary failed", exc_info=True)
+            self.send(jid, reply)
+            return
+
+        # The user's own voice note: a request like any typed message.
+        pending = self._take_pending_reply(text)
+        if pending is not None:
+            self.send(jid, pending)
+            return
+        cm = ChannelMessage(
+            channel="whatsapp_baileys",
+            sender=event.get("sender", ""),
+            content=f"[Nota de voz del usuario, transcrita] {text}",
+            message_id=event.get("message_id", ""),
+            conversation_id=jid,
+        )
+        self._dispatch_message(cm)
+
     def _dispatch_message(self, cm: ChannelMessage) -> None:
         """Answer a pending confirmation, or pass the message to handlers."""
         reply = self._take_pending_reply(cm.content)
@@ -760,6 +836,12 @@ class WhatsAppBaileysChannel(BaseChannel):
             self._last_qr = event.get("data", "")
             self._last_qr_svg = event.get("svg", "")
             logger.info("WhatsApp QR code ready -- open /whatsapp to scan it")
+
+        elif event_type == "audio":
+            if self._executor is not None:
+                self._executor.submit(self._handle_audio, event)
+            else:
+                self._handle_audio(event)
 
         elif event_type == "message":
             cm = ChannelMessage(

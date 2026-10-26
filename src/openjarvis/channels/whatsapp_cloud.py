@@ -415,12 +415,52 @@ class WhatsAppCloudChannel(WhatsAppBaileysChannel):
         label = labels.get(kind, "[mensaje]")
         return f"{label} {caption}".strip()
 
+    def _audio_event(self, msg: Dict[str, Any], jid: str) -> Dict[str, Any]:
+        """Download an audio message into the bridge's ``audio`` event shape."""
+        import base64
+
+        audio = msg.get("audio") or {}
+        event: Dict[str, Any] = {
+            "jid": jid,
+            "sender": jid,
+            "message_id": msg.get("id", ""),
+            "seconds": 0,
+            "mimetype": audio.get("mime_type", "audio/ogg"),
+            "ptt": bool(audio.get("voice")),
+            "forwarded": bool((msg.get("context") or {}).get("forwarded")),
+        }
+        headers = {"Authorization": f"Bearer {self._cfg.get('access_token', '')}"}
+        try:
+            meta = self._http.get(f"{GRAPH}/{audio.get('id', '')}", headers=headers)
+            meta.raise_for_status()
+            info = meta.json()
+            if int(info.get("file_size") or 0) > 20 * 1024 * 1024:
+                event["error"] = "too_long"
+                return event
+            media = self._http.get(info["url"], headers=headers)
+            media.raise_for_status()
+            event["data"] = base64.b64encode(media.content).decode()
+        except Exception:
+            logger.warning("WhatsApp Cloud audio download failed", exc_info=True)
+            event["error"] = "download_failed"
+        return event
+
     def _handle_message(self, msg: Dict[str, Any], push_name: str) -> None:
         sender = _digits(msg.get("from", ""))
         text = self._text_of(msg)
         if not sender or not text:
             return
         jid = f"{sender}@s.whatsapp.net"
+        if msg.get("type") == "audio" and sender == self._cfg.get("owner_number"):
+
+            def run() -> None:
+                self._handle_audio(self._audio_event(msg, jid))
+
+            if self._executor is not None:
+                self._executor.submit(run)
+            else:
+                run()
+            return
         if sender == self._cfg.get("owner_number"):
             cm = ChannelMessage(
                 channel=self.channel_id,

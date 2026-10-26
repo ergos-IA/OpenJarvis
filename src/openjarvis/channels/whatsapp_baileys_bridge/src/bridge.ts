@@ -24,6 +24,10 @@
  *   {"type":"send_result","request_id":..,"ok":bool,"jid":..,"error":..}
  *        -- only for sends that carried a request_id
  *   {"type":"pairing_code","phone":..,"code":"ABCD1234","error":..}
+ *   {"type":"audio","jid":..,"sender":..,"message_id":..,"seconds":..,
+ *    "mimetype":..,"ptt":bool,"forwarded":bool,"forwarding_score":..,
+ *    "data":"<base64>"|absent,"error":"too_long"|"download_failed"|absent}
+ *        -- a voice note / audio in the assistant chat, to transcribe
  *
  * Arguments:
  *   --auth-dir <dir>      Baileys multi-file auth state (persist this!)
@@ -38,6 +42,7 @@
 import makeWASocket, {
   areJidsSameUser,
   DisconnectReason,
+  downloadMediaMessage,
   fetchLatestBaileysVersion,
   generateMessageIDV2,
   useMultiFileAuthState,
@@ -107,6 +112,26 @@ function extractText(message: any): string {
     message?.ephemeralMessage?.message?.conversation ||
     ""
   );
+}
+
+// Voice notes longer than this (or bigger) are not transcribed.
+const MAX_AUDIO_SECONDS = 15 * 60;
+const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+
+/** The audio part of a message (voice note or audio file), if any. */
+function audioOf(message: any): any {
+  const m =
+    message?.ephemeralMessage?.message ||
+    message?.viewOnceMessage?.message ||
+    message?.viewOnceMessageV2?.message ||
+    message;
+  return m?.audioMessage || null;
+}
+
+function toNumber(value: any): number {
+  if (value == null) return 0;
+  const n = Number(typeof value === "object" && value.toString ? value.toString() : value);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /** Text, or a short placeholder (with caption) for media messages. */
@@ -201,6 +226,35 @@ async function main(): Promise<void> {
     return senderPhones(key).some((p) => allowed.has(p));
   }
 
+  /** Download a voice note in the assistant chat and hand it to Python. */
+  async function emitAudio(msg: any, audio: any): Promise<void> {
+    const ctx = audio.contextInfo || {};
+    const base = {
+      type: "audio",
+      jid: msg.key.remoteJid || "",
+      sender: msg.key.participant || msg.key.remoteJid || "",
+      message_id: msg.key.id || "",
+      seconds: toNumber(audio.seconds),
+      mimetype: audio.mimetype || "audio/ogg",
+      ptt: !!audio.ptt,
+      forwarded: !!ctx.isForwarded,
+      forwarding_score: toNumber(ctx.forwardingScore),
+    };
+    if (base.seconds > MAX_AUDIO_SECONDS || toNumber(audio.fileLength) > MAX_AUDIO_BYTES) {
+      emit({ ...base, error: "too_long" });
+      return;
+    }
+    try {
+      const buf = await downloadMediaMessage(msg, "buffer", {}, {
+        logger,
+        reuploadRequest: sock!.updateMediaMessage,
+      });
+      emit({ ...base, data: Buffer.from(buf).toString("base64") });
+    } catch (err) {
+      emit({ ...base, error: "download_failed", message: String(err) });
+    }
+  }
+
   async function startSocket(): Promise<void> {
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
@@ -286,7 +340,11 @@ async function main(): Promise<void> {
         if (!msg.message) continue;
         if (shouldHandle(msg)) {
           const text = extractText(msg.message);
-          if (!text) continue;
+          if (!text) {
+            const audio = audioOf(msg.message);
+            if (audio) void emitAudio(msg, audio);
+            continue;
+          }
           emit({
             type: "message",
             jid: msg.key.remoteJid || "",
