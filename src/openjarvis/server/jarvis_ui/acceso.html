@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080808">
+<meta name="robots" content="noindex, nofollow">
+<title>Acceso restringido · AI Fast Track</title>
+<link rel="icon" href="/jarvis-ui/aifasttrack-mark.svg" type="image/svg+xml">
+<style>
+@font-face { font-family: "Space Grotesk"; font-weight: 400 700; src: url("/jarvis-ui/space-grotesk.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400 700; src: url("/jarvis-ui/inter.woff2") format("woff2"); }
+:root { --cyan: #00d9ff; --yellow: #ffdb05; --red: #ff3b64; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: #080808; color: #fff;
+  font: 16px/1.55 "Inter", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(0,217,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(0,217,255,.045) 1px, transparent 1px);
+  background-size: 48px 48px; mask-image: radial-gradient(ellipse at 50% 45%, #000 15%, transparent 70%); -webkit-mask-image: radial-gradient(ellipse at 50% 45%, #000 15%, transparent 70%); }
+main { position: relative; width: min(420px, 100%); text-align: center; }
+img { height: 38px; margin-bottom: 34px; }
+.lock { position: relative; width: 104px; height: 104px; margin: 0 auto 22px; display: grid; place-items: center; }
+.lock::before, .lock::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,59,100,.55); }
+.lock::before { border-style: dashed; animation: spin 18s linear infinite; }
+.lock::after { inset: 14px; border-color: rgba(255,59,100,.25); }
+.lock.ok::before { border-color: rgba(0,217,255,.6); } .lock.ok::after { border-color: rgba(0,217,255,.3); }
+.lock svg { color: var(--red); } .lock.ok svg { color: var(--cyan); }
+@keyframes spin { to { transform: rotate(360deg); } }
+h1 { font: 700 26px/1.2 "Space Grotesk", sans-serif; margin: 0 0 8px; letter-spacing: .01em; }
+p { color: #9a9a9a; margin: 0 0 6px; }
+.code { font: 600 11px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .2em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; }
+.lock.ok + .code { color: var(--cyan); }
+footer { margin-top: 36px; font-size: 13px; color: #5a5a5a; }
+footer a { color: #5a5a5a; }
+@media (prefers-reduced-motion: reduce) { .lock::before { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <img src="/jarvis-ui/aifasttrack-logo.svg" alt="AI Fast Track">
+  <div class="lock" id="lock">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+  </div>
+  <div class="code" id="code">// Acceso restringido</div>
+  <h1 id="title">Acceso restringido</h1>
+  <p id="text">Este asistente es privado. Ábrelo desde el enlace personal que te enviamos.</p>
+  <footer>AI Fast Track · <a href="/privacidad">Privacidad</a></footer>
+</main>
+<script>
+(function () {
+  // Forget keys stored by older versions of the page.
+  try { localStorage.removeItem("openjarvis.apiKey"); } catch (e) {}
+  var m = location.hash.match(/key=([^&]+)/);
+  if (!m) return;
+  var key = decodeURIComponent(m[1]);
+  // Take the key out of the address bar (and history) right away.
+  history.replaceState(null, "", location.pathname + location.search);
+  var set = function (code, title, text, ok) {
+    document.getElementById("code").textContent = code;
+    document.getElementById("title").textContent = title;
+    document.getElementById("text").textContent = text;
+    document.getElementById("lock").classList.toggle("ok", !!ok);
+  };
+  set("// Verificando", "Verificando acceso…", "Un momento.", true);
+  fetch("/api/session", { method: "POST", headers: { Authorization: "Bearer " + key }, credentials: "same-origin" })
+    .then(function (r) {
+      if (r.ok) { location.replace(location.pathname + location.search); return; }
+      if (r.status === 429) set("// Bloqueado", "Demasiados intentos", "Por seguridad, este acceso está bloqueado temporalmente. Prueba más tarde.");
+      else set("// Enlace no válido", "Enlace no válido", "Este enlace ha caducado o no es correcto. Pide uno nuevo a AI Fast Track.");
+    })
+    .catch(function () { set("// Sin conexión", "No se puede conectar", "Comprueba tu conexión e inténtalo de nuevo."); });
+})();
+</script>
+</body>
+</html>

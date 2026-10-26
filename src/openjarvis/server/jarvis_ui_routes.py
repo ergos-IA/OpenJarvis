@@ -1,9 +1,10 @@
 """Jarvis home page: animated landing plus the step-by-step setup wizard.
 
-``GET /`` (and ``/inicio``) serve ``jarvis_ui/index.html``: a public,
-self-contained page (no data in it) that links WhatsApp and email through the
-``/api/whatsapp/*`` and ``/api/mail/*`` endpoints with the instance API key,
-typed once or passed as ``/#key=...`` (fragments never reach the server).
+``GET /`` (and ``/inicio``) serve ``jarvis_ui/index.html`` only to a browser
+with a session; anyone else gets ``acceso.html`` ("restricted").  The
+personal link ``/#key=...`` (fragments never reach the server) is exchanged
+once for an HttpOnly session cookie, see :mod:`openjarvis.server.web_session`.
+The page then talks to ``/api/whatsapp/*`` and ``/api/mail/*`` with it.
 ``?paso=whatsapp|correo|estado`` opens a wizard step directly; the old
 ``/whatsapp`` and ``/correo`` pages redirect to those (browsers keep the
 ``#key=`` fragment across the redirect).
@@ -18,8 +19,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+
+from openjarvis.server.web_session import (
+    SESSION_COOKIE,
+    SESSION_TTL_S,
+    issue_session,
+    session_valid,
+)
 
 router = APIRouter(tags=["jarvis-ui"])
 
@@ -32,11 +40,60 @@ _ASSETS = {
 }
 
 
+def _api_key(request: Request) -> str:
+    return getattr(request.app.state, "api_key", "") or os.environ.get(
+        "OPENJARVIS_API_KEY", ""
+    )
+
+
+_PAGE_HEADERS = {
+    "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
+    "Strict-Transport-Security": "max-age=31536000",
+}
+
+
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 @router.get("/inicio", response_class=HTMLResponse, include_in_schema=False)
-async def jarvis_home() -> HTMLResponse:
-    html = (_UI_DIR / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+async def jarvis_home(request: Request) -> HTMLResponse:
+    """The app for a signed-in browser, otherwise the "restricted" page.
+
+    The restricted page holds nothing but a short script that, when opened
+    from a personal link (``#key=...``), exchanges the key for a session.
+    """
+    key = _api_key(request)
+    signed_in = not key or session_valid(request.cookies.get(SESSION_COOKIE, ""), key)
+    page = "index.html" if signed_in else "acceso.html"
+    html = (_UI_DIR / page).read_text(encoding="utf-8")
+    return HTMLResponse(html, headers=_PAGE_HEADERS)
+
+
+@router.post("/api/session")
+async def open_session(request: Request) -> Response:
+    """Swap the personal key (``Authorization: Bearer``) for a session cookie.
+
+    Reaching this handler means AuthMiddleware already validated the key.
+    """
+    response = Response(status_code=204)
+    https = request.url.scheme == "https" or (
+        request.headers.get("x-forwarded-proto", "") == "https"
+    )
+    response.set_cookie(
+        SESSION_COOKIE,
+        issue_session(_api_key(request)),
+        max_age=SESSION_TTL_S,
+        httponly=True,
+        secure=https,
+        samesite="lax",
+    )
+    return response
+
+
+@router.delete("/api/session")
+async def close_session() -> Response:
+    response = Response(status_code=204)
+    response.delete_cookie(SESSION_COOKIE)
+    return response
 
 
 @router.get("/whatsapp", include_in_schema=False)

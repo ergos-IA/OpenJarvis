@@ -101,10 +101,11 @@ class TestPage:
         assert resp.headers["location"] == "/?paso=whatsapp"
         resp = client.get("/whatsapp")
         assert resp.status_code == 200
-        assert "Conecta tu WhatsApp" in resp.text
+        assert "Acceso restringido" in resp.text  # no session yet
 
-    def test_home_is_public(self, mock_engine):
-        resp = _client(mock_engine, api_key="secret").get("/")
+    def test_home_without_key_configured(self, mock_engine):
+        # Keyless local use: no gate.
+        resp = _client(mock_engine).get("/")
         assert resp.status_code == 200
         assert "JARVIS" in resp.text and "/jarvis-ui/aifasttrack-logo.svg" in resp.text
 

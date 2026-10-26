@@ -41,6 +41,7 @@ from openjarvis.fasttrack.models import (
     provider_for,
 )
 from openjarvis.fasttrack.railway import RailwayClient, RailwayError
+from openjarvis.server.web_session import client_ip
 
 USER_PREFIX = "jarvis-"
 _COOKIE = "ft_session"
@@ -207,10 +208,10 @@ def create_admin_app(
 
     @app.post("/api/login")
     async def login(req: LoginRequest, request: Request, response: Response):
-        client_ip = request.client.host if request.client else "?"
+        ip = client_ip(request)
         if not auth.password:
             raise HTTPException(503, "Falta ADMIN_PASSWORD en la consola")
-        if not auth.check_password(req.password, client_ip):
+        if not auth.check_password(req.password, ip):
             raise HTTPException(401, "Contraseña incorrecta")
         response.set_cookie(
             _COOKIE,

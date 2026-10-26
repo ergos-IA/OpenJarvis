@@ -11,6 +11,15 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from openjarvis.server.web_session import (
+    CSRF_HEADER,
+    CSRF_VALUE,
+    SESSION_COOKIE,
+    FailureLimiter,
+    client_ip,
+    session_valid,
+)
+
 logger = logging.getLogger(__name__)
 
 _WS_AUTH_PROTOCOL = "openjarvis.auth.v1"
@@ -30,6 +39,12 @@ def _api_keys_match(presented: str, expected: str) -> bool:
 class AuthMiddleware(BaseHTTPMiddleware):
     """Validates ``Authorization: Bearer <key>`` on ``/v1/*`` and ``/api/*`` routes.
 
+    Browsers may instead present the session cookie issued by
+    ``POST /api/session`` (see :mod:`openjarvis.server.web_session`); state
+    changing requests authenticated that way must also carry the
+    ``X-Requested-With: jarvis`` header.  Clients that fail authentication too
+    often are blocked for a while (HTTP 429).
+
     Webhook routes and health checks are exempt — they use
     per-channel signature verification instead.
     """
@@ -37,6 +52,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, api_key: str = "") -> None:  # noqa: ANN001
         super().__init__(app)
         self._api_key = api_key or os.environ.get("OPENJARVIS_API_KEY", "")
+        self._limiter = FailureLimiter()
+
+    def _reject(self, request: Request, ip: str, detail: str) -> JSONResponse:
+        self._limiter.fail(ip)
+        return JSONResponse({"detail": detail}, status_code=401)
 
     async def dispatch(self, request: Request, call_next):  # noqa: ANN001
         # Browser CORS preflights never carry Authorization, and rejecting
@@ -47,19 +67,32 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if self._is_cors_preflight(request):
             return await call_next(request)
         if self._api_key and self._requires_auth(request.url.path):
+            ip = client_ip(request)
+            if self._limiter.blocked(ip):
+                return JSONResponse(
+                    {"detail": "Demasiados intentos fallidos. Prueba más tarde."},
+                    status_code=429,
+                )
             auth = request.headers.get("Authorization", "")
             if not auth:
-                return JSONResponse(
-                    {"detail": "Missing Authorization header"},
-                    status_code=401,
-                )
+                cookie = request.cookies.get(SESSION_COOKIE, "")
+                if not cookie:
+                    return self._reject(request, ip, "Missing Authorization header")
+                if not session_valid(cookie, self._api_key):
+                    return self._reject(request, ip, "Session expired")
+                if request.method not in ("GET", "HEAD") and (
+                    request.headers.get(CSRF_HEADER, "") != CSRF_VALUE
+                ):
+                    return JSONResponse(
+                        {"detail": "Missing X-Requested-With header"},
+                        status_code=403,
+                    )
+                return await call_next(request)
             scheme, _, token = auth.partition(" ")
             # Constant-time comparison to avoid leaking the key via timing.
             if scheme.lower() != "bearer" or not _api_keys_match(token, self._api_key):
-                return JSONResponse(
-                    {"detail": "Invalid API key"},
-                    status_code=401,
-                )
+                return self._reject(request, ip, "Invalid API key")
+            self._limiter.succeed(ip)
         return await call_next(request)
 
     @staticmethod

@@ -15,6 +15,8 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)))
     args = parser.parse_args()
+    # Client IPs come from X-Real-IP (web_session.client_ip); the scheme
+    # from X-Forwarded-Proto, so cookies are marked Secure behind Railway.
     uvicorn.run(
         create_admin_app(),
         host=args.host,

@@ -387,30 +387,15 @@ footer img { width: 22px; height: 22px; }
   <!-- =============== WIZARD =============== -->
   <section id="wizard" class="wizard hidden">
     <ol class="steps" id="steps">
-      <li data-s="0"><span class="n">1</span><span class="lbl">Acceso</span></li>
-      <li data-s="1"><span class="n">2</span><span class="lbl">WhatsApp</span></li>
-      <li data-s="2"><span class="n">3</span><span class="lbl">Correo</span></li>
-      <li data-s="3"><span class="n">4</span><span class="lbl">¡Listo!</span></li>
+      <li data-s="1"><span class="n">1</span><span class="lbl">WhatsApp</span></li>
+      <li data-s="2"><span class="n">2</span><span class="lbl">Correo</span></li>
+      <li data-s="3"><span class="n">3</span><span class="lbl">¡Listo!</span></li>
     </ol>
-
-    <!-- step 0: access key -->
-    <div class="panel hidden" data-step="0">
-      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 1 · Acceso</div>
-      <h2>Identifícate</h2>
-      <p class="lead">Escribe la clave de tu Jarvis. Te la ha enviado quien te lo ha instalado (empieza por <span class="kbd">oj_sk_</span>).</p>
-      <div class="field">
-        <label for="key">Clave de acceso</label>
-        <input class="input" id="key" type="password" autocomplete="current-password" placeholder="oj_sk_…">
-      </div>
-      <p class="err hidden" id="key-err"></p>
-      <div class="nav"><span></span><button class="btn btn-primary" id="key-go">Entrar →</button></div>
-    </div>
 
     <!-- step 1: WhatsApp -->
     <div class="panel hidden" data-step="1">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 2 · WhatsApp</div>
+      <div class="eyebrow">Paso 1 · WhatsApp</div>
 
       <div id="wa-linking">
         <h2>Conecta tu WhatsApp</h2>
@@ -478,7 +463,7 @@ footer img { width: 22px; height: 22px; }
     <!-- step 2: email -->
     <div class="panel hidden" data-step="2">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 3 · Correo (opcional)</div>
+      <div class="eyebrow">Paso 2 · Correo (opcional)</div>
       <h2>Conecta tu correo</h2>
       <p class="lead">Para que Jarvis te avise de correos importantes y los pueda buscar y responder. Puedes conectar uno, los dos o ninguno.</p>
 
@@ -561,7 +546,7 @@ footer img { width: 22px; height: 22px; }
     <!-- step 3: done / status -->
     <div class="panel hidden" data-step="3">
       <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
-      <div class="eyebrow">Paso 4 · Sistemas</div>
+      <div class="eyebrow">Paso 3 · Sistemas</div>
       <h2 id="done-title">Jarvis está listo</h2>
       <p class="lead">Este es el estado de tus conexiones. Puedes volver aquí cuando quieras.</p>
       <div class="status-grid">
@@ -583,7 +568,7 @@ footer img { width: 22px; height: 22px; }
 
 <footer>
   <img src="/jarvis-ui/aifasttrack-mark.svg" alt="">
-  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/privacidad" style="color:var(--t2)">Privacidad</a></span>
+  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/privacidad" style="color:var(--t2)">Privacidad</a> · <a href="#" id="signout" style="color:var(--t2)">Cerrar sesión</a></span>
 </footer>
 <div class="toast" id="toast" role="status"></div>
 
@@ -602,23 +587,18 @@ footer img { width: 22px; height: 22px; }
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var mobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 700;
 
-  // ---------- access key (from #key=… or storage) ----------
-  var STORE = "openjarvis.apiKey";
-  var key = "";
-  var m = location.hash.match(/key=([^&]+)/);
-  if (m) {
-    key = decodeURIComponent(m[1]);
-    try { localStorage.setItem(STORE, key); } catch (e) {}
-    history.replaceState(null, "", location.pathname + location.search);
-  } else {
-    try { key = localStorage.getItem(STORE) || ""; } catch (e) {}
-  }
+  // ---------- session ----------
+  // The server only serves this page to a browser with a valid session
+  // cookie (see acceso.html). Nothing secret is kept in page storage.
+  try { localStorage.removeItem("openjarvis.apiKey"); } catch (e) {}
+  if (/key=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
 
   function api(method, path, body) {
-    var opts = { method: method, headers: { Authorization: "Bearer " + key } };
+    var opts = { method: method, credentials: "same-origin", headers: { "X-Requested-With": "jarvis" } };
     if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
     return fetch(path, opts).then(function (r) {
-      if (r.status === 401) { var e = new Error("auth"); e.auth = true; throw e; }
+      // Session expired or link rotated: the server shows the restricted page.
+      if (r.status === 401) { location.reload(); var e = new Error("auth"); e.auth = true; throw e; }
       return r.json().catch(function () { return {}; }).then(function (d) {
         if (!r.ok) throw new Error((d && d.detail) || ("Error " + r.status));
         return d;
@@ -698,20 +678,16 @@ footer img { width: 22px; height: 22px; }
 
   function setSysChip() {
     var dot = $("sys-dot"), txt = $("sys-text");
-    if (!key) { dot.className = "dot"; txt.textContent = "Sistema en línea"; return; }
     if (wa && wa.connected) { dot.className = "dot ok"; txt.textContent = "Jarvis operativo"; }
     else { dot.className = "dot warn"; txt.textContent = "Esperando WhatsApp"; }
   }
 
   function refresh() {
-    if (!key) return Promise.resolve();
     return Promise.all([
       info ? null : api("GET", "/api/jarvis/info").then(function (s) { info = s; }, function () {}),
       api("GET", "/api/whatsapp/status").then(function (s) { wa = s; }),
       api("GET", "/api/mail/status").then(function (s) { mail = s; }, function () { mail = null; })
-    ]).then(render, function (e) {
-      if (e.auth) { key = ""; try { localStorage.removeItem(STORE); } catch (x) {} go(0); $("key-err").textContent = "Esa clave no es correcta."; show("key-err", true); }
-    });
+    ]).then(render, function () {});
   }
   function loop() {
     clearTimeout(timer);
@@ -734,28 +710,11 @@ footer img { width: 22px; height: 22px; }
     render();
   }
   function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
-  function start() {
-    if (!key) return go(0);
-    go(wa && wa.connected ? 3 : 1);
-  }
+  function start() { go(wa && wa.connected ? 3 : 1); }
   $("cta").onclick = start;
   qsa("[data-start]").forEach(function (b) { b.onclick = start; });
   qsa("[data-back]").forEach(function (b) { b.onclick = home; });
   qsa("[data-goto]").forEach(function (b) { b.onclick = function () { go(+b.getAttribute("data-goto")); }; });
-
-  // ---------- step 0 ----------
-  function tryKey() {
-    var v = $("key").value.trim(); if (!v) return;
-    key = v; show("key-err", false);
-    api("GET", "/api/whatsapp/status").then(function (s) {
-      wa = s; try { localStorage.setItem(STORE, key); } catch (e) {}
-      loop(); go(s.connected ? 3 : 1);
-    }, function (e) {
-      key = ""; $("key-err").textContent = e.auth ? "Esa clave no es correcta." : "No puedo conectar con Jarvis ahora mismo."; show("key-err", true);
-    });
-  }
-  $("key-go").onclick = tryKey;
-  $("key").addEventListener("keydown", function (e) { if (e.key === "Enter") tryKey(); });
 
   // ---------- step 1: WhatsApp ----------
   var tab = mobile ? "code" : "qr", lastSvg = "";
@@ -951,9 +910,7 @@ footer img { width: 22px; height: 22px; }
       '<span class="hl">›</span> Inicializando núcleo de IA ……… <span class="ok">' + (info ? esc(info.label) : "OK") + '</span>',
       '<span class="hl">›</span> Protocolos de seguridad ……… <span class="ok">OK</span>'
     ];
-    if (!key) {
-      lines.push('<span class="hl">›</span> Identificación ……… <span class="wait">pendiente</span>');
-    } else if (wa) {
+    if (wa) {
       lines.push('<span class="hl">›</span> Enlace WhatsApp ……… ' + (wa.connected ? '<span class="ok">ACTIVO</span>' : '<span class="wait">esperando</span>'));
       if (mail) {
         var n = (mail.outlook && mail.outlook.state === "connected" ? 1 : 0) + (mail.gmail && mail.gmail.state === "connected" ? 1 : 0);
@@ -966,13 +923,16 @@ footer img { width: 22px; height: 22px; }
   }
 
   // ?paso=whatsapp|correo|estado opens that wizard step directly.
-  var STEP_NAMES = { acceso: 0, whatsapp: 1, correo: 2, estado: 3 };
+  var STEP_NAMES = { whatsapp: 1, correo: 2, estado: 3 };
   var wanted = STEP_NAMES[(new URLSearchParams(location.search).get("paso") || "").toLowerCase()];
-  if (key) {
-    refresh().then(function () { greet(); boot(); loop(); if (wanted !== undefined) go(wanted); });
-  } else {
-    greet(); boot(); if (wanted !== undefined) go(0);
-  }
+  refresh().then(function () { greet(); boot(); loop(); if (wanted !== undefined) go(wanted); });
+
+  // ---------- sign out of this browser ----------
+  $("signout").onclick = function (e) {
+    e.preventDefault();
+    if (!confirm("¿Cerrar la sesión en este navegador? Para volver necesitarás tu enlace personal.")) return;
+    api("DELETE", "/api/session").then(function () { location.reload(); }, function () { location.reload(); });
+  };
 })();
 </script>
 </body>

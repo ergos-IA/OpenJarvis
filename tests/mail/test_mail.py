@@ -638,7 +638,7 @@ class TestRoutes:
 
     def test_page_is_public(self, client):
         r = client.get("/correo")
-        assert r.status_code == 200 and "Conecta tu correo" in r.text
+        assert r.status_code == 200 and "Acceso restringido" in r.text
 
     def test_api_needs_key(self, client):
         assert client.get("/api/mail/status").status_code == 401
