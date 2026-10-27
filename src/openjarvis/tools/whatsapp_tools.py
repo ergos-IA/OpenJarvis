@@ -134,7 +134,11 @@ class WhatsAppFindContactTool(BaseTool):
     def spec(self) -> ToolSpec:
         return ToolSpec(
             name="whatsapp_find_contact",
-            description="Busca contactos de WhatsApp del usuario por nombre o número.",
+            description=(
+                "Busca contactos de WhatsApp del usuario por nombre, apellido, "
+                "nombre parcial o número (no importan tildes ni mayúsculas). "
+                "Incluye a quien le ha escrito aunque no esté guardado."
+            ),
             parameters={
                 "type": "object",
                 "properties": {
@@ -157,8 +161,7 @@ class WhatsAppFindContactTool(BaseTool):
                 success=True,
             )
         lines = [
-            f"- {c['name'] or c['push_name'] or '(sin nombre)'}"
-            f"{' (+' + c['phone'] + ')' if c['phone'] else ''}"
+            f"- {_label(c)}{' (+' + c['phone'] + ')' if c['phone'] else ''}"
             for c in found
         ]
         return ToolResult(
@@ -166,32 +169,57 @@ class WhatsAppFindContactTool(BaseTool):
         )
 
 
+def _label(c: Dict[str, Any]) -> str:
+    name = c.get("name") or c.get("push_name") or ""
+    if name and not c.get("name"):
+        name += " (nombre de WhatsApp, no está en tu agenda)"
+    return name or f"+{c.get('phone', '')}"
+
+
 def _resolve_recipient(ch: Any, to: str) -> Dict[str, Any]:
     """Map a name or number to a WhatsApp JID.
 
-    Returns ``{"jid", "name"}`` or ``{"error"}`` / ``{"choices"}``.
+    Returns ``{"jid", "name", "sure"}`` or ``{"error"}`` / ``{"choices"}``.
+    ``sure`` is False for numbers that are not saved contacts and for fuzzy
+    name matches, so the caller can ask before sending.
     """
     number = _digits(to)
     if len(number) >= 8 and len(number) >= len(to.replace(" ", "")) - 2:
         cc = _digits(os.environ.get("WHATSAPP_DEFAULT_COUNTRY_CODE", "34"))
         if len(number) == 9 and cc:
             number = cc + number
-        name = ch.store.contact_name(phone=number) or f"+{number}"
-        return {"jid": f"{number}@s.whatsapp.net", "name": name}
+        name = ch.store.contact_name(phone=number)
+        return {
+            "jid": f"{number}@s.whatsapp.net",
+            "name": name or f"+{number}",
+            "sure": bool(name),
+        }
 
-    matches = [c for c in ch.store.search_contacts(to, limit=10) if c["name"]]
-    if not matches:
-        matches = ch.store.search_contacts(to, limit=10)
-    if not matches:
-        return {"error": f"No encuentro a '{to}' en tus contactos de WhatsApp."}
-    exact = [c for c in matches if (c["name"] or "").lower() == to.strip().lower()]
-    if len(exact) == 1:
-        matches = exact
-    if len(matches) > 1:
-        return {"choices": matches}
-    c = matches[0]
-    jid = f"{c['phone']}@s.whatsapp.net" if c["phone"] else c["jid"]
-    return {"jid": jid, "name": c["name"] or c["push_name"] or f"+{c['phone']}"}
+    matches = ch.store.search_contacts(to, limit=8)
+    # Same person saved twice (phone and LID entries): keep one.
+    unique: List[Dict[str, Any]] = []
+    for c in matches:
+        key = c["phone"] or c["jid"]
+        if all((u["phone"] or u["jid"]) != key for u in unique):
+            unique.append(c)
+    if not unique:
+        return {
+            "error": (
+                f"No encuentro a «{to}» en los contactos de WhatsApp. Prueba "
+                "whatsapp_find_contact con solo el nombre o solo el apellido, "
+                "o pide al usuario el número."
+            )
+        }
+    top = unique[0]
+    rest = [c for c in unique[1:] if c["score"] >= top["score"] - 0.08]
+    if rest:
+        return {"choices": [top, *rest]}
+    jid = f"{top['phone']}@s.whatsapp.net" if top["phone"] else top["jid"]
+    return {
+        "jid": jid,
+        "name": _label(top),
+        "sure": top["score"] >= 0.95 and bool(top["name"]),
+    }
 
 
 @ToolRegistry.register("whatsapp_send_message")
@@ -240,7 +268,7 @@ class WhatsAppSendMessageTool(BaseTool):
             return _fail(self.tool_id, target["error"])
         if "choices" in target:
             options: List[str] = [
-                f"- {c['name'] or c['push_name']} (+{c['phone']})"
+                f"- {_label(c)}{' (+' + c['phone'] + ')' if c['phone'] else ''}"
                 for c in target["choices"]
             ]
             return _fail(
@@ -249,7 +277,9 @@ class WhatsAppSendMessageTool(BaseTool):
                 + "\n".join(options),
             )
 
-        result = ch.propose_send(target["jid"], target["name"], text)
+        result = ch.propose_send(
+            target["jid"], target["name"], text, sure=target.get("sure", False)
+        )
         if result.get("pending"):
             return ToolResult(
                 tool_name=self.tool_id,
@@ -350,17 +380,98 @@ class WhatsAppNotifySettingsTool(BaseTool):
         )
 
 
+@ToolRegistry.register("assistant_settings")
+class AssistantSettingsTool(BaseTool):
+    """See or change how the assistant behaves (confirmations, style...)."""
+
+    tool_id = "assistant_settings"
+    is_local = True
+
+    @property
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name="assistant_settings",
+            description=(
+                "Consulta o cambia cómo te comportas con el usuario. "
+                "set_confirm: smart (pedir confirmación solo si hace falta), "
+                "always (siempre) o never (nunca), p. ej. cuando diga «no me "
+                "pidas confirmación». set_style: brief, normal o detailed. "
+                "set_address: tu o usted. set_name: tu nombre. add_instruction: "
+                "guarda una instrucción permanente («háblame siempre en "
+                "inglés», «firma mis correos como Pepe»). clear_instructions: "
+                "borra las instrucciones personales."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "show",
+                            "set_confirm",
+                            "set_style",
+                            "set_address",
+                            "set_name",
+                            "add_instruction",
+                            "clear_instructions",
+                        ],
+                    },
+                    "value": {"type": "string"},
+                },
+                "required": ["action"],
+            },
+            category="channel",
+        )
+
+    def execute(self, **params: Any) -> ToolResult:
+        from openjarvis.personal.assistant_prefs import get_prefs
+
+        prefs = get_prefs()
+        action = params.get("action", "show")
+        value = str(params.get("value", "") or "").strip()
+        field = {
+            "set_confirm": "confirm",
+            "set_style": "style",
+            "set_address": "address",
+            "set_name": "assistant_name",
+        }.get(action)
+        try:
+            if field and value:
+                prefs.update(**{field: value})
+            elif action == "add_instruction" and value:
+                current = prefs.live()["instructions"]
+                prefs.update(instructions=(current + "\n- " + value).strip())
+            elif action == "clear_instructions":
+                prefs.update(instructions=" ")
+        except ValueError as exc:
+            return _fail(self.tool_id, str(exc))
+        st = prefs.settings()
+        lines = [
+            f"Confirmaciones: {st['confirm_label']}",
+            f"Estilo: {st['style']} · Trato: {st['address']}",
+        ]
+        if st["assistant_name"]:
+            lines.append(f"Nombre: {st['assistant_name']}")
+        if st["instructions"]:
+            lines.append("Instrucciones:\n" + st["instructions"])
+        return ToolResult(
+            tool_name=self.tool_id, content="\n".join(lines), success=True
+        )
+
+
 WHATSAPP_TOOLS: List[str] = [
     "whatsapp_read_messages",
     "whatsapp_find_contact",
     "whatsapp_send_message",
     "whatsapp_notify_settings",
+    "assistant_settings",
 ]
 
 __all__ = [
     "WHATSAPP_TOOLS",
     "WhatsAppFindContactTool",
     "WhatsAppNotifySettingsTool",
+    "AssistantSettingsTool",
     "WhatsAppReadMessagesTool",
     "WhatsAppSendMessageTool",
 ]

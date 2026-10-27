@@ -250,11 +250,23 @@ class EmailSendTool(BaseTool):
                 "Para enviar correos hace falta tener WhatsApp vinculado "
                 "(ahí se confirma el envío).",
             )
+        kind_text = "Respuesta" if reply_id else "Correo"
+        if not channel.needs_confirmation(sure=bool(reply_id)):
+            try:
+                result = account.send(to, subject, body, reply_to_id=reply_id)
+            except Exception as exc:
+                return _fail(self.tool_id, f"No se pudo enviar: {exc}")
+            if not result.get("ok"):
+                return _fail(self.tool_id, f"No se pudo enviar: {result.get('error')}")
+            return _ok(
+                self.tool_id,
+                f"{kind_text} enviado desde {account.label} a {to}. "
+                f"Asunto: «{subject or '(sin asunto)'}».",
+            )
         channel.propose_action(
             f"{to} (correo {account.label})",
             lambda: account.send(to, subject, body, reply_to_id=reply_id),
         )
-        kind_text = "Respuesta" if reply_id else "Correo"
         return _ok(
             self.tool_id,
             f"{kind_text} preparado desde {account.label} ({account.email}) "

@@ -29,7 +29,7 @@ import tomlkit
 _TOOLS = (
     "think,calculator,web_search,"
     "whatsapp_read_messages,whatsapp_find_contact,whatsapp_send_message,"
-    "whatsapp_notify_settings,"
+    "whatsapp_notify_settings,assistant_settings,"
     "email_list,email_read,email_send,"
     "reminder_create,reminder_list,reminder_cancel,remember_fact,forget_fact"
 )
@@ -90,6 +90,8 @@ def main() -> None:
     wa["notify"] = notify if notify in modes else "important"
     wa["confirm_sends"] = _truthy(_env("WHATSAPP_CONFIRM_SENDS", "true"))
 
+    _apply_assistant_settings(doc, home)
+
     path.write_text(tomlkit.dumps(doc), encoding="utf-8")
     mode = "own" if wa["assistant_has_own_number"] else "self"
     print(
@@ -97,6 +99,35 @@ def main() -> None:
         f"model={doc['intelligence']['default_model']} "
         f"whatsapp={'on (' + mode + ')' if whatsapp_on else 'off'}"
     )
+
+
+# Model parameters the user tunes from the portal ("Ajustes del asistente"),
+# saved in <home>/assistant.json by openjarvis.personal.assistant_prefs.
+_ENGINE_DEFAULTS = {
+    "temperature": 0.5,
+    "max_tokens": 2048,
+    "max_turns": 15,
+    "memory_hours": 168,
+}
+
+
+def _apply_assistant_settings(doc, home: Path) -> None:
+    import json
+
+    values = dict(_ENGINE_DEFAULTS)
+    try:
+        saved = json.loads((home / "assistant.json").read_text(encoding="utf-8"))
+        engine = saved.get("engine") or {}
+        for key, default in _ENGINE_DEFAULTS.items():
+            if key in engine:
+                values[key] = type(default)(engine[key])
+    except Exception:
+        pass
+    intel = _table(doc, "intelligence")
+    intel["temperature"] = float(values["temperature"])
+    intel["max_tokens"] = int(values["max_tokens"])
+    _table(doc, "agent")["max_turns"] = int(values["max_turns"])
+    _table(doc, "sessions")["max_age_hours"] = float(values["memory_hours"])
 
 
 # Variables a user may set from the "Conecta tu IA" wizard step.  They live

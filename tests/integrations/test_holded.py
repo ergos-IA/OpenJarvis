@@ -86,7 +86,7 @@ def test_registered():
         "holded_list_products",
         "holded_summary",
     }
-    assert "confirme" in tools_of()["holded_create_contact"].spec.description
+    assert "confirmaciones" in tools_of()["holded_create_contact"].spec.description
 
 
 def test_eur_format():

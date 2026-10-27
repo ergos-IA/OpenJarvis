@@ -293,6 +293,8 @@ async function main(): Promise<void> {
     };
     sock.ev.on("contacts.upsert", emitContacts);
     sock.ev.on("contacts.update", emitContacts as any);
+    // The address book also arrives with the initial history sync.
+    sock.ev.on("messaging-history.set", (h: any) => emitContacts(h?.contacts || []));
 
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update;

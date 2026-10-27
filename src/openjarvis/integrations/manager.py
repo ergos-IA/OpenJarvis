@@ -334,7 +334,7 @@ class IntegrationManager:
             return ""
         return (
             "\n\nHerramientas externas conectadas (úsalas cuando el usuario lo "
-            "pida; antes de crear, cambiar o enviar algo en ellas, confirma):\n"
+            "pida, siguiendo su preferencia de confirmaciones):\n"
             + "\n".join(lines)
         )
 

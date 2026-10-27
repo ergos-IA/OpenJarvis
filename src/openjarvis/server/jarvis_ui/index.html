@@ -43,6 +43,33 @@ button { font: inherit; }
 .notif-modes span { color: var(--t3); font-size: 13px; }
 .notif .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .notif .row .input { flex: 1 1 240px; }
+.act-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin: 6px 0 16px; }
+.act-bar .input { width: auto; padding: 9px 12px; }
+.tabs.three { grid-template-columns: 1fr 1fr 1fr; margin-bottom: 0; }
+.act-box { min-height: 160px; }
+.act-empty { color: var(--t3); padding: 28px 0; text-align: center; }
+.act-summary { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--s1); line-height: 1.6; white-space: pre-wrap; color: var(--t1); }
+.bubbles { display: grid; gap: 8px; max-height: 62vh; overflow-y: auto; padding: 4px 2px; }
+.bub { max-width: 82%; padding: 10px 13px; border-radius: 14px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; font-size: 14.5px; border: 1px solid var(--line); background: var(--s1); }
+.bub.me { justify-self: end; background: rgba(255,219,5,.08); border-color: rgba(255,219,5,.3); }
+.bub small { display: block; margin-top: 4px; color: var(--t3); font: 11px var(--mono); }
+.bub .who { display: block; font-weight: 600; font-size: 12.5px; color: var(--cyan); margin-bottom: 2px; }
+.act-day { justify-self: center; font: 600 11px var(--mono); letter-spacing: 2px; color: var(--t3); padding: 8px 0 2px; }
+.chat-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--s1); cursor: pointer; margin-bottom: 8px; text-align: left; width: 100%; color: inherit; font: inherit; }
+.chat-row:hover { border-color: rgba(0,217,255,.45); }
+.chat-row b { font-weight: 600; }
+.chat-row span { color: var(--t3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-row .badge { justify-self: end; min-width: 22px; padding: 1px 7px; border-radius: 99px; background: var(--yellow); color: #000; font: 700 12px var(--mono); text-align: center; }
+.chat-row time { justify-self: end; font: 11px var(--mono); color: var(--t3); }
+.prefs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+.prefs-grid label, .prefs-adv label.lbl { display: block; font-size: 13px; font-weight: 600; color: var(--t2); margin-bottom: 6px; }
+.prefs textarea.input { min-height: 96px; resize: vertical; font: 14px/1.5 inherit; }
+.prefs details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.prefs summary { cursor: pointer; font-weight: 600; color: var(--t2); }
+.prefs-adv { display: grid; gap: 16px; margin-top: 14px; }
+.prefs-adv .hint { color: var(--t3); font-size: 12.5px; margin-top: 4px; }
+.prefs-adv input[type=range] { width: 100%; accent-color: var(--yellow); }
+.prefs-adv .val { float: right; font: 600 12px var(--mono); color: var(--yellow); }
 
 /* ---------- how to talk to Jarvis (chat with yourself) ---------- */
 .selfchat { text-align: left; margin: 18px 0 0; padding: 18px; border-radius: 14px; border: 1px solid rgba(0,217,255,.3); background: rgba(0,217,255,.05); }
@@ -787,6 +814,7 @@ footer img { width: 22px; height: 22px; }
         <div class="stat" data-goto="2"><small>Outlook</small><b><span class="dot" id="st-o-dot"></span><span id="st-o">—</span></b><span id="st-o-sub"></span></div>
         <div class="stat" data-goto="2"><small>Gmail</small><b><span class="dot" id="st-g-dot"></span><span id="st-g">—</span></b><span id="st-g-sub"></span></div>
         <div class="stat" data-goto="0.5"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
+        <div class="stat" data-goto="4"><small>Actividad</small><b><span class="dot ok"></span><span>Conversaciones</span></b><span>Resúmenes y mensajes recibidos</span></div>
         <div class="stat" data-goto="2.5"><small>Conectores</small><b><span class="dot" id="st-c-dot"></span><span id="st-c">—</span></b><span id="st-c-sub">Calendario, Notion, Todoist…</span></div>
       </div>
       <div class="notif" id="notif">
@@ -804,6 +832,34 @@ footer img { width: 22px; height: 22px; }
           <button class="btn btn-primary" id="notif-save" type="button">Guardar</button>
         </div>
         <p style="font-size:13px;color:var(--t3);margin:10px 0 0">Separa los nombres con comas. También puedes decírselo por WhatsApp: «avísame siempre de Ana» o «no me avises de nada».</p>
+      </div>
+      <div class="notif prefs" id="prefs">
+        <div class="eyebrow">Ajustes del asistente</div>
+        <p>Cómo se comporta Jarvis contigo. Los cambios se aplican al siguiente mensaje. También puedes decírselo por WhatsApp: «no me pidas confirmación», «háblame de usted»…</p>
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--t2);margin-bottom:8px">¿Cuándo te pide confirmación antes de enviar o cambiar algo?</label>
+        <div class="notif-modes">
+          <label><input type="radio" name="pf-confirm" value="smart"><div><b>Solo cuando haga falta (recomendado)</b><span>Si le pides algo claro («escribe a Óscar Peña que llego tarde») lo hace y te lo cuenta. Pregunta si duda del contacto, si es un número que no tienes guardado, un correo nuevo o algo delicado.</span></div></label>
+          <label><input type="radio" name="pf-confirm" value="always"><div><b>Siempre</b><span>Te enseña cada mensaje, correo o cambio y espera tu «sí».</span></div></label>
+          <label><input type="radio" name="pf-confirm" value="never"><div><b>Nunca</b><span>Lo hace directamente. Solo pregunta si hay dos contactos posibles o si va a borrar algo.</span></div></label>
+        </div>
+        <div class="prefs-grid">
+          <div><label for="pf-style">Respuestas</label><select class="input" id="pf-style"><option value="brief">Breves y directas</option><option value="normal">Normales</option><option value="detailed">Detalladas</option></select></div>
+          <div><label for="pf-address">Trato</label><select class="input" id="pf-address"><option value="tu">De tú</option><option value="usted">De usted</option></select></div>
+          <div><label for="pf-name">Nombre del asistente</label><input class="input" id="pf-name" maxlength="40" placeholder="Jarvis" autocomplete="off"></div>
+        </div>
+        <div style="margin-top:14px"><label for="pf-instr" style="display:block;font-size:13px;font-weight:600;color:var(--t2);margin-bottom:6px">Instrucciones personales</label>
+          <textarea class="input" id="pf-instr" maxlength="2000" placeholder="Ej.: Dirijo AI Fast Track. Mi socio es Óscar Peña. Firma mis correos con mi nombre. Si te escribo en inglés, contesta en inglés."></textarea></div>
+        <details id="pf-adv">
+          <summary>Ajustes avanzados del modelo</summary>
+          <div class="prefs-adv">
+            <div><label class="lbl" for="pf-temp">Creatividad <span class="val" id="pf-temp-v"></span></label><input type="range" id="pf-temp" min="0" max="1" step="0.1"><div class="hint">Baja = más preciso y predecible. Alta = más creativo al redactar.</div></div>
+            <div><label class="lbl" for="pf-turns">Pasos por tarea <span class="val" id="pf-turns-v"></span></label><input type="range" id="pf-turns" min="3" max="40" step="1"><div class="hint">Cuántas acciones seguidas puede encadenar (buscar, leer, enviar…) para resolver una petición.</div></div>
+            <div><label class="lbl" for="pf-tokens">Longitud máxima de respuesta</label><select class="input" id="pf-tokens"><option value="1024">Corta (≈700 palabras)</option><option value="2048">Normal (≈1.500 palabras)</option><option value="4096">Larga (≈3.000 palabras)</option><option value="8192">Muy larga (≈6.000 palabras)</option></select></div>
+            <div><label class="lbl" for="pf-mem">Memoria de la conversación</label><select class="input" id="pf-mem"><option value="24">1 día</option><option value="72">3 días</option><option value="168">1 semana</option><option value="336">2 semanas</option><option value="720">1 mes</option></select><div class="hint">Tiempo sin hablar tras el que Jarvis empieza una conversación nueva. Lo que le pidas recordar («recuerda que…») se guarda siempre.</div></div>
+            <div class="hint">Cambiar los ajustes avanzados reinicia tu Jarvis (unos 20 segundos).</div>
+          </div>
+        </details>
+        <div class="row"><button class="btn btn-primary" id="pf-save" type="button">Guardar ajustes</button></div>
       </div>
       <div class="selfchat">
         <div class="eyebrow">Cómo hablar con Jarvis</div>
@@ -825,6 +881,38 @@ footer img { width: 22px; height: 22px; }
       <div class="nav">
         <button class="btn-link" data-back>← Inicio</button>
         <button class="btn btn-ghost" data-goto="0.5">Repasar la configuración</button>
+      </div>
+    </div>
+
+    <!-- step 4: activity -->
+    <div class="panel hidden" data-step="4">
+      <i class="corner a"></i><i class="corner b"></i><i class="corner c"></i><i class="corner d"></i>
+      <div class="eyebrow">Actividad</div>
+      <h2>Lo que ha pasado</h2>
+      <p class="lead">Tu conversación con Jarvis, los WhatsApp que te han llegado y un resumen hecho por Jarvis. Solo lo ves tú; los mensajes recibidos se guardan 30 días.</p>
+      <div class="act-bar">
+        <div class="tabs three" role="tablist">
+          <button type="button" data-act="summary" class="on">Resumen</button>
+          <button type="button" data-act="assistant">Chat con Jarvis</button>
+          <button type="button" data-act="chats">Recibidos</button>
+        </div>
+        <select class="input" id="act-hours" aria-label="Periodo">
+          <option value="24">Últimas 24 horas</option>
+          <option value="72">Últimos 3 días</option>
+          <option value="168" selected>Última semana</option>
+          <option value="720">Último mes</option>
+        </select>
+      </div>
+      <div class="act-box" id="act-summary">
+        <p style="color:var(--t2);margin:0 0 14px">Jarvis lee lo que ha pasado en el periodo elegido y te lo resume: lo importante, por contacto, lo que ha hecho por ti y lo que tienes pendiente de responder.</p>
+        <button class="btn btn-primary" id="act-sum-go" type="button">Generar resumen</button>
+        <div id="act-sum-out" style="margin-top:16px"></div>
+      </div>
+      <div class="act-box hidden" id="act-assistant"></div>
+      <div class="act-box hidden" id="act-chats"></div>
+      <div class="nav">
+        <button class="btn-link" data-goto="3">← Mi portal</button>
+        <button class="btn btn-ghost" id="act-reload" type="button">Actualizar</button>
       </div>
     </div>
   </section>
@@ -991,7 +1079,7 @@ footer img { width: 22px; height: 22px; }
     step = n;
     show("landing", false); show("wizard", true);
     qsa("[data-step]").forEach(function (p) { show(p, +p.getAttribute("data-step") === n); });
-    show("steps", n !== 3);
+    show("steps", n < 3);
     show("to-portal", n !== 3 && portalReady());
     qsa("#steps li").forEach(function (li) {
       var s = +li.getAttribute("data-s");
@@ -1000,7 +1088,8 @@ footer img { width: 22px; height: 22px; }
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
     render();
     if (n === 2.5) loadConns();
-    if (n === 3) loadNotif();
+    if (n === 3) { loadNotif(); loadPrefs(); }
+    if (n === 4) loadActivity();
   }
   function home() { show("wizard", false); show("landing", true); window.scrollTo({ top: 0 }); }
   function aiReady() { return !ai || ai.configured; }
@@ -1023,6 +1112,117 @@ footer img { width: 22px; height: 22px; }
   qsa("[data-goto]").forEach(function (b) { b.onclick = function () { go(+b.getAttribute("data-goto")); }; });
 
 
+
+
+
+  // ---------- step 4: activity ----------
+  var actTab = "summary", actThread = null;
+  function fmtTime(ts) {
+    var d = new Date(ts * 1000), now = new Date();
+    var hm = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    return d.toDateString() === now.toDateString() ? hm : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + " " + hm;
+  }
+  function dayLabel(ts) {
+    var d = new Date(ts * 1000), now = new Date(), y = new Date(now - 864e5);
+    if (d.toDateString() === now.toDateString()) return "HOY";
+    if (d.toDateString() === y.toDateString()) return "AYER";
+    return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }).toUpperCase();
+  }
+  function waFmt(t) { return esc(t).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/_([^_\n]+)_/g, "<i>$1</i>"); }
+  function bubbles(list, mine, who) {
+    if (!list.length) return '<p class="act-empty">No hay mensajes en este periodo.</p>';
+    var html = "", day = "";
+    list.forEach(function (m) {
+      var dl = dayLabel(m.ts);
+      if (dl !== day) { day = dl; html += '<div class="act-day">' + dl + "</div>"; }
+      var me = mine(m), name = who ? who(m) : "";
+      html += '<div class="bub' + (me ? " me" : "") + '">' + (name ? '<span class="who">' + esc(name) + "</span>" : "") +
+        waFmt(m.text) + "<small>" + fmtTime(m.ts) + "</small></div>";
+    });
+    return '<div class="bubbles">' + html + "</div>";
+  }
+  function actHours() { return $("act-hours").value; }
+  function showAct(tab) {
+    actTab = tab;
+    qsa("[data-act]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-act") === tab); });
+    ["summary", "assistant", "chats"].forEach(function (t) { show("act-" + t, t === tab); });
+    if (tab !== "summary") loadActivity();
+  }
+  function scrollEnd(id) { var b = $(id).querySelector(".bubbles"); if (b) b.scrollTop = b.scrollHeight; }
+  function loadActivity() {
+    if (actTab === "assistant") {
+      $("act-assistant").innerHTML = '<p class="act-empty"><span class="spinner"></span> Cargando…</p>';
+      api("GET", "/api/activity/assistant?hours=" + actHours()).then(function (d) {
+        $("act-assistant").innerHTML = bubbles(d.messages || [], function (m) { return m.role === "user"; }, function (m) { return m.role === "user" ? "Tú" : "Jarvis"; });
+        scrollEnd("act-assistant");
+      }, function (e) { $("act-assistant").innerHTML = '<p class="act-empty">' + esc(e.message) + "</p>"; });
+    } else if (actTab === "chats") {
+      if (actThread) return openThread(actThread);
+      $("act-chats").innerHTML = '<p class="act-empty"><span class="spinner"></span> Cargando…</p>';
+      api("GET", "/api/activity/chats?hours=" + actHours()).then(function (d) {
+        var chats = d.chats || [];
+        if (!chats.length) { $("act-chats").innerHTML = '<p class="act-empty">No te ha llegado ningún WhatsApp en este periodo (o aún no se había conectado Jarvis).</p>'; return; }
+        $("act-chats").innerHTML = chats.map(function (c, i) {
+          return '<button class="chat-row" type="button" data-i="' + i + '"><b>' + (c.is_group ? "👥 " : "") + esc(c.name || "Sin nombre") + "</b><time>" + fmtTime(c.last_ts) + "</time>" +
+            "<span>" + esc(c.last_text) + "</span>" + (c.unread ? '<em class="badge">' + c.unread + "</em>" : "<i></i>") + "</button>";
+        }).join("");
+        qsa("#act-chats .chat-row").forEach(function (b) { b.onclick = function () { openThread(chats[+b.getAttribute("data-i")]); }; });
+      }, function (e) { $("act-chats").innerHTML = '<p class="act-empty">' + esc(e.message) + "</p>"; });
+    }
+  }
+  function openThread(c) {
+    actThread = c;
+    $("act-chats").innerHTML = '<p class="act-empty"><span class="spinner"></span> Cargando…</p>';
+    api("GET", "/api/activity/chat?jid=" + encodeURIComponent(c.jid)).then(function (d) {
+      $("act-chats").innerHTML = '<button class="btn-link" id="act-back" type="button">← Todos los chats</button><h3 style="margin:8px 0 12px">' + esc(c.name) + "</h3>" +
+        bubbles(d.messages || [], function (m) { return m.me; }, c.is_group ? function (m) { return m.me ? "" : m.from; } : null);
+      $("act-back").onclick = function () { actThread = null; loadActivity(); };
+      scrollEnd("act-chats");
+    }, function (e) { $("act-chats").innerHTML = '<p class="act-empty">' + esc(e.message) + "</p>"; });
+  }
+  qsa("[data-act]").forEach(function (b) { b.onclick = function () { showAct(b.getAttribute("data-act")); }; });
+  $("act-hours").onchange = function () { actThread = null; $("act-sum-out").innerHTML = ""; loadActivity(); };
+  $("act-reload").onclick = function () { loadActivity(); };
+  $("act-sum-go").onclick = function () {
+    var b = this; b.disabled = true;
+    $("act-sum-out").innerHTML = '<p style="color:var(--t3)"><span class="spinner"></span> Jarvis está leyendo y resumiendo…</p>';
+    api("POST", "/api/activity/summary", { hours: +actHours() }).then(function (d) {
+      $("act-sum-out").innerHTML = '<div class="act-summary">' + waFmt(d.summary) + "</div>";
+    }, function (e) { $("act-sum-out").innerHTML = '<p class="act-empty">' + esc(e.message) + "</p>"; }).then(function () { b.disabled = false; });
+  };
+
+  // ---------- assistant settings ----------
+  function prefsRange(id) { $(id + "-v").textContent = $(id).value; }
+  ["pf-temp", "pf-turns"].forEach(function (id) { $(id).oninput = function () { prefsRange(id); }; });
+  function fillPrefs(st) {
+    qsa('input[name="pf-confirm"]').forEach(function (r) { r.checked = r.value === st.confirm; });
+    $("pf-style").value = st.style; $("pf-address").value = st.address;
+    $("pf-name").value = st.assistant_name || ""; $("pf-instr").value = st.instructions || "";
+    var e = st.engine || {};
+    $("pf-temp").value = e.temperature; $("pf-turns").value = e.max_turns;
+    $("pf-tokens").value = String(e.max_tokens); $("pf-mem").value = String(e.memory_hours);
+    ["pf-tokens", "pf-mem"].forEach(function (id) {
+      var v = id === "pf-tokens" ? e.max_tokens : e.memory_hours;
+      if ($(id).value !== String(v)) { var o = document.createElement("option"); o.value = o.textContent = String(v); $(id).appendChild(o); $(id).value = o.value; }
+    });
+    prefsRange("pf-temp"); prefsRange("pf-turns");
+  }
+  function loadPrefs() {
+    api("GET", "/api/assistant/settings").then(function (st) { show("prefs", true); fillPrefs(st); }, function () { show("prefs", false); });
+  }
+  $("pf-save").onclick = function () {
+    var b = this, sel = document.querySelector('input[name="pf-confirm"]:checked');
+    var body = {
+      confirm: sel ? sel.value : "smart", style: $("pf-style").value, address: $("pf-address").value,
+      assistant_name: $("pf-name").value.trim(), instructions: $("pf-instr").value.trim(),
+      engine: { temperature: +$("pf-temp").value, max_turns: +$("pf-turns").value, max_tokens: +$("pf-tokens").value, memory_hours: +$("pf-mem").value }
+    };
+    b.disabled = true;
+    api("POST", "/api/assistant/settings", body).then(function (st) {
+      fillPrefs(st);
+      toast(st.restarting ? "Guardado ✓ Reiniciando Jarvis (~20 s)…" : "Ajustes guardados ✓");
+    }, function (e) { toast(e.message); }).then(function () { b.disabled = false; });
+  };
 
   // ---------- notification settings ----------
   var notifLoaded = false;

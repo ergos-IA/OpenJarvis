@@ -352,14 +352,35 @@ class TestTools:
         assert "Pepe Pérez (+34611111111)" in res.content
 
     def test_send_by_name_creates_draft(self, active, store):
+        from openjarvis.personal.assistant_prefs import AssistantPrefs, set_prefs
         from openjarvis.tools.whatsapp_tools import WhatsAppSendMessageTool
 
-        store.upsert_contact("x@lid", phone="34611111111", name="Pepe Pérez")
-        res = WhatsAppSendMessageTool().execute(to="Pepe", text="llego tarde")
+        prefs = AssistantPrefs()
+        prefs.update(confirm="always")
+        set_prefs(prefs)
+        try:
+            store.upsert_contact("x@lid", phone="34611111111", name="Pepe Pérez")
+            res = WhatsAppSendMessageTool().execute(to="Pepe", text="llego tarde")
+        finally:
+            set_prefs(None)
         assert res.success
         assert "TODAVÍA NO ESTÁ ENVIADO" in res.content
         assert active._pending["jid"] == "34611111111@s.whatsapp.net"
         assert _commands(active) == []
+
+    def test_send_to_clear_contact_goes_straight_out(self, active, store):
+        from openjarvis.personal.assistant_prefs import AssistantPrefs, set_prefs
+        from openjarvis.tools.whatsapp_tools import WhatsAppSendMessageTool
+
+        set_prefs(AssistantPrefs())
+        try:
+            _auto_ack(active)
+            store.upsert_contact("x@lid", phone="34611111111", name="Óscar Peña")
+            res = WhatsAppSendMessageTool().execute(to="oscar peña", text="hola")
+        finally:
+            set_prefs(None)
+        assert res.success and "enviado" in res.content
+        assert _commands(active)[0]["jid"] == "34611111111@s.whatsapp.net"
 
     def test_send_to_local_number_adds_country_code(self, active):
         from openjarvis.tools.whatsapp_tools import WhatsAppSendMessageTool
@@ -485,3 +506,47 @@ class TestImportantMode:
         ch.notify_policy.update(mode="none")
         ch._handle_bridge_event(_inbox(text="URGENTE"))
         assert _commands(ch) == [] and calls == []
+
+
+class TestConfirmationModes:
+    """The user's "confirmations" setting (personal/assistant_prefs.py)."""
+
+    @pytest.fixture(autouse=True)
+    def prefs(self):
+        from openjarvis.personal.assistant_prefs import AssistantPrefs, set_prefs
+
+        p = AssistantPrefs()
+        set_prefs(p)
+        yield p
+        set_prefs(None)
+
+    def test_smart_sends_to_sure_contact(self, store):
+        ch = _connected(store)
+        _auto_ack(ch)
+        res = ch.propose_send("34611111111@s.whatsapp.net", "Pepe", "hola", sure=True)
+        assert res["pending"] is False and _commands(ch)[0]["text"] == "hola"
+
+    def test_smart_asks_when_unsure(self, store):
+        ch = _connected(store)
+        res = ch.propose_send("34611111111@s.whatsapp.net", "+34611111111", "x")
+        assert res["pending"] is True and _commands(ch) == []
+
+    def test_always_asks_even_when_sure(self, store, prefs):
+        prefs.update(confirm="always")
+        ch = _connected(store)
+        res = ch.propose_send("34611111111@s.whatsapp.net", "Pepe", "x", sure=True)
+        assert res["pending"] is True
+
+    def test_never_sends_unsure(self, store, prefs):
+        prefs.update(confirm="never")
+        ch = _connected(store)
+        _auto_ack(ch)
+        res = ch.propose_send("34611111111@s.whatsapp.net", "+34611111111", "x")
+        assert res["pending"] is False
+
+    def test_prompt_follows_settings(self, store, prefs):
+        prefs.update(confirm="never", address="usted", assistant_name="Viernes")
+        prompt = _connected(store).system_prompt
+        assert prompt.startswith("Eres Viernes")
+        assert "NO quiere que le pidas confirmación" in prompt
+        assert "de usted" in prompt

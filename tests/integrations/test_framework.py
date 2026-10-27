@@ -118,7 +118,7 @@ class TestManager:
         mgr.connect("fake", {"token": "good"})
         tools = {t.spec.name: t for t in mgr.tools()}
         assert tools["fake_echo"].execute(x="hola").content == "echo hola"
-        assert "confirme" in tools["fake_write"].spec.description
+        assert "confirmaciones" in tools["fake_write"].spec.description
         assert tools["fake_write"].execute().content == "Hecho."
         bad = tools["fake_echo"].execute()
         assert not bad.success and "Parámetros" in bad.content

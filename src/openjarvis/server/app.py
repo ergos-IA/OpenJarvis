@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from openjarvis.server.activity_routes import router as activity_router
 from openjarvis.server.ai_routes import router as ai_router
 from openjarvis.server.analytics_routes import (
     configure_analytics,
@@ -21,6 +22,7 @@ from openjarvis.server.analytics_routes import (
     router as analytics_router,
 )
 from openjarvis.server.api_routes import include_all_routes
+from openjarvis.server.assistant_routes import router as assistant_router
 from openjarvis.server.comparison import comparison_router
 from openjarvis.server.connectors_router import create_connectors_router
 from openjarvis.server.dashboard import dashboard_router
@@ -495,6 +497,8 @@ def create_app(
     app.include_router(jarvis_ui_router)
     app.include_router(legal_router)
     app.include_router(ai_router)
+    app.include_router(assistant_router)
+    app.include_router(activity_router)
     app.include_router(integrations_router)
     include_all_routes(app)
 

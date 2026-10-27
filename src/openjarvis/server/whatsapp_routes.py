@@ -38,7 +38,12 @@ async def whatsapp_status(request: Request) -> dict:
     channel = _baileys_channel(request)
     if channel is None:
         return {"enabled": False}
-    return {"enabled": True, **channel.pairing_info()}
+    info = {"enabled": True, **channel.pairing_info()}
+    try:
+        info["contacts"] = channel.store.contact_count()
+    except Exception:
+        pass
+    return info
 
 
 class NotifySettings(BaseModel):

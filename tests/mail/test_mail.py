@@ -588,10 +588,17 @@ class TestTools:
         assert linked._gmail.sent == [("ana@b.com", "Hola", "Qué tal", "")]
 
     def test_reply_uses_original_sender(self, linked, channel):
+        from openjarvis.personal.assistant_prefs import AssistantPrefs, set_prefs
         from openjarvis.tools.email_tools import EmailSendTool
 
-        ref = linked.short_id("gmail", "991")
-        res = EmailSendTool().execute(reply_to=ref, body="Recibida, gracias")
+        prefs = AssistantPrefs()
+        prefs.update(confirm="always")
+        set_prefs(prefs)
+        try:
+            ref = linked.short_id("gmail", "991")
+            res = EmailSendTool().execute(reply_to=ref, body="Recibida, gracias")
+        finally:
+            set_prefs(None)
         assert "pepe@example.com" in res.content
         assert channel._take_pending_reply("no") == "❌ Cancelado, no he enviado nada."
         assert linked._gmail.sent == []

@@ -28,9 +28,8 @@ logger = logging.getLogger(__name__)
 
 MAX_RESULT_CHARS = 6000
 CONFIRM_NOTE = (
-    " IMPORTANTE: modifica datos del usuario en un servicio externo; antes de "
-    "llamarla, explica exactamente qué vas a hacer y espera a que el usuario "
-    "lo confirme."
+    " Modifica datos del usuario en un servicio externo: úsala solo si el "
+    "usuario lo ha pedido y sigue su preferencia de confirmaciones."
 )
 
 CATEGORIES = {
