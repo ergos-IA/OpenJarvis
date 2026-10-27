@@ -58,7 +58,7 @@ _RESTART_DELAY_S = 5.0
 _NOTIFY_MODES = ("important", "all", "contacts", "none")
 
 # A drafted outgoing message waits this long for the user's "sí".
-_PENDING_TTL_S = 600.0
+_PENDING_TTL_S = 3600.0
 
 _CONFIRM_WORDS = {
     "si",
@@ -69,10 +69,46 @@ _CONFIRM_WORDS = {
     "envia",
     "envialo",
     "enviar",
+    "mandalo",
+    "manda",
+    "adelante",
+    "venga",
+    "perfecto",
+    "correcto",
+    "claro",
+    "hazlo",
     "yes",
     "y",
 }
 _CANCEL_WORDS = {"no", "n", "cancela", "cancelar", "cancelalo", "cancel"}
+# Words that may follow "sí" in a confirmation ("sí, envíalo", "sí a Óscar").
+_SI_FOLLOW = _CONFIRM_WORDS | {"a", "por", "porfa", "gracias", "eso", "tal", "asi"}
+
+
+def _classify_reply(answer: str) -> str:
+    """"confirm", "cancel" or "" for a normalized reply to a pending draft.
+
+    Accepts short natural answers ("sí, envíalo", "Sí a Óscar", "vale
+    perfecto", a voice note saying "Sí.") but not longer messages, where
+    "si" may mean "if" ("si puedes, cámbialo a las 9").
+    """
+    if answer in _CONFIRM_WORDS:
+        return "confirm"
+    if answer in _CANCEL_WORDS:
+        return "cancel"
+    words = answer.split()
+    if not words or len(words) > 6:
+        return ""
+    first, rest = words[0], words[1:]
+    if first in ("no", "cancela", "cancelalo", "cancelar") and len(words) <= 3:
+        return "cancel"
+    if "no" in rest:
+        return ""
+    if first in ("si", "s") and rest and rest[0] not in _SI_FOLLOW:
+        return ""
+    if first in _CONFIRM_WORDS:
+        return "confirm"
+    return ""
 
 # The connected channel, so tools can reach it without explicit wiring.
 _active_channel: Optional["WhatsAppBaileysChannel"] = None
@@ -627,7 +663,7 @@ class WhatsAppBaileysChannel(BaseChannel):
 
         Returns ``None`` if *text* is not an answer to a pending draft.
         """
-        answer = _normalize_reply(text)
+        kind = _classify_reply(_normalize_reply(text))
         with self._pending_lock:
             pending = self._pending
             if pending is None:
@@ -635,10 +671,10 @@ class WhatsAppBaileysChannel(BaseChannel):
             if pending["expires"] < time.time():
                 self._pending = None
                 return None
-            if answer not in _CONFIRM_WORDS and answer not in _CANCEL_WORDS:
+            if not kind:
                 return None
             self._pending = None
-        if answer in _CANCEL_WORDS:
+        if kind == "cancel":
             return "❌ Cancelado, no he enviado nada."
         try:
             result = pending["run"]()

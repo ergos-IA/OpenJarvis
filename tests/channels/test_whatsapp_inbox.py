@@ -550,3 +550,23 @@ class TestConfirmationModes:
         assert prompt.startswith("Eres Viernes")
         assert "NO quiere que le pidas confirmación" in prompt
         assert "de usted" in prompt
+
+
+@pytest.mark.parametrize(
+    "text,kind",
+    [
+        ("Sí", "confirm"),
+        ("Sí.", "confirm"),
+        ("Si a Oscar", "confirm"),
+        ("sí, envíalo", "confirm"),
+        ("Vale perfecto", "confirm"),
+        ("adelante", "confirm"),
+        ("No", "cancel"),
+        ("no, déjalo", "cancel"),
+        ("si puedes cámbialo a las 9", ""),
+        ("sí pero no a Pepe", ""),
+        ("mejor cámbialo a las 9 y luego me dices qué tal", ""),
+    ],
+)
+def test_classify_reply(text, kind):
+    assert wb._classify_reply(wb._normalize_reply(text)) == kind
