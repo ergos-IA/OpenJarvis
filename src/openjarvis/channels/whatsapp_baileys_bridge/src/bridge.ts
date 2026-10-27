@@ -176,6 +176,18 @@ async function main(): Promise<void> {
   };
 
   let sock: WASocket | null = null;
+
+  async function resyncContacts(mark: boolean): Promise<void> {
+    if (!sock) return;
+    try {
+      // Contact names live in the "critical_unblock_low" app-state collection;
+      // a full resync re-emits them as contacts.upsert.
+      await (sock as any).resyncAppState(["critical_unblock_low"], true);
+      if (mark) fs.writeFileSync(`${authDir}/contacts-synced`, String(Date.now()));
+    } catch (err: any) {
+      emit({ type: "error", message: `Contact sync failed: ${err?.message || err}` });
+    }
+  }
   let warnedEmptyAllowlist = false;
 
   function isOwnChat(jid: string): boolean {
@@ -332,6 +344,12 @@ async function main(): Promise<void> {
           status: "connected",
           me: phoneOf((sock?.user as any)?.id || ""),
         });
+        // The address book only arrives on the very first sync; fetch it
+        // once more so contact names are known (e.g. linked before we
+        // stored them).
+        if (!fs.existsSync(`${authDir}/contacts-synced`)) {
+          setTimeout(() => void resyncContacts(true), 5000);
+        }
       }
     });
 
@@ -450,6 +468,8 @@ async function main(): Promise<void> {
       } catch (err: any) {
         emit({ type: "pairing_code", phone, code: "", error: err.message });
       }
+    } else if (cmd.type === "resync_contacts") {
+      await resyncContacts(false);
     } else if (cmd.type === "logout") {
       try {
         // Triggers connection.update(close, loggedOut) -> wipe + new QR.

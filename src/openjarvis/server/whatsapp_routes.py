@@ -74,6 +74,16 @@ async def whatsapp_notify_set(request: Request, req: NotifySettings) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/api/whatsapp/contacts/resync")
+async def whatsapp_contacts_resync(request: Request) -> dict:
+    """Ask WhatsApp for the address book again (contact names)."""
+    channel = _baileys_channel(request)
+    if channel is None or not hasattr(channel, "_write_command"):
+        raise HTTPException(status_code=404, detail="WhatsApp is not enabled")
+    channel._write_command({"type": "resync_contacts"})
+    return {"ok": True, "contacts": channel.store.contact_count()}
+
+
 @router.post("/api/whatsapp/logout")
 async def whatsapp_logout(request: Request) -> dict:
     channel = _baileys_channel(request)

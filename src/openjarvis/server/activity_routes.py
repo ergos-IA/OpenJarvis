@@ -74,7 +74,8 @@ def chat_list(store: Any, since: float) -> List[Dict[str, Any]]:
                        AS name,
                    MAX(phone) AS phone, MAX(is_group) AS is_group,
                    COUNT(*) AS n, SUM(is_read = 0) AS unread, MAX(ts) AS last_ts
-            FROM messages WHERE ts >= ? GROUP BY chat_jid
+            FROM messages WHERE ts >= ? AND chat_jid NOT LIKE '%@broadcast'
+            GROUP BY chat_jid
             ORDER BY last_ts DESC LIMIT 200
             """,
             (since,),
