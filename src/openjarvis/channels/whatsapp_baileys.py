@@ -78,6 +78,10 @@ _CANCEL_WORDS = {"no", "n", "cancela", "cancelar", "cancelalo", "cancel"}
 _active_channel: Optional["WhatsAppBaileysChannel"] = None
 
 
+# The user's message being answered on this thread (for memory recall).
+_current = threading.local()
+
+
 def get_active_channel() -> Optional["WhatsAppBaileysChannel"]:
     """Return the running WhatsApp Baileys channel, if any."""
     return _active_channel
@@ -222,6 +226,29 @@ class WhatsAppBaileysChannel(BaseChannel):
         from openjarvis.personal.voice import prefetch
 
         threading.Thread(target=prefetch, daemon=True, name="voice-prefetch").start()
+        threading.Thread(
+            target=self._start_memory, args=(system,), daemon=True, name="memory-init"
+        ).start()
+
+    @staticmethod
+    def _start_memory(system: Any) -> None:
+        """Import the old facts/history once, then start the memory keeper."""
+        try:
+            from openjarvis.personal.memory import get_memory, start_keeper
+            from openjarvis.personal.reminders import get_reminder_service
+            from openjarvis.server.activity_routes import assistant_messages
+
+            memory = get_memory()
+            if not memory.get_meta("imported"):
+                store = getattr(system, "session_store", None)
+                db = getattr(store, "_db_path", None)
+                memory.import_legacy(
+                    [f["text"] for f in get_reminder_service().store.facts()],
+                    assistant_messages(Path(db) if db else None, 0, 100000),
+                )
+            start_keeper(system)
+        except Exception:
+            logger.exception("Long-term memory not started")
 
     # -- bridge lifecycle -------------------------------------------------------
 
@@ -474,18 +501,20 @@ class WhatsAppBaileysChannel(BaseChannel):
 
     @staticmethod
     def _personal_context() -> str:
-        """Current local time and remembered facts (changes every message)."""
+        """Current local time and long-term memory (changes every message)."""
         try:
-            from openjarvis.personal.reminders import get_reminder_service, now_text
+            from openjarvis.personal.reminders import now_text
 
             lines = [f"\n\nAhora es {now_text()} (hora local del usuario)."]
-            facts = get_reminder_service().store.facts()
         except Exception:
             logger.debug("Personal context unavailable", exc_info=True)
             return ""
-        if facts:
-            lines.append("Lo que sabes del usuario:")
-            lines.extend(f"[{f['id']}] {f['text']}" for f in facts)
+        try:
+            from openjarvis.personal.memory import get_memory
+
+            lines.append(get_memory().context(getattr(_current, "text", "")))
+        except Exception:
+            logger.debug("Memory context unavailable", exc_info=True)
         try:
             from openjarvis.integrations.manager import get_manager
 
@@ -815,11 +844,29 @@ class WhatsAppBaileysChannel(BaseChannel):
         if blocked:
             self.send(cm.conversation_id, blocked)
             return
-        for handler in self._handlers:
-            try:
-                handler(cm)
-            except Exception:
-                logger.exception("WhatsApp Baileys handler error")
+        _current.text = cm.content
+        try:
+            for handler in self._handlers:
+                try:
+                    handler(cm)
+                except Exception:
+                    logger.exception("WhatsApp Baileys handler error")
+        finally:
+            _current.text = ""
+
+    def on_exchange(self, user_text: str, reply: str) -> None:
+        """Called by wire_channel after each answer: feed long-term memory."""
+        try:
+            from openjarvis.personal.memory import get_keeper, get_memory
+
+            memory = get_memory()
+            memory.record("user", user_text, channel=self.channel_id)
+            memory.record("assistant", reply, channel=self.channel_id)
+            keeper = get_keeper()
+            if keeper is not None:
+                keeper.submit(user_text, reply)
+        except Exception:
+            logger.debug("Memory update failed", exc_info=True)
 
     # -- pairing ------------------------------------------------------------------
 

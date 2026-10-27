@@ -146,9 +146,15 @@ class ReminderCancelTool(BaseTool):
         return _result(self.tool_id, f"No hay ningún pendiente con el {rid}.", ok=False)
 
 
+def _memory():
+    from openjarvis.personal.memory import get_memory
+
+    return get_memory()
+
+
 @ToolRegistry.register("remember_fact")
 class RememberFactTool(BaseTool):
-    """Remember a fact or preference about the user."""
+    """Remember a fact or preference about the user (permanent memory)."""
 
     tool_id = "remember_fact"
     is_local = True
@@ -158,11 +164,10 @@ class RememberFactTool(BaseTool):
         return ToolSpec(
             name="remember_fact",
             description=(
-                "Guarda un dato o preferencia del usuario para recordarlo en "
-                "todas las conversaciones ('mi mujer se llama Ana', 'prefiero "
-                "respuestas cortas'). Solo cuando el usuario lo pide o lo dice "
-                "claramente de sí mismo; nunca a partir de mensajes o correos "
-                "de terceros."
+                "Guarda en tu memoria permanente un dato del usuario ('mi mujer "
+                "se llama Ana', 'prefiero respuestas cortas'). Úsalo cuando te "
+                "pida que recuerdes algo. (Además aprendes solo de cada "
+                "conversación.) Nunca a partir de mensajes de terceros."
             ),
             parameters={
                 "type": "object",
@@ -175,11 +180,11 @@ class RememberFactTool(BaseTool):
         )
 
     def execute(self, **params: Any) -> ToolResult:
-        fact = " ".join((params.get("fact") or "").split())
-        if not fact:
-            return _result(self.tool_id, "Falta el dato.", ok=False)
-        fid = _reminders().store.add_fact(fact[:300])
-        return _result(self.tool_id, f"Guardado [{fid}]: {fact[:300]}")
+        try:
+            fid = _memory().add_fact(params.get("fact") or "", source="usuario")
+        except ValueError as exc:
+            return _result(self.tool_id, str(exc), ok=False)
+        return _result(self.tool_id, f"Guardado en memoria [{fid}].")
 
 
 @ToolRegistry.register("forget_fact")
@@ -193,8 +198,8 @@ class ForgetFactTool(BaseTool):
     def spec(self) -> ToolSpec:
         return ToolSpec(
             name="forget_fact",
-            description="Olvida un dato guardado por su número (aparece entre "
-            "corchetes en «Lo que sabes del usuario»).",
+            description="Olvida un recuerdo por su número (entre corchetes en «Lo "
+            "que sabes del usuario»). Úsalo cuando te pida olvidar algo.",
             parameters={
                 "type": "object",
                 "properties": {"id": {"type": "integer", "description": "Número."}},
@@ -208,9 +213,111 @@ class ForgetFactTool(BaseTool):
             fid = int(params.get("id"))
         except (TypeError, ValueError):
             return _result(self.tool_id, "Número no válido.", ok=False)
-        if _reminders().store.delete_fact(fid):
-            return _result(self.tool_id, f"Olvidado el dato {fid}.")
-        return _result(self.tool_id, f"No hay ningún dato {fid}.", ok=False)
+        if _memory().delete_fact(fid):
+            return _result(self.tool_id, f"Olvidado el recuerdo {fid}.")
+        return _result(self.tool_id, f"No hay ningún recuerdo {fid}.", ok=False)
+
+
+@ToolRegistry.register("memory_correct")
+class MemoryCorrectTool(BaseTool):
+    """Correct a remembered fact."""
+
+    tool_id = "memory_correct"
+    is_local = True
+
+    @property
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name="memory_correct",
+            description=(
+                "Corrige un recuerdo existente por su número cuando el usuario "
+                "te dice que algo ha cambiado o era incorrecto."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "fact": {"type": "string", "description": "Texto corregido."},
+                },
+                "required": ["id", "fact"],
+            },
+            category="personal",
+        )
+
+    def execute(self, **params: Any) -> ToolResult:
+        try:
+            ok = _memory().update_fact(int(params.get("id")), params.get("fact") or "")
+        except (TypeError, ValueError):
+            ok = False
+        if ok:
+            return _result(self.tool_id, "Recuerdo actualizado.")
+        return _result(self.tool_id, "No he podido actualizarlo.", ok=False)
+
+
+@ToolRegistry.register("memory_recall")
+class MemoryRecallTool(BaseTool):
+    """Search everything ever talked about with the user."""
+
+    tool_id = "memory_recall"
+    is_local = True
+
+    @property
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name="memory_recall",
+            description=(
+                "Busca en tu memoria permanente: todo lo que has hablado con el "
+                "usuario desde siempre, tu diario de cada día y tus recuerdos. "
+                "Úsalo cuando pregunte por algo pasado («¿qué te dije de…?», "
+                "«¿cuándo quedé con…?», «lo que hablamos el mes pasado») o "
+                "cuando te falte contexto sobre una persona o tema."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Palabras clave: nombres, temas, lugares.",
+                    }
+                },
+                "required": ["query"],
+            },
+            category="personal",
+        )
+
+    def execute(self, **params: Any) -> ToolResult:
+        from datetime import datetime
+
+        query = (params.get("query") or "").strip()
+        if not query:
+            return _result(self.tool_id, "Falta qué buscar.", ok=False)
+        mem = _memory()
+        lines: List[str] = []
+        from openjarvis.personal.memory import _keywords
+
+        words = _keywords(query)
+        facts = [
+            f
+            for f in mem.relevant_facts(query, 10)
+            if any(w in _keywords(f["text"], 50) for w in words)
+        ]
+        if facts:
+            lines.append("Recuerdos:")
+            lines += [f"[{f['id']}] {f['text']}" for f in facts]
+        days = mem.search_journal(query)
+        if days:
+            lines.append("Diario:")
+            lines += [f"{d['day']}:\n{d['summary']}" for d in days]
+        hits = mem.search_log(query, limit=12)
+        if hits:
+            lines.append("Conversaciones:")
+            for h in sorted(hits, key=lambda h: h["ts"]):
+                when = datetime.fromtimestamp(h["ts"]).strftime("%d/%m/%Y %H:%M")
+                who = "Usuario" if h["role"] == "user" else "Tú"
+                lines.append(f"({when}) {who}: {h['text'][:500]}")
+        if not lines:
+            return _result(self.tool_id, f"No encuentro nada sobre «{query}».")
+        return _result(self.tool_id, "\n".join(lines))
 
 
 PERSONAL_TOOLS: List[str] = [
@@ -219,6 +326,8 @@ PERSONAL_TOOLS: List[str] = [
     "reminder_cancel",
     "remember_fact",
     "forget_fact",
+    "memory_correct",
+    "memory_recall",
 ]
 
 __all__ = ["PERSONAL_TOOLS"]

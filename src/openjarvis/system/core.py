@@ -301,6 +301,13 @@ class JarvisSystem:
             except Exception:
                 logger.debug("Session save error", exc_info=True)
 
+            on_exchange = getattr(channel_bridge, "on_exchange", None)
+            if reply and callable(on_exchange):
+                try:
+                    on_exchange(cm.content, reply)
+                except Exception:
+                    logger.debug("on_exchange hook failed", exc_info=True)
+
             if reply:
                 try:
                     # Canonical channel send contract (see BaseChannel.send):

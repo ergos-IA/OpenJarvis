@@ -16,7 +16,6 @@ def test_defaults():
         "temperature": 0.5,
         "max_tokens": 2048,
         "max_turns": 15,
-        "memory_hours": 168,
     }
 
 
@@ -77,12 +76,12 @@ def test_bootstrap_copies_engine_settings(tmp_path):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     AssistantPrefs(tmp_path / "assistant.json").update(
-        engine={"max_turns": 25, "memory_hours": 720}
+        engine={"max_turns": 25}
     )
     doc = tomlkit.document()
     mod._apply_assistant_settings(doc, tmp_path)
     assert doc["agent"]["max_turns"] == 25
-    assert doc["sessions"]["max_age_hours"] == 720.0
+    assert doc["sessions"]["max_age_hours"] > 24 * 365 * 10
     assert doc["intelligence"]["max_tokens"] == 2048
 
 

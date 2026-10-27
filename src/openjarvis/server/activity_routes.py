@@ -65,6 +65,14 @@ def assistant_messages(db: Optional[Path], since: float, limit: int) -> List[Dic
     return [{"role": r[0], "text": r[1], "ts": r[2]} for r in reversed(rows)]
 
 
+def memory_messages(since: float, limit: int) -> List[Dict[str, Any]]:
+    """The user <-> Jarvis chat from the permanent memory, oldest first."""
+    from openjarvis.personal.memory import get_memory
+
+    rows = get_memory().log_between(since, time.time() + 1)[-limit:]
+    return [{"role": r["role"], "text": r["text"], "ts": r["ts"]} for r in rows]
+
+
 def chat_list(store: Any, since: float) -> List[Dict[str, Any]]:
     with store._lock:
         rows = store._conn.execute(
@@ -138,10 +146,7 @@ def _since(hours: float) -> float:
 
 @router.get("/api/activity/assistant")
 async def activity_assistant(request: Request, hours: float = 168) -> Dict[str, Any]:
-    ch = _channel(request)
-    if ch is None:
-        return {"messages": []}
-    return {"messages": assistant_messages(_session_db(ch), _since(hours), 400)}
+    return {"messages": memory_messages(_since(hours), 400)}
 
 
 @router.get("/api/activity/chats")
@@ -166,7 +171,7 @@ class SummaryRequest(BaseModel):
 
 def _summary_input(ch: Any, since: float) -> str:
     parts: List[str] = []
-    for m in assistant_messages(_session_db(ch), since, 120):
+    for m in memory_messages(since, 120):
         who = "Usuario" if m["role"] == "user" else "Asistente"
         parts.append(f"[Chat con el asistente] {who}: {m['text'][:600]}")
     for c in chat_list(ch.store, since)[:40]:
@@ -229,3 +234,51 @@ async def activity_summary(request: Request, req: SummaryRequest) -> Dict[str, A
 
 
 __all__ = ["router"]
+
+
+# -- long-term memory ---------------------------------------------------------------
+
+
+class FactBody(BaseModel):
+    text: str
+
+
+@router.get("/api/memory")
+async def memory_get() -> Dict[str, Any]:
+    from openjarvis.personal.memory import get_memory
+
+    mem = get_memory()
+    return {
+        "facts": mem.facts(),
+        "journal": mem.journal(60),
+        "messages": mem.log_count(),
+    }
+
+
+@router.post("/api/memory/facts")
+async def memory_add(body: FactBody) -> Dict[str, Any]:
+    from openjarvis.personal.memory import get_memory
+
+    try:
+        fid = get_memory().add_fact(body.text, source="usuario")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"id": fid}
+
+
+@router.put("/api/memory/facts/{fact_id}")
+async def memory_edit(fact_id: int, body: FactBody) -> Dict[str, Any]:
+    from openjarvis.personal.memory import get_memory
+
+    if not get_memory().update_fact(fact_id, body.text):
+        raise HTTPException(status_code=404, detail="No existe ese recuerdo")
+    return {"ok": True}
+
+
+@router.delete("/api/memory/facts/{fact_id}")
+async def memory_delete(fact_id: int) -> Dict[str, Any]:
+    from openjarvis.personal.memory import get_memory
+
+    if not get_memory().delete_fact(fact_id):
+        raise HTTPException(status_code=404, detail="No existe ese recuerdo")
+    return {"ok": True}

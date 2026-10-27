@@ -31,7 +31,8 @@ _TOOLS = (
     "whatsapp_read_messages,whatsapp_find_contact,whatsapp_send_message,"
     "whatsapp_notify_settings,assistant_settings,"
     "email_list,email_read,email_send,"
-    "reminder_create,reminder_list,reminder_cancel,remember_fact,forget_fact"
+    "reminder_create,reminder_list,reminder_cancel,remember_fact,forget_fact,"
+    "memory_correct,memory_recall"
 )
 
 
@@ -107,8 +108,11 @@ _ENGINE_DEFAULTS = {
     "temperature": 0.5,
     "max_tokens": 2048,
     "max_turns": 15,
-    "memory_hours": 168,
 }
+# The chat never expires: the last messages stay verbatim in the prompt and
+# everything older lives in the permanent memory (personal/memory.py).
+_SESSION_NEVER_EXPIRES_H = 24 * 365 * 20
+_RECENT_MESSAGES = 40
 
 
 def _apply_assistant_settings(doc, home: Path) -> None:
@@ -127,7 +131,9 @@ def _apply_assistant_settings(doc, home: Path) -> None:
     intel["temperature"] = float(values["temperature"])
     intel["max_tokens"] = int(values["max_tokens"])
     _table(doc, "agent")["max_turns"] = int(values["max_turns"])
-    _table(doc, "sessions")["max_age_hours"] = float(values["memory_hours"])
+    sessions = _table(doc, "sessions")
+    sessions["max_age_hours"] = float(_SESSION_NEVER_EXPIRES_H)
+    sessions["consolidation_threshold"] = _RECENT_MESSAGES
 
 
 # Variables a user may set from the "Conecta tu IA" wizard step.  They live

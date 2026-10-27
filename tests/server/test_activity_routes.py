@@ -10,8 +10,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from openjarvis.channels.whatsapp_store import WhatsAppStore
+from openjarvis.personal.memory import LongMemory, set_memory
 from openjarvis.server import activity_routes
-from openjarvis.sessions.session import SessionStore
 
 
 @pytest.fixture
@@ -31,14 +31,10 @@ def setup(tmp_path, monkeypatch):
                 "ts": now - 60 + i,
             }
         )
-    sessions = SessionStore(db_path=tmp_path / "sessions.db")
-    s = sessions.get_or_create(
-        "whatsapp_baileys:34600@s.whatsapp.net",
-        channel="whatsapp_baileys",
-        channel_user_id="34600",
-    )
-    sessions.save_message(s.session_id, "user", "escribe a oscar", channel="w")
-    sessions.save_message(s.session_id, "assistant", "✅ Enviado", channel="w")
+    memory = LongMemory(tmp_path / "memory.db")
+    memory.record("user", "escribe a oscar", ts=now - 30)
+    memory.record("assistant", "✅ Enviado", ts=now - 29)
+    set_memory(memory)
 
     calls = []
 
@@ -47,7 +43,6 @@ def setup(tmp_path, monkeypatch):
         return {"content": "*Lo importante*: Óscar pide confirmar mañana a las 9."}
 
     system = SimpleNamespace(
-        session_store=sessions,
         engine=SimpleNamespace(generate=generate),
         model="m",
     )
@@ -59,6 +54,7 @@ def setup(tmp_path, monkeypatch):
     app = FastAPI()
     app.include_router(activity_routes.router)
     yield TestClient(app), store, calls
+    set_memory(None)
     store.close()
 
 

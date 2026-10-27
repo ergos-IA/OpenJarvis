@@ -5,9 +5,9 @@ Two kinds of settings:
 * **live** -- read on every message: when to ask for confirmation, reply
   style, how to address the user, the assistant's name and free-form
   instructions.
-* **engine** -- model parameters (creativity, reply length, steps per task,
-  conversation memory).  ``deploy/railway/bootstrap_config.py`` copies them
-  into ``config.toml`` at start-up, so changing them restarts the service.
+* **engine** -- model parameters (creativity, reply length, steps per task).
+  ``deploy/railway/bootstrap_config.py`` copies them into ``config.toml`` at
+  start-up, so changing them restarts the service.
 """
 
 from __future__ import annotations
@@ -40,7 +40,6 @@ ENGINE_FIELDS: Dict[str, tuple] = {
     "temperature": (0.5, 0.0, 1.0, float),
     "max_tokens": (2048, 256, 8192, int),
     "max_turns": (15, 3, 40, int),
-    "memory_hours": (168, 1, 720, int),
 }
 
 MAX_INSTRUCTIONS = 2000

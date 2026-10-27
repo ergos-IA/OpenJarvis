@@ -379,3 +379,18 @@ def written_sidecar(sidecar_path: Path, sample_sidecar_payload: dict) -> Path:
     """A written mining sidecar JSON file; returns the path."""
     sidecar_path.write_text(json.dumps(sample_sidecar_payload))
     return sidecar_path
+
+
+@pytest.fixture(autouse=True)
+def _isolated_personal_memory(tmp_path):
+    """Give each test its own permanent memory and assistant settings."""
+    from openjarvis.personal.assistant_prefs import set_prefs
+    from openjarvis.personal.memory import LongMemory, set_memory
+
+    memory = LongMemory(tmp_path / "personal-memory.db")
+    set_memory(memory)
+    set_prefs(None)
+    yield
+    set_memory(None)
+    set_prefs(None)
+    memory.close()

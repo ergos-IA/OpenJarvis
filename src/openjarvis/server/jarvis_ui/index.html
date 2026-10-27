@@ -45,7 +45,22 @@ button { font: inherit; }
 .notif .row .input { flex: 1 1 240px; }
 .act-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin: 6px 0 16px; }
 .act-bar .input { width: auto; padding: 9px 12px; }
-.tabs.three { grid-template-columns: 1fr 1fr 1fr; margin-bottom: 0; }
+.tabs.three { grid-template-columns: repeat(4, auto); margin-bottom: 0; }
+@media (max-width: 520px) { .tabs.three { grid-template-columns: 1fr 1fr; } }
+.mem-head { color: var(--t2); margin: 0 0 14px; line-height: 1.5; }
+.mem-add { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.mem-add .input { flex: 1 1 260px; }
+.mem-list { display: grid; gap: 8px; }
+.mem-item { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--s1); }
+.mem-item p { margin: 0; line-height: 1.5; }
+.mem-item small { color: var(--t3); font: 11px var(--mono); }
+.mem-item .acts { display: flex; gap: 4px; }
+.mem-item button { border: 1px solid var(--line); background: transparent; color: var(--t2); border-radius: 8px; padding: 4px 9px; cursor: pointer; font-size: 12.5px; }
+.mem-item button:hover { color: var(--t1); border-color: rgba(0,217,255,.45); }
+.mem-journal { margin-top: 22px; }
+.mem-journal details { border: 1px solid var(--line); border-radius: 12px; padding: 10px 13px; margin-bottom: 8px; background: var(--s1); }
+.mem-journal summary { cursor: pointer; font-weight: 600; }
+.mem-journal div { white-space: pre-wrap; color: var(--t2); margin-top: 8px; line-height: 1.55; }
 .act-box { min-height: 160px; }
 .act-empty { color: var(--t3); padding: 28px 0; text-align: center; }
 .act-summary { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--s1); line-height: 1.6; white-space: pre-wrap; color: var(--t1); }
@@ -814,7 +829,7 @@ footer img { width: 22px; height: 22px; }
         <div class="stat" data-goto="2"><small>Outlook</small><b><span class="dot" id="st-o-dot"></span><span id="st-o">—</span></b><span id="st-o-sub"></span></div>
         <div class="stat" data-goto="2"><small>Gmail</small><b><span class="dot" id="st-g-dot"></span><span id="st-g">—</span></b><span id="st-g-sub"></span></div>
         <div class="stat" data-goto="0.5"><small>Inteligencia</small><b><span class="dot ok"></span><span id="st-m">—</span></b><span id="st-m-sub"></span></div>
-        <div class="stat" data-goto="4"><small>Actividad</small><b><span class="dot ok"></span><span>Conversaciones</span></b><span>Resúmenes y mensajes recibidos</span></div>
+        <div class="stat" data-goto="4"><small>Actividad</small><b><span class="dot ok"></span><span>Conversaciones</span></b><span>Resúmenes, mensajes y memoria</span></div>
         <div class="stat" data-goto="2.5"><small>Conectores</small><b><span class="dot" id="st-c-dot"></span><span id="st-c">—</span></b><span id="st-c-sub">Calendario, Notion, Todoist…</span></div>
       </div>
       <div class="notif" id="notif">
@@ -855,7 +870,6 @@ footer img { width: 22px; height: 22px; }
             <div><label class="lbl" for="pf-temp">Creatividad <span class="val" id="pf-temp-v"></span></label><input type="range" id="pf-temp" min="0" max="1" step="0.1"><div class="hint">Baja = más preciso y predecible. Alta = más creativo al redactar.</div></div>
             <div><label class="lbl" for="pf-turns">Pasos por tarea <span class="val" id="pf-turns-v"></span></label><input type="range" id="pf-turns" min="3" max="40" step="1"><div class="hint">Cuántas acciones seguidas puede encadenar (buscar, leer, enviar…) para resolver una petición.</div></div>
             <div><label class="lbl" for="pf-tokens">Longitud máxima de respuesta</label><select class="input" id="pf-tokens"><option value="1024">Corta (≈700 palabras)</option><option value="2048">Normal (≈1.500 palabras)</option><option value="4096">Larga (≈3.000 palabras)</option><option value="8192">Muy larga (≈6.000 palabras)</option></select></div>
-            <div><label class="lbl" for="pf-mem">Memoria de la conversación</label><select class="input" id="pf-mem"><option value="24">1 día</option><option value="72">3 días</option><option value="168">1 semana</option><option value="336">2 semanas</option><option value="720">1 mes</option></select><div class="hint">Tiempo sin hablar tras el que Jarvis empieza una conversación nueva. Lo que le pidas recordar («recuerda que…») se guarda siempre.</div></div>
             <div class="hint">Cambiar los ajustes avanzados reinicia tu Jarvis (unos 20 segundos).</div>
           </div>
         </details>
@@ -895,6 +909,7 @@ footer img { width: 22px; height: 22px; }
           <button type="button" data-act="summary" class="on">Resumen</button>
           <button type="button" data-act="assistant">Chat con Jarvis</button>
           <button type="button" data-act="chats">Recibidos</button>
+          <button type="button" data-act="memory">Memoria</button>
         </div>
         <select class="input" id="act-hours" aria-label="Periodo">
           <option value="24">Últimas 24 horas</option>
@@ -910,6 +925,15 @@ footer img { width: 22px; height: 22px; }
       </div>
       <div class="act-box hidden" id="act-assistant"></div>
       <div class="act-box hidden" id="act-chats"></div>
+      <div class="act-box hidden" id="act-memory">
+        <p class="mem-head" id="mem-head">Todo lo que Jarvis recuerda de ti. Aprende solo de cada conversación y nunca lo olvida; aquí puedes añadir, corregir o borrar recuerdos.</p>
+        <div class="mem-add">
+          <input class="input" id="mem-new" maxlength="300" placeholder="Añade algo que deba saber: «Óscar Peña es mi socio en AI Fast Track»" autocomplete="off">
+          <button class="btn btn-primary" id="mem-add" type="button">Recordar</button>
+        </div>
+        <div class="mem-list" id="mem-list"></div>
+        <div class="mem-journal" id="mem-journal"></div>
+      </div>
       <div class="nav">
         <button class="btn-link" data-goto="3">← Mi portal</button>
         <button class="btn btn-ghost" id="act-reload" type="button">Actualizar</button>
@@ -1145,7 +1169,8 @@ footer img { width: 22px; height: 22px; }
   function showAct(tab) {
     actTab = tab;
     qsa("[data-act]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-act") === tab); });
-    ["summary", "assistant", "chats"].forEach(function (t) { show("act-" + t, t === tab); });
+    ["summary", "assistant", "chats", "memory"].forEach(function (t) { show("act-" + t, t === tab); });
+    show("act-hours", tab !== "memory");
     if (tab !== "summary") loadActivity();
   }
   function scrollEnd(id) { var b = $(id).querySelector(".bubbles"); if (b) b.scrollTop = b.scrollHeight; }
@@ -1156,6 +1181,8 @@ footer img { width: 22px; height: 22px; }
         $("act-assistant").innerHTML = bubbles(d.messages || [], function (m) { return m.role === "user"; }, function (m) { return m.role === "user" ? "Tú" : "Jarvis"; });
         scrollEnd("act-assistant");
       }, function (e) { $("act-assistant").innerHTML = '<p class="act-empty">' + esc(e.message) + "</p>"; });
+    } else if (actTab === "memory") {
+      loadMemory();
     } else if (actTab === "chats") {
       if (actThread) return openThread(actThread);
       $("act-chats").innerHTML = '<p class="act-empty"><span class="spinner"></span> Cargando…</p>';
@@ -1191,6 +1218,47 @@ footer img { width: 22px; height: 22px; }
     }, function (e) { $("act-sum-out").innerHTML = '<p class="act-empty">' + esc(e.message) + "</p>"; }).then(function () { b.disabled = false; });
   };
 
+
+  // ---------- long-term memory ----------
+  function loadMemory() {
+    $("mem-list").innerHTML = '<p class="act-empty"><span class="spinner"></span> Cargando…</p>';
+    api("GET", "/api/memory").then(function (d) {
+      var facts = d.facts || [];
+      $("mem-head").innerHTML = "Jarvis recuerda <b>" + facts.length + "</b> cosas de ti y guarda <b>" + (d.messages || 0) +
+        "</b> mensajes de vuestra conversación. Aprende solo de cada conversación y nunca lo olvida; aquí puedes añadir, corregir o borrar recuerdos.";
+      $("mem-list").innerHTML = facts.length ? facts.map(function (f) {
+        return '<div class="mem-item" data-id="' + f.id + '"><div><p>' + esc(f.text) + "</p><small>" +
+          (f.source === "auto" ? "aprendido por Jarvis" : "me lo dijiste") + " · " + fmtTime(f.updated) + "</small></div>" +
+          '<div class="acts"><button type="button" data-edit>Editar</button><button type="button" data-del aria-label="Olvidar">Olvidar</button></div></div>';
+      }).join("") : '<p class="act-empty">Aún no recuerda nada. Háblale de ti, de tu trabajo y de la gente importante; irá aprendiendo.</p>';
+      qsa("#mem-list .mem-item").forEach(function (row) {
+        var id = row.getAttribute("data-id");
+        row.querySelector("[data-del]").onclick = function () {
+          api("DELETE", "/api/memory/facts/" + id).then(function () { toast("Olvidado ✓"); loadMemory(); }, function (e) { toast(e.message); });
+        };
+        row.querySelector("[data-edit]").onclick = function () {
+          var p = row.querySelector("p"), old = p.textContent;
+          p.outerHTML = '<input class="input" maxlength="300" value="' + esc(old) + '">';
+          var inp = row.querySelector("input"); inp.focus();
+          this.textContent = "Guardar";
+          this.onclick = function () {
+            api("PUT", "/api/memory/facts/" + id, { text: inp.value }).then(function () { toast("Recuerdo corregido ✓"); loadMemory(); }, function (e) { toast(e.message); });
+          };
+        };
+      });
+      var j = d.journal || [];
+      $("mem-journal").innerHTML = j.length ? '<div class="eyebrow" style="margin-bottom:10px">Diario de Jarvis</div>' + j.map(function (e) {
+        return "<details><summary>" + esc(new Date(e.day + "T12:00:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })) +
+          "</summary><div>" + waFmt(e.summary) + "</div></details>";
+      }).join("") : "";
+    }, function (e) { $("mem-list").innerHTML = '<p class="act-empty">' + esc(e.message) + "</p>"; });
+  }
+  $("mem-add").onclick = function () {
+    var t = $("mem-new").value.trim(); if (!t) return;
+    api("POST", "/api/memory/facts", { text: t }).then(function () { $("mem-new").value = ""; toast("Lo recordaré ✓"); loadMemory(); }, function (e) { toast(e.message); });
+  };
+  $("mem-new").onkeydown = function (ev) { if (ev.key === "Enter") $("mem-add").click(); };
+
   // ---------- assistant settings ----------
   function prefsRange(id) { $(id + "-v").textContent = $(id).value; }
   ["pf-temp", "pf-turns"].forEach(function (id) { $(id).oninput = function () { prefsRange(id); }; });
@@ -1200,11 +1268,8 @@ footer img { width: 22px; height: 22px; }
     $("pf-name").value = st.assistant_name || ""; $("pf-instr").value = st.instructions || "";
     var e = st.engine || {};
     $("pf-temp").value = e.temperature; $("pf-turns").value = e.max_turns;
-    $("pf-tokens").value = String(e.max_tokens); $("pf-mem").value = String(e.memory_hours);
-    ["pf-tokens", "pf-mem"].forEach(function (id) {
-      var v = id === "pf-tokens" ? e.max_tokens : e.memory_hours;
-      if ($(id).value !== String(v)) { var o = document.createElement("option"); o.value = o.textContent = String(v); $(id).appendChild(o); $(id).value = o.value; }
-    });
+    $("pf-tokens").value = String(e.max_tokens);
+    if ($("pf-tokens").value !== String(e.max_tokens)) { var o = document.createElement("option"); o.value = o.textContent = String(e.max_tokens); $("pf-tokens").appendChild(o); $("pf-tokens").value = o.value; }
     prefsRange("pf-temp"); prefsRange("pf-turns");
   }
   function loadPrefs() {
@@ -1215,7 +1280,7 @@ footer img { width: 22px; height: 22px; }
     var body = {
       confirm: sel ? sel.value : "smart", style: $("pf-style").value, address: $("pf-address").value,
       assistant_name: $("pf-name").value.trim(), instructions: $("pf-instr").value.trim(),
-      engine: { temperature: +$("pf-temp").value, max_turns: +$("pf-turns").value, max_tokens: +$("pf-tokens").value, memory_hours: +$("pf-mem").value }
+      engine: { temperature: +$("pf-temp").value, max_turns: +$("pf-turns").value, max_tokens: +$("pf-tokens").value }
     };
     b.disabled = true;
     api("POST", "/api/assistant/settings", body).then(function (st) {
