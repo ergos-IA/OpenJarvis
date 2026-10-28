@@ -284,6 +284,14 @@ class JarvisSystem:
             except Exception:
                 logger.exception("Channel message handler error")
                 reply = "Sorry, I encountered an error processing your message."
+                failed = True
+            else:
+                failed = not reply.strip() or reply.startswith("Maximum turns reached")
+            # Channels may provide their own message for a failed or empty
+            # answer, so the user is never left without a reply.
+            fallback = getattr(channel_bridge, "empty_reply", None)
+            if failed and isinstance(fallback, str) and fallback:
+                reply = fallback
 
             try:
                 _system.session_store.save_message(

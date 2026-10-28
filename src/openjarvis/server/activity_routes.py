@@ -275,6 +275,28 @@ async def memory_edit(fact_id: int, body: FactBody) -> Dict[str, Any]:
     return {"ok": True}
 
 
+class JournalBody(BaseModel):
+    summary: str
+
+
+@router.put("/api/memory/journal/{day}")
+async def memory_journal_edit(day: str, body: JournalBody) -> Dict[str, Any]:
+    """Correct a day of the diary (e.g. drop a wrong "rule" it picked up)."""
+    from datetime import date
+
+    from openjarvis.personal.memory import get_memory
+
+    try:
+        date.fromisoformat(day)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Día no válido") from exc
+    summary = body.summary.strip()[:4000]
+    if not summary:
+        raise HTTPException(status_code=400, detail="El resumen está vacío")
+    get_memory().set_journal(day, summary)
+    return {"ok": True}
+
+
 @router.delete("/api/memory/facts/{fact_id}")
 async def memory_delete(fact_id: int) -> Dict[str, Any]:
     from openjarvis.personal.memory import get_memory

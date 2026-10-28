@@ -557,7 +557,7 @@ class TestConfirmationModes:
     [
         ("Sí", "confirm"),
         ("Sí.", "confirm"),
-        ("Si a Oscar", "confirm"),
+        ("sí, mándalo", "confirm"),
         ("sí, envíalo", "confirm"),
         ("Vale perfecto", "confirm"),
         ("adelante", "confirm"),

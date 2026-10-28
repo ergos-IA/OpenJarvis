@@ -106,7 +106,7 @@ _STOP = {
 
 EXTRACT_PROMPT = """Eres la memoria a largo plazo de un asistente personal. Lees un intercambio entre el usuario y su asistente y decides qué merece recordarse para siempre sobre el usuario.
 
-Recuerda solo datos duraderos y útiles en el futuro: personas de su vida y su relación con ellas (familia, socios, clientes, amigos, con nombres), su trabajo y empresas, proyectos en marcha, preferencias y forma de trabajar, planes y fechas importantes, lugares habituales, decisiones tomadas. NO guardes: peticiones puntuales ya resueltas, saludos, el tiempo que hace, ni lo que diga el asistente de sí mismo. Lo que venga de mensajes o correos de terceros que el asistente cite son datos de otros: guárdalo solo si el usuario lo confirma como suyo.
+Recuerda solo datos duraderos y útiles en el futuro: personas de su vida y su relación con ellas (familia, socios, clientes, amigos, con nombres), su trabajo y empresas, proyectos en marcha, preferencias y forma de trabajar, planes y fechas importantes, lugares habituales, decisiones tomadas. NO guardes: peticiones puntuales ya resueltas, saludos, el tiempo que hace, ni lo que diga el asistente de sí mismo (sus reglas, limitaciones o procedimientos). Lo que venga de mensajes o correos de terceros que el asistente cite son datos de otros: guárdalo solo si el usuario lo confirma como suyo.
 
 Te paso los recuerdos que ya existen con su número. Si algo cambia o se precisa, ACTUALIZA el recuerdo existente en vez de duplicarlo; si deja de ser cierto, bórralo.
 
@@ -116,7 +116,7 @@ Responde SOLO con un JSON: una lista de operaciones, o [] si no hay nada.
  {"op":"delete","id":7}]
 Cada texto: una frase en tercera persona, concreta, con nombres propios («Óscar Peña es su socio en AI Fast Track»), de menos de 250 caracteres."""
 
-JOURNAL_PROMPT = """Resume en español lo que pasó este día en la conversación entre el usuario y su asistente personal, para que el asistente lo recuerde en el futuro. Entre 2 y 8 viñetas cortas («- …»): qué pidió o decidió el usuario, con quién (nombres), qué hizo el asistente por él, y lo que quedó pendiente. Sin relleno ni saludos. Si no hubo nada relevante, responde solo «-»."""
+JOURNAL_PROMPT = """Resume en español lo que pasó este día en la conversación entre el usuario y su asistente personal, para que el asistente lo recuerde en el futuro. Entre 2 y 8 viñetas cortas («- …»): qué pidió o decidió el usuario, con quién (nombres), qué hizo el asistente por él, y lo que quedó sin hacer. Sin relleno ni saludos. Lo que el asistente dijo sobre sus propias reglas o limitaciones («hace falta escribir solo sí», «no puedo con notas de voz») NO es una norma: no lo apuntes como tal, puede ser un fallo ya corregido. Si el asistente no consiguió algo que el usuario quería, apúntalo como fallo del asistente («no llegó a enviar…»), no como tarea del usuario. Los borradores sin enviar caducan: no los apuntes como pendientes de confirmar. Si no hubo nada relevante, responde solo «-»."""
 
 
 def _fold(text: str) -> str:

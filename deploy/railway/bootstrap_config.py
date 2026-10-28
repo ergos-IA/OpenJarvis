@@ -29,7 +29,7 @@ import tomlkit
 _TOOLS = (
     "think,calculator,web_search,"
     "whatsapp_read_messages,whatsapp_find_contact,whatsapp_send_message,"
-    "whatsapp_notify_settings,assistant_settings,"
+    "whatsapp_pending_draft,whatsapp_notify_settings,assistant_settings,"
     "email_list,email_read,email_send,"
     "reminder_create,reminder_list,reminder_cancel,remember_fact,forget_fact,"
     "memory_correct,memory_recall"
