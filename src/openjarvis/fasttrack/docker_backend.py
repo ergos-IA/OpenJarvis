@@ -73,7 +73,9 @@ _IMAGE_ENV = {
     "OPENJARVIS_NO_UPDATE_CHECK",
     "PYTHONUNBUFFERED",
 }
-API_VERSION = "v1.44"
+# Unversioned paths use the daemon's own API version (Docker 29 refuses
+# versions below 1.44); pin one with DOCKER_API_VERSION=1.47 if needed.
+API_VERSION = ""
 INSTANCE_PORT = 8000
 ROUTE_COOKIE = "jv"
 _SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$")
@@ -294,7 +296,9 @@ class DockerBackend:
         body: Any = None,
         ok: Iterable[int] = (200, 201, 204),
     ) -> Any:
-        url = f"{self._base}/{API_VERSION}{path}"
+        version = os.environ.get("DOCKER_API_VERSION", API_VERSION).strip("/v ")
+        prefix = f"/v{version}" if version else ""
+        url = f"{self._base}{prefix}{path}"
         try:
             resp = self._http.request(method, url, params=params, json=body)
         except httpx.HTTPError as exc:

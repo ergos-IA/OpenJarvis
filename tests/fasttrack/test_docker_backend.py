@@ -58,8 +58,7 @@ class FakeDocker:
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append((request.method, request.url.path))
         path = request.url.path
-        assert path.startswith("/v1.44/"), path
-        path = path[len("/v1.44") :]
+        path = re.sub(r"^/v[0-9.]+", "", path)
         query = parse_qs(urlparse(str(request.url)).query)
         m = request.method
         if m == "GET" and path == "/containers/json":
@@ -357,11 +356,11 @@ class TestDockerBackend:
         assert c["HostConfig"]["Mounts"][0]["Source"] == "jarvis-ana-data"
         assert c["State"]["Status"] == "running"
         # Stopped before being replaced (never two WhatsApp sessions).
-        stop = fake.requests.index(("POST", "/v1.44/containers/jarvis-ana/stop"))
+        stop = fake.requests.index(("POST", "/containers/jarvis-ana/stop"))
         create = max(
             i
             for i, r in enumerate(fake.requests)
-            if r == ("POST", "/v1.44/containers/create")
+            if r == ("POST", "/containers/create")
         )
         assert stop < create
 
