@@ -12,10 +12,12 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from openjarvis.fasttrack.errors import BackendError
+
 API_URL = "https://backboard.railway.com/graphql/v2"
 
 
-class RailwayError(RuntimeError):
+class RailwayError(BackendError):
     pass
 
 

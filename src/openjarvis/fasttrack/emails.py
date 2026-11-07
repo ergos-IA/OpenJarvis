@@ -38,6 +38,21 @@ def site_url() -> str:
     return os.environ.get("PUBLIC_URL", "https://jarvis.aifasttrack.tech").rstrip("/")
 
 
+def instance_link(key: str) -> str:
+    """This instance's personal link (run inside an instance).
+
+    Single domain (VPS, ``JARVIS_ROUTING=cookie``): ``PUBLIC_URL/entrar#key=``
+    -- the public site turns the key into the routing cookie.  Railway: the
+    instance's own domain.
+    """
+    if not key:
+        return ""
+    if os.environ.get("JARVIS_ROUTING", "") == "cookie":
+        return f"{site_url()}/entrar#key={key}"
+    domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip()
+    return f"https://{domain}/#key={key}" if domain else ""
+
+
 def _e(text: str) -> str:
     return html.escape(str(text or ""))
 
@@ -383,9 +398,7 @@ def send_access_email_once(marker: Optional[Path] = None, *, send=None) -> bool:
     if send is None and not contact.configured():
         logger.warning("Access email not sent: Mailjet is not configured")
         return False
-    domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip()
-    key = os.environ.get("OPENJARVIS_API_KEY", "")
-    link = f"https://{domain}/#key={key}" if domain and key else ""
+    link = instance_link(os.environ.get("OPENJARVIS_API_KEY", ""))
     from openjarvis.fasttrack.plans import plan
 
     name = os.environ.get("JARVIS_USER_NAME", "")
@@ -416,6 +429,7 @@ def send_access_email_once(marker: Optional[Path] = None, *, send=None) -> bool:
 __all__ = [
     "access_ready",
     "cancelled",
+    "instance_link",
     "payload",
     "payment_failed",
     "send_access_email_once",

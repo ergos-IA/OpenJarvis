@@ -97,6 +97,22 @@ async def close_session() -> Response:
     return response
 
 
+@router.get("/salir", include_in_schema=False)
+async def switch_user() -> RedirectResponse:
+    """"Cambiar de usuario": back to the public site's code form.
+
+    Behind the single-domain proxy (VPS) the public site owns ``/salir`` and
+    also clears the ``jv`` routing cookie; this handler covers instances
+    with their own domain (Railway) and a misrouted request.
+    """
+    target = os.environ.get("PUBLIC_URL", "https://jarvis.aifasttrack.tech")
+    response = RedirectResponse(target.rstrip("/") + "/", status_code=303)
+    response.delete_cookie(SESSION_COOKIE)
+    response.delete_cookie("jv", path="/")
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @router.get("/whatsapp", include_in_schema=False)
 async def legacy_whatsapp_page() -> RedirectResponse:
     return RedirectResponse("/?paso=whatsapp", status_code=307)

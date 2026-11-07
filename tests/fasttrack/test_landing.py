@@ -99,6 +99,14 @@ class TestSite:
         r = client.post("/api/acceder", json={"code": "abcd-efgh-jkmn"})
         assert r.status_code == 200
         assert r.json()["url"] == f"https://s1.up.railway.app/#key={KEY}"
+        # Own domain per instance: no single-domain routing cookie.
+        assert "set-cookie" not in r.headers
+
+    def test_salir_and_entrar(self, client):
+        r = client.get("/salir", follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == "/"
+        assert any(c.startswith("jv=") for c in r.headers.get_list("set-cookie"))
+        assert client.get("/entrar").status_code == 200
 
     def test_brute_force_blocked(self, client):
         h = {"X-Real-IP": "7.7.7.7"}

@@ -35,6 +35,7 @@ import httpx
 
 from openjarvis.fasttrack import contact as mail
 from openjarvis.fasttrack import emails
+from openjarvis.fasttrack.backends import SHARED_REF, get_backend
 from openjarvis.fasttrack.models import DEFAULT_MODEL
 from openjarvis.fasttrack.plans import PLANS, TOPUP_CREDITS
 from openjarvis.fasttrack.provisioning import provision_user
@@ -276,7 +277,10 @@ def _email(to: str, subject: str, text: str, *, name: str = "") -> Dict[str, Any
 
 
 class Fulfillment:
-    """Acts on Stripe events.  Railway/Mailjet calls are injected for tests."""
+    """Acts on Stripe events.  Backend/Mailjet calls are injected for tests.
+
+    *rw* is a backend (Railway or Docker) or a Railway client (wrapped).
+    """
 
     def __init__(
         self,
@@ -286,7 +290,7 @@ class Fulfillment:
         send: Optional[Callable[[Dict[str, Any]], Any]] = None,
         http: Optional[httpx.AsyncClient] = None,
     ) -> None:
-        self._rw = rw
+        self._rw = get_backend(rw)
         self._lookup = lookup
         self._send = send or mail.send
         self._http = http
@@ -377,7 +381,7 @@ class Fulfillment:
                 "STRIPE_SUBSCRIPTION_ID": session.get("subscription") or "",
                 # The instance emails the access itself once it is up.
                 "JARVIS_SEND_ACCESS_EMAIL": "1",
-                **{var: "${{shared.%s}}" % var for var in INSTANCE_MAIL_VARS},
+                **{var: SHARED_REF % var for var in INSTANCE_MAIL_VARS},
                 "PUBLIC_URL": public_url(),
             },
         )
@@ -398,17 +402,19 @@ class Fulfillment:
         )
 
     async def _topup(self, session: Dict[str, Any], meta: Dict[str, str]) -> None:
-        sid = meta.get("service_id", "")
-        variables, domain = await asyncio.gather(
-            asyncio.to_thread(self._rw.variables, sid),
-            asyncio.to_thread(self._rw.domain, sid),
-        )
+        # A Railway service id in Stripe metadata still finds an instance
+        # moved to Docker (label fasttrack.jarvis.railway_id).
+        sid = await asyncio.to_thread(self._rw.resolve_id, meta.get("service_id", ""))
+        variables = await asyncio.to_thread(self._rw.variables, sid)
+        api_key = variables.get("OPENJARVIS_API_KEY", "")
+        # Docker: internal address (http://jarvis-<slug>:8000).
+        ends = await asyncio.to_thread(self._rw.endpoints, sid, api_key)
         token = os.environ.get("FASTTRACK_ADMIN_TOKEN", "")
         headers = {
-            "Authorization": f"Bearer {variables.get('OPENJARVIS_API_KEY', '')}",
+            "Authorization": f"Bearer {api_key}",
             "X-FastTrack-Admin": token,
         }
-        url = f"https://{domain}/api/credits/topup"
+        url = f"{ends['url']}/api/credits/topup"
         payload = {"credits": TOPUP_CREDITS}
         if self._http is None:
             async with httpx.AsyncClient(timeout=20) as client:

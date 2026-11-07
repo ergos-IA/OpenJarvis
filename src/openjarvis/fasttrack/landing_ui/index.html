@@ -948,10 +948,40 @@ tbody tr.hl th { color: #fff; }
     if (!/oj_sk_/i.test(v) && v.replace(/-/g, "").length !== 12) { setStatus(codeStatus, "× Introduce los 12 caracteres de tu código.", "err"); return; }
     btn.disabled = true; setStatus(codeStatus, "◌ Verificando acceso…", "wait");
     post("/api/acceder", { code: v }).then(function (res) {
-      if (res.ok && res.d.url) { setStatus(codeStatus, "✓ Acceso verificado · abriendo tu Jarvis", "ok"); location.href = res.d.url; return; }
+      if (res.ok && res.d.url) { setStatus(codeStatus, "✓ Acceso verificado · abriendo tu Jarvis", "ok"); openJarvis(res.d.url); return; }
       setStatus(codeStatus, "× " + (res.d.detail || "No se ha podido verificar el código."), "err"); btn.disabled = false;
     }, function () { setStatus(codeStatus, "× Sin conexión. Inténtalo de nuevo.", "err"); btn.disabled = false; });
   });
+  // Single domain: the answer is "/#key=…" on this same site (the server set
+  // the routing cookie), so a plain hash change would not load the Jarvis.
+  var OPENED = "jarvis.opening";
+  function openJarvis(url) {
+    var u = new URL(url, location.href);
+    if (u.origin === location.origin) { try { sessionStorage.setItem(OPENED, String(Date.now())); } catch (e) {} }
+    if (u.origin === location.origin && u.pathname === location.pathname && u.search === location.search) {
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+      location.reload();
+    } else location.href = u.href;
+  }
+  // Personal link (/entrar#key=… or /#key=…): swap the key for the cookie.
+  var linkKey = /key=(oj_sk_[A-Za-z0-9_\-]+)/.exec(location.hash), openedAt = 0;
+  try { openedAt = +sessionStorage.getItem(OPENED) || 0; sessionStorage.removeItem(OPENED); } catch (e) {}
+  if (linkKey && Date.now() - openedAt < 30000) {
+    // We just sent the browser to its Jarvis and got this site back: the
+    // proxy only routes to a running, healthy instance. Don't loop.
+    history.replaceState(null, "", location.pathname + location.search);
+    code.value = linkKey[1];
+    setStatus(codeStatus, "× Tu Jarvis se está iniciando o no responde. Espera un minuto y pulsa «Entrar».", "err");
+    try { $("acceso").scrollIntoView(); } catch (e) {}
+  } else if (linkKey) {
+    history.replaceState(null, "", location.pathname + location.search);
+    setStatus(codeStatus, "◌ Abriendo tu Jarvis…", "wait");
+    post("/api/acceder", { code: linkKey[1] }).then(function (res) {
+      if (res.ok && res.d.url) { openJarvis(res.d.url); return; }
+      setStatus(codeStatus, "× " + (res.d.detail || "Enlace no válido. Entra con tu código."), "err");
+      try { $("acceso").scrollIntoView(); } catch (e) {}
+    }, function () { setStatus(codeStatus, "× Sin conexión. Inténtalo de nuevo.", "err"); });
+  }
 
   // ---------- contact ----------
   var form = $("contact-form"), cStatus = $("contact-status");

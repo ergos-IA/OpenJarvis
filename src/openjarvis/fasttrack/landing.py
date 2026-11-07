@@ -2,8 +2,21 @@
 
 Serves the product page and the legal texts, and resolves a user's short
 access code (``JARVIS_ACCESS_CODE``) -- or their full personal link/key -- to
-their own instance, which then opens a session.  Codes are looked up in the
-Railway project (same token as the console) and cached briefly.
+their own instance, which then opens a session.  Codes are looked up through
+the backend (Railway project or Docker containers, same as the console) and
+cached briefly.
+
+Two ways to reach an instance:
+
+* Railway: every instance has its own domain; the site answers with
+  ``https://<instance domain>/#key=...``.
+* Docker on one VPS (single domain): the site sets the routing cookie
+  ``jv=<slug>`` and sends the browser to ``/#key=...`` on this same domain;
+  Traefik routes requests carrying the cookie to ``jarvis-<slug>``.  The
+  paths below (``/salir``, ``/entrar``, ``/api/acceder``, ``/api/alta``,
+  ``/api/cuenta/*``, ``/api/stripe/webhook``, ``/oauth/callback``,
+  ``/api/contacto``, ``/gracias``, ``/cuenta``) always reach this site, with
+  or without the cookie (see deploy/vps).  ``/salir`` forgets the cookie.
 
 Brute force: each IP gets a few attempts per window, and a global cap stops
 distributed guessing; codes carry ~60 bits, so online guessing is hopeless.
@@ -19,21 +32,26 @@ import re
 import threading
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
 from openjarvis.fasttrack import billing
 from openjarvis.fasttrack import contact as contact_mail
+from openjarvis.fasttrack.backends import get_backend
+from openjarvis.fasttrack.errors import BackendError
 from openjarvis.fasttrack.plans import PLANS
 from openjarvis.fasttrack.provisioning import USER_PREFIX, normalize_code
-from openjarvis.fasttrack.railway import RailwayClient, RailwayError
 from openjarvis.server.legal_routes import DOCS, render_legal
-from openjarvis.server.web_session import FailureLimiter, client_ip
+from openjarvis.server.web_session import (
+    SESSION_COOKIE,
+    FailureLimiter,
+    client_ip,
+)
 
 _UI_DIR = Path(__file__).parent / "landing_ui"
 _ASSET_DIR = Path(__file__).parent.parent / "server" / "jarvis_ui"
@@ -46,35 +64,42 @@ _ASSETS = {
 }
 logger = logging.getLogger(__name__)
 _KEY_RE = re.compile(r"oj_sk_[A-Za-z0-9_\-]{20,}")
+# Single-domain routing cookie read by Traefik (see docker_backend).
+ROUTE_COOKIE = "jv"
+ROUTE_COOKIE_MAX_AGE = 365 * 24 * 3600
 
 
 class Directory:
-    """Access code / key -> instance URL, refreshed from Railway."""
+    """Access code / key -> instance, refreshed from the backend."""
 
-    def __init__(self, rw: RailwayClient, ttl_s: float = 300, min_gap_s: float = 30):
-        self._rw = rw
+    def __init__(self, rw: Any, ttl_s: float = 300, min_gap_s: float = 30):
+        self._rw = get_backend(rw)
         self._ttl = ttl_s
         self._min_gap = min_gap_s
-        self._entries: List[Dict[str, str]] = []
+        self._entries: List[Dict[str, Any]] = []
         self._loaded_at = 0.0
         self._lock = threading.Lock()
 
     def _refresh(self) -> None:
         entries = []
-        for svc in self._rw.project_overview()["services"]:
+        for svc in self._rw.services():
             if not svc["name"].startswith(USER_PREFIX):
                 continue
             variables = self._rw.variables(svc["id"])
             key = variables.get("OPENJARVIS_API_KEY", "")
             if not key:
                 continue
+            ends = self._rw.endpoints(svc["id"], key)
             entries.append(
                 {
                     "id": svc["id"],
                     "service": svc["name"],
+                    "aliases": svc.get("aliases") or [],
                     "code": normalize_code(variables.get("JARVIS_ACCESS_CODE", "")),
                     "key": key,
-                    "domain": self._rw.domain(svc["id"]),
+                    "domain": ends["host"],
+                    "link": ends["link"],
+                    "route": ends["route"],
                     "customer": variables.get("STRIPE_CUSTOMER_ID", ""),
                     "plan": variables.get("JARVIS_PLAN", "own"),
                     "name": variables.get("JARVIS_USER_NAME", ""),
@@ -84,7 +109,7 @@ class Directory:
         self._entries = entries
         self._loaded_at = time.time()
 
-    def _match(self, code: str, key: str) -> Optional[Dict[str, str]]:
+    def _match(self, code: str, key: str) -> Optional[Dict[str, Any]]:
         found = None
         for entry in self._entries:  # constant work per entry
             code_ok = bool(code) and hmac.compare_digest(
@@ -93,11 +118,11 @@ class Directory:
             key_ok = bool(key) and hmac.compare_digest(
                 key.encode(), entry["key"].encode()
             )
-            if (code_ok or key_ok) and entry["domain"]:
+            if (code_ok or key_ok) and entry["link"]:
                 found = entry
         return found
 
-    def find(self, *, customer: str) -> Optional[Dict[str, str]]:
+    def find(self, *, customer: str) -> Optional[Dict[str, Any]]:
         """The instance of a Stripe customer (fresh data: used by billing)."""
         if not customer:
             return None
@@ -106,7 +131,10 @@ class Directory:
             return next((e for e in self._entries if e["customer"] == customer), None)
 
     def has_domain(self, host: str) -> bool:
-        """Is *host* one of our users' instances? (OAuth relay target check)."""
+        """Is *host* one of our users' instances? (OAuth relay target check).
+
+        On the single-domain setup every instance answers at the public host.
+        """
         host = (host or "").lower()
         if not host:
             return False
@@ -124,9 +152,9 @@ class Directory:
         entry = self.entry(text)
         if entry is None:
             return None
-        return f"https://{entry['domain']}/#key={entry['key']}"
+        return entry["link"]
 
-    def entry(self, text: str) -> Optional[Dict[str, str]]:
+    def entry(self, text: str) -> Optional[Dict[str, Any]]:
         text = (text or "").strip()
         key_match = _KEY_RE.search(text)
         key = key_match.group(0) if key_match else ""
@@ -156,7 +184,7 @@ class SignupRequest(BaseModel):
 
 
 def create_landing_app(
-    railway: Optional[RailwayClient] = None,
+    railway: Any = None,
     *,
     per_ip: Optional[FailureLimiter] = None,
     global_limit: Optional[FailureLimiter] = None,
@@ -164,7 +192,7 @@ def create_landing_app(
     stripe: Optional[billing.StripeClient] = None,
     fulfillment: Optional[billing.Fulfillment] = None,
 ) -> FastAPI:
-    rw = railway or RailwayClient()
+    rw = get_backend(railway)
     directory = Directory(rw)
     stripe = stripe or billing.StripeClient()
     fulfillment = fulfillment or billing.Fulfillment(rw, directory.find)
@@ -198,10 +226,25 @@ def create_landing_app(
         return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
+    @app.get("/entrar", response_class=HTMLResponse)
     async def home() -> HTMLResponse:
+        # /entrar is the personal link (/entrar#key=...): always this site
+        # (even with another user's jv cookie); the page swaps the key for
+        # the routing cookie and opens the user's Jarvis.
         html = (_UI_DIR / "index.html").read_text(encoding="utf-8")
         html = html.replace("{{CONTACT_URL}}", contact)
         return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
+    @app.get("/salir")
+    async def switch_user() -> RedirectResponse:
+        """Forget which Jarvis this browser opens and go back to the site."""
+        response = RedirectResponse("/", status_code=303)
+        response.delete_cookie(
+            ROUTE_COOKIE, path="/", secure=True, httponly=True, samesite="lax"
+        )
+        response.delete_cookie(SESSION_COOKIE, path="/")
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/gracias", response_class=HTMLResponse)
     async def thanks_page() -> HTMLResponse:
@@ -230,24 +273,24 @@ def create_landing_app(
         )
 
     @app.post("/api/acceder")
-    async def access(req: AccessRequest, request: Request) -> Dict[str, str]:
-        ip = client_ip(request)
-        if per_ip.blocked(ip) or global_limit.blocked("*"):
-            raise HTTPException(
-                429, "Demasiados intentos. Por seguridad, espera un rato."
-            )
-        try:
-            url = await asyncio.to_thread(directory.resolve, req.code[:300])
-        except RailwayError:
-            raise HTTPException(503, "Servicio no disponible. Prueba en unos minutos.")
-        if url is None:
-            per_ip.fail(ip)
-            global_limit.fail("*")
-            # Same answer and similar timing for every kind of miss.
-            await asyncio.sleep(0.4)
-            raise HTTPException(404, "Código no válido. Revísalo o pide uno nuevo.")
-        per_ip.succeed(ip)
-        return {"url": url}
+    async def access(
+        req: AccessRequest, request: Request, response: Response
+    ) -> Dict[str, str]:
+        entry = await _entry_for_code(req.code, request)
+        if not entry["route"]:
+            return {"url": entry["link"]}  # instance with its own domain
+        # Single domain: Traefik sends requests with jv=<slug> to the instance.
+        response.set_cookie(
+            ROUTE_COOKIE,
+            entry["route"],
+            max_age=ROUTE_COOKIE_MAX_AGE,
+            path="/",
+            secure=True,
+            httponly=True,
+            samesite="lax",
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return {"url": f"/#key={entry['key']}"}
 
     async def _entry_for_code(code: str, request: Request) -> Dict[str, str]:
         ip = client_ip(request)
@@ -257,7 +300,7 @@ def create_landing_app(
             )
         try:
             entry = await asyncio.to_thread(directory.entry, code[:300])
-        except RailwayError:
+        except BackendError:
             raise HTTPException(503, "Servicio no disponible. Prueba en unos minutos.")
         if entry is None:
             per_ip.fail(ip)
@@ -353,7 +396,11 @@ def create_landing_app(
         state: str = "", code: str = "", error: str = ""
     ) -> RedirectResponse:
         """One redirect URI for every user's OAuth connections: bounce the
-        browser back to the Jarvis named in ``state`` -- only if it is ours."""
+        browser back to the Jarvis named in ``state`` -- only if it is ours.
+
+        Single domain (VPS): ``state`` names the public host itself, and the
+        browser's ``jv`` cookie takes ``/oauth/done`` to the right instance
+        (``/oauth/done`` is not one of the paths this site always owns)."""
         from openjarvis.integrations.manager import decode_state
 
         try:
@@ -362,7 +409,7 @@ def create_landing_app(
             raise HTTPException(400, "Autorización no válida.")
         try:
             known = await asyncio.to_thread(directory.has_domain, host)
-        except RailwayError:
+        except BackendError:
             raise HTTPException(503, "Servicio no disponible. Prueba en unos minutos.")
         if not known:
             raise HTTPException(400, "Autorización no válida.")

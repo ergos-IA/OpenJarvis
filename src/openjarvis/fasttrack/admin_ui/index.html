@@ -164,7 +164,7 @@ h1.h { font: 500 clamp(36px, 5vw, 60px)/1 var(--display); letter-spacing: -.03em
       <button class="btn btn-primary" id="new">+ NUEVO USUARIO</button>
     </div>
 
-    <div class="notice hidden" id="no-railway">Falta <b>RAILWAY_API_TOKEN</b> en esta consola: créalo en railway.com/account/tokens (workspace de la empresa) y añádelo como variable compartida del proyecto.</div>
+    <div class="notice hidden" id="no-railway">Falta <b>RAILWAY_API_TOKEN</b> en esta consola: créalo en railway.com/account/tokens (workspace de la empresa) y añádelo como variable compartida del proyecto. (En el VPS, con <b>JARVIS_BACKEND=docker</b>, este aviso no aparece.)</div>
 
     <div class="kpis">
       <div class="kpi"><small>Usuarios</small><b id="k-users">—</b></div>
@@ -287,7 +287,7 @@ h1.h { font: 500 clamp(36px, 5vw, 60px)/1 var(--display); letter-spacing: -.03em
 
   // ---------- overview ----------
   var DEPLOY = { SUCCESS: ["ok", "Activo"], BUILDING: ["warn", "Construyendo"], DEPLOYING: ["warn", "Desplegando"], INITIALIZING: ["warn", "Iniciando"],
-    QUEUED: ["warn", "En cola"], WAITING: ["warn", "En cola"], FAILED: ["bad", "Error"], CRASHED: ["bad", "Caído"], REMOVED: ["", "Retirado"], "SIN DESPLEGAR": ["bad", "Sin desplegar"] };
+    QUEUED: ["warn", "En cola"], WAITING: ["warn", "En cola"], FAILED: ["bad", "Error"], CRASHED: ["bad", "Caído"], UNHEALTHY: ["bad", "No responde"], REMOVED: ["", "Retirado"], "SIN DESPLEGAR": ["bad", "Sin desplegar"] };
   function load() {
     api("GET", "/api/overview").then(function (d) { data = d; render(); }, function (e) {
       if (e.message !== "auth") $("users").innerHTML = '<div class="empty">' + esc(e.message) + "</div>";
@@ -373,7 +373,7 @@ h1.h { font: 500 clamp(36px, 5vw, 60px)/1 var(--display); letter-spacing: -.03em
 
   // ---------- new user ----------
   $("new").onclick = function () {
-    if (!data || !data.railway) { toast("Configura primero RAILWAY_API_TOKEN"); return; }
+    if (!data || !data.railway) { toast(data && data.backend === "docker" ? "Docker no está disponible" : "Configura primero RAILWAY_API_TOKEN"); return; }
     show("new-form", true); show("new-done", false); err("n-err", "");
     $("n-name").value = ""; $("n-email").value = ""; $("n-asst").value = "Jarvis";
     modelOptions("n-models", "claude-sonnet-5-5"); show("m-new", true); $("n-name").focus();
@@ -396,7 +396,7 @@ h1.h { font: 500 clamp(36px, 5vw, 60px)/1 var(--display); letter-spacing: -.03em
         $("d-wa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
         $("d-mail").href = "mailto:" + encodeURIComponent($("n-email").value.trim()) + "?subject=" + encodeURIComponent("Tu asistente Jarvis") + "&body=" + encodeURIComponent(msg);
         $("d-copy").onclick = function () { copy(r.link); };
-        err("d-warn", r.build_error ? "⚠️ No se pudo conectar el código: " + r.build_error + ". Conecta GitHub en Railway y pulsa «Redesplegar»." : "");
+        err("d-warn", r.build_error ? (data && data.backend === "docker" ? "⚠️ " + r.build_error : "⚠️ No se pudo conectar el código: " + r.build_error + ". Conecta GitHub en Railway y pulsa «Redesplegar».") : "");
         load();
       }, function (e) { err("n-err", e.message); })
       .then(function () { b.disabled = false; b.textContent = "Crear Jarvis"; });

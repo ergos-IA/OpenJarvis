@@ -944,7 +944,7 @@ footer img { width: 22px; height: 22px; }
 
 <footer>
   <img src="/jarvis-ui/aifasttrack-mark.svg" alt="">
-  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/legal/aviso-legal" style="color:var(--t2)">Aviso legal</a> · <a href="/legal/terminos" style="color:var(--t2)">Términos</a> · <a href="/legal/privacidad" style="color:var(--t2)">Privacidad</a> · <a href="/legal/cookies" style="color:var(--t2)">Cookies</a> · <a href="#" id="signout" style="color:var(--t2)">Cerrar sesión</a></span>
+  <span>Jarvis · un asistente de <b style="color:var(--t2)">AI Fast Track</b> · <a href="/legal/aviso-legal" style="color:var(--t2)">Aviso legal</a> · <a href="/legal/terminos" style="color:var(--t2)">Términos</a> · <a href="/legal/privacidad" style="color:var(--t2)">Privacidad</a> · <a href="/legal/cookies" style="color:var(--t2)">Cookies</a> · <a href="#" id="signout" style="color:var(--t2)">Cerrar sesión / cambiar de usuario</a></span>
 </footer>
 <div class="toast" id="toast" role="status"></div>
 <div class="conn-modal hidden" id="conn-modal" role="dialog" aria-modal="true" aria-labelledby="cm-name">
@@ -1828,8 +1828,11 @@ footer img { width: 22px; height: 22px; }
   // ---------- sign out of this browser ----------
   $("signout").onclick = function (e) {
     e.preventDefault();
-    if (!confirm("¿Cerrar la sesión en este navegador? Para volver necesitarás tu enlace personal.")) return;
-    api("DELETE", "/api/session").then(function () { location.reload(); }, function () { location.reload(); });
+    if (!confirm("¿Cerrar la sesión en este navegador? Para volver necesitarás tu código de acceso o tu enlace personal.")) return;
+    // /salir also forgets which Jarvis this browser opens (single-domain
+    // routing cookie) and goes back to the public site's code form.
+    var out = function () { location.href = "/salir"; };
+    api("DELETE", "/api/session").then(out, out);
   };
 })();
 </script>

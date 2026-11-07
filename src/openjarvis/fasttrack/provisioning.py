@@ -1,5 +1,6 @@
-"""Create a user's Jarvis instance (Railway service) -- shared by the console
-and the self-service checkout.
+"""Create a user's Jarvis instance -- shared by the console and the
+self-service checkout.  Where it runs (Railway service or Docker container)
+depends on the backend, see :mod:`openjarvis.fasttrack.backends`.
 """
 
 from __future__ import annotations
@@ -10,8 +11,8 @@ import secrets
 import unicodedata
 from typing import Any, Dict, Optional
 
+from openjarvis.fasttrack.backends import SHARED_REF, get_backend
 from openjarvis.fasttrack.models import PROVIDERS, engine_for, provider_for
-from openjarvis.fasttrack.railway import RailwayClient, RailwayError
 
 USER_PREFIX = "jarvis-"
 CREDENTIALS = [p["credential"] for p in PROVIDERS.values()]
@@ -60,7 +61,7 @@ def model_vars(model: str, provider: str = "") -> Dict[str, str]:
 
 
 def provision_user(
-    rw: RailwayClient,
+    rw: Any,
     *,
     name: str,
     email: str = "",
@@ -73,14 +74,17 @@ def provision_user(
     repo: str = "",
     branch: str = "",
 ) -> Dict[str, Any]:
-    """Create service + variables + volume + domain and start the build.
+    """Create the instance (variables + volume + domain) and start it.
+
+    *rw* is a backend (or a Railway client, wrapped).
 
     ``shared_ai=False`` (the default) leaves the AI keys out: the user
     connects their own account in the setup wizard ("Conecta tu IA").
     ``True`` wires AI Fast Track's shared keys (AI included in the price).
 
     Returns ``{id, service, domain, link, access_code, build_error}``.
-    Raises :class:`RailwayError` (and ``ValueError`` for bad input).
+    Raises :class:`~openjarvis.fasttrack.errors.BackendError` (and
+    ``ValueError`` for bad input).
     """
     name = " ".join(name.split())
     if not name:
@@ -88,7 +92,8 @@ def provision_user(
     repo = repo or os.environ.get("JARVIS_REPO", "ergos-IA/OpenJarvis")
     branch = branch or os.environ.get("JARVIS_BRANCH", "main")
 
-    taken = {s["name"] for s in rw.project_overview()["services"]}
+    backend = get_backend(rw)
+    taken = {s["name"] for s in backend.services()}
     base = USER_PREFIX + slugify(name)
     service_name, n = base, 2
     while service_name in taken:
@@ -98,7 +103,6 @@ def provision_user(
     access_code = new_access_code()
     variables = {
         "PORT": "8000",
-        "RAILWAY_DOCKERFILE_PATH": "deploy/railway/Dockerfile",
         "OPENJARVIS_API_KEY": key,
         "JARVIS_ACCESS_CODE": access_code,
         "JARVIS_ASSISTANT_NAME": assistant_name.strip() or "Jarvis",
@@ -110,29 +114,22 @@ def provision_user(
         **(extra_vars or {}),
     }
     # Provider credentials and the company's legal data come from the
-    # project's shared variables, filled in once for every user.
+    # shared variables, filled in once for every user (Railway: the
+    # project's shared variables; Docker: the shared env file).
     # Internal token the console/billing use to add credits to an instance.
-    variables.setdefault("FASTTRACK_ADMIN_TOKEN", "${{shared.FASTTRACK_ADMIN_TOKEN}}")
+    variables.setdefault("FASTTRACK_ADMIN_TOKEN", SHARED_REF % "FASTTRACK_ADMIN_TOKEN")
     for var in (CREDENTIALS if shared_ai else []) + LEGAL_VARS:
-        variables.setdefault(var, "${{shared.%s}}" % var)
+        variables.setdefault(var, SHARED_REF % var)
 
-    sid = rw.create_service(service_name)
-    rw.set_variables(sid, variables)
-    rw.create_volume(sid, "/data")
-    domain = rw.create_domain(sid, 8000)
-    rw.set_healthcheck(sid, "/health")
-    build_error = ""
-    try:
-        rw.connect_repo(sid, repo, branch)
-    except RailwayError as exc:
-        build_error = str(exc)
+    created = backend.create_instance(service_name, variables, repo=repo, branch=branch)
+    ends = backend.endpoints(created["id"], key, host=created["domain"])
     return {
-        "id": sid,
+        "id": created["id"],
         "service": service_name,
-        "domain": domain,
-        "link": f"https://{domain}/#key={key}",
+        "domain": created["domain"],
+        "link": ends["link"],
         "access_code": access_code,
-        "build_error": build_error,
+        "build_error": created["build_error"],
     }
 
 
