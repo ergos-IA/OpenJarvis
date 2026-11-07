@@ -631,3 +631,17 @@ def test_instance_salir_route(monkeypatch):
     r = TestClient(app).get("/salir", follow_redirects=False)
     assert r.status_code == 303
     assert r.headers["location"] == "https://jarvis.aifasttrack.tech/"
+
+
+def test_instance_shared_vars(docker, shared_env, monkeypatch):
+    fake, backend = docker
+    monkeypatch.setenv("JARVIS_INSTANCE_SHARED", "MAILJET_API_KEY, MS_CLIENT_ID")
+    _adopt(backend)
+    env = _env(fake.containers["jarvis-ana"])
+    assert env["MAILJET_API_KEY"] == "mj"
+    assert env["MS_CLIENT_ID"] == ""  # not in shared.env yet
+    # Added to shared.env later: picked up by the next recreation.
+    shared_env.write_text("MS_CLIENT_ID=ms-1\nMAILJET_API_KEY=mj2\n", encoding="utf-8")
+    backend.recreate("ana")
+    env = _env(fake.containers["jarvis-ana"])
+    assert env["MS_CLIENT_ID"] == "ms-1" and env["MAILJET_API_KEY"] == "mj2"

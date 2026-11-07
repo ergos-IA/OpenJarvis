@@ -1,0 +1,118 @@
+# Jarvis · AI Fast Track en un VPS con Docker (ver README.md).
+#
+# Este compose solo levanta el plano de control:
+#   - docker-proxy: acceso limitado a la API de Docker (sin el socket en
+#     los contenedores de la app)
+#   - landing:      https://jarvis.aifasttrack.tech (web pública, códigos de
+#                   acceso, Stripe, OAuth)
+#   - console:      https://consola-jarvis.aifasttrack.tech (consola interna)
+#
+# Las instancias de usuario (jarvis-<slug>) NO están aquí: las crea la
+# consola / Stripe / dockerctl a través de la API de Docker.
+#
+# Uso (desde la raíz del repo):
+#   docker build -t openjarvis:latest -f deploy/railway/Dockerfile .
+#   docker compose -f deploy/vps/docker-compose.yml up -d
+
+name: jarvis-fasttrack
+
+x-app: &app
+  image: ${JARVIS_IMAGE:-openjarvis:latest}
+  pull_policy: never
+  restart: unless-stopped
+  depends_on: [docker-proxy]
+  networks: [control, web]
+  env_file:
+    - ./shared.env
+    - ./control.env
+  volumes:
+    - ./shared.env:/run/jarvis/shared.env:ro
+  healthcheck:
+    test:
+      - CMD
+      - python3
+      - -c
+      - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+    interval: 30s
+    timeout: 10s
+    start_period: 60s
+    retries: 3
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: "3" }
+
+x-backend-env: &backend-env
+  JARVIS_BACKEND: docker
+  DOCKER_HOST: tcp://docker-proxy:2375
+  JARVIS_IMAGE: ${JARVIS_IMAGE:-openjarvis:latest}
+  JARVIS_SHARED_ENV: /run/jarvis/shared.env
+  JARVIS_DOCKER_NETWORK: root_default
+  JARVIS_TRAEFIK_ENTRYPOINT: websecure
+  JARVIS_TRAEFIK_CERTRESOLVER: mytlschallenge
+  PUBLIC_URL: https://jarvis.aifasttrack.tech
+  PORT: "8000"
+
+services:
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      VOLUMES: 1
+      NETWORKS: 1
+      POST: 1 # crear / arrancar / parar / borrar
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [control]
+
+  landing:
+    <<: *app
+    environment:
+      <<: *backend-env
+      JARVIS_ROLE: landing
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: root_default
+      traefik.http.services.jarvis-landing.loadbalancer.server.port: "8000"
+      # Todo jarvis.aifasttrack.tech sin cookie jv (o con una cookie de una
+      # instancia que ya no existe): prioridad mínima.
+      traefik.http.routers.jarvis-landing.rule: Host(`jarvis.aifasttrack.tech`)
+      traefik.http.routers.jarvis-landing.priority: "1"
+      traefik.http.routers.jarvis-landing.entrypoints: websecure
+      traefik.http.routers.jarvis-landing.tls.certresolver: mytlschallenge
+      traefik.http.routers.jarvis-landing.service: jarvis-landing
+      # Rutas que son SIEMPRE de la web pública, aunque haya cookie jv
+      # (las instancias usan prioridad 100).
+      traefik.http.routers.jarvis-landing-own.rule: >-
+        Host(`jarvis.aifasttrack.tech`) && (Path(`/salir`) || Path(`/entrar`)
+        || Path(`/api/acceder`) || Path(`/api/alta`) || PathPrefix(`/api/cuenta/`)
+        || Path(`/api/stripe/webhook`) || Path(`/oauth/callback`)
+        || Path(`/api/contacto`) || Path(`/gracias`) || Path(`/cuenta`))
+      traefik.http.routers.jarvis-landing-own.priority: "200"
+      traefik.http.routers.jarvis-landing-own.entrypoints: websecure
+      traefik.http.routers.jarvis-landing-own.tls.certresolver: mytlschallenge
+      traefik.http.routers.jarvis-landing-own.service: jarvis-landing
+
+  console:
+    <<: *app
+    environment:
+      <<: *backend-env
+      JARVIS_ROLE: admin
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: root_default
+      traefik.http.services.jarvis-console.loadbalancer.server.port: "8000"
+      traefik.http.routers.jarvis-console.rule: Host(`consola-jarvis.aifasttrack.tech`)
+      traefik.http.routers.jarvis-console.entrypoints: websecure
+      traefik.http.routers.jarvis-console.tls.certresolver: mytlschallenge
+      traefik.http.routers.jarvis-console.service: jarvis-console
+
+networks:
+  # Solo el plano de control habla con docker-proxy.
+  control:
+    internal: true
+  # Red de Traefik (ya existe); aquí viven también las instancias.
+  web:
+    external: true
+    name: root_default

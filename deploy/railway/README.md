@@ -16,6 +16,10 @@ Proyecto Railway "jarvis"
 OpenJarvis no tiene usuarios internos: quien tiene la clave de una instancia
 ve todo lo de esa instancia. Por eso **una persona = un servicio**.
 
+> **¿VPS en vez de Railway?** El mismo código puede crear las instancias como
+> contenedores Docker en un solo servidor, con un único dominio y enrutado por
+> cookie (`JARVIS_BACKEND=docker`). Ver [deploy/vps/README.md](../vps/README.md).
+
 ## Qué incluye el fork
 
 | Cambio | Dónde |

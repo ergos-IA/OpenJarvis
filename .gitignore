@@ -131,3 +131,9 @@ learning.db
 minion_logs/
 *.oj-debug.json
 oj-debug.*.json
+
+# VPS (deploy/vps): secretos locales
+deploy/vps/shared.env
+deploy/vps/control.env
+deploy/vps/*.env
+!deploy/vps/*.env.example

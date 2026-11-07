@@ -30,6 +30,8 @@ Environment:
 * ``JARVIS_TRAEFIK_ENTRYPOINT`` / ``JARVIS_TRAEFIK_CERTRESOLVER``
   (default ``websecure`` / ``mytlschallenge``)
 * ``JARVIS_INSTANCE_MEMORY_MB`` optional memory limit per instance
+* ``JARVIS_INSTANCE_SHARED``  shared variables copied into every instance
+  (comma-separated; e.g. the OAuth and Microsoft app ids)
 * ``PUBLIC_URL``            the single public site (default
   ``https://jarvis.aifasttrack.tech``)
 """
@@ -166,6 +168,13 @@ def _parse_refs(label: str) -> Dict[str, str]:
         var, _, src = item.partition(":")
         refs[var] = src or var
     return refs
+
+
+def instance_shared_vars() -> List[str]:
+    """Shared variables every instance gets (``JARVIS_INSTANCE_SHARED``,
+    comma-separated), e.g. ``MS_CLIENT_ID,OPENJARVIS_GOOGLE_CLIENT_ID``."""
+    raw = os.environ.get("JARVIS_INSTANCE_SHARED", "")
+    return [v.strip() for v in raw.split(",") if v.strip()]
 
 
 def _format_refs(refs: Dict[str, str]) -> str:
@@ -556,6 +565,9 @@ class DockerBackend:
                 "/volumes/create",
                 body={"Name": vol, "Labels": {LABEL: "instance", LABEL_SLUG: slug}},
             )
+        variables = dict(variables)
+        for var in instance_shared_vars():
+            variables.setdefault(var, "${{shared.%s}}" % var)
         env, refs = substitute_shared(variables, self.shared_variables())
         env = self._instance_env(env)
         labels = self._labels(
@@ -598,6 +610,9 @@ class DockerBackend:
                 if k not in _IMAGE_ENV and image_env.get(k) != v
             }
         refs = _parse_refs(old_labels.get(LABEL_SHARED, ""))
+        for var in instance_shared_vars():
+            if var not in old_env and var not in refs:
+                refs[var] = var  # newly listed in JARVIS_INSTANCE_SHARED
         updates = dict(updates or {})
         for key in updates:
             refs.pop(key, None)  # set explicitly: no longer follows shared
