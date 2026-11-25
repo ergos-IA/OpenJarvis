@@ -46,6 +46,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   generateMessageIDV2,
   useMultiFileAuthState,
+  proto,
   WASocket,
 } from "@whiskeysockets/baileys";
 import * as fs from "fs";
@@ -185,17 +186,35 @@ async function main(): Promise<void> {
     //    renueva la sesión de cifrado con ese remitente (con tu propio número, a la primera;
     //    con un contacto, si se repite) y te avisa por el chat contigo mismo.
     const enviados = new Map<string, any>();
-    const guardarEnviado = (m: any) => {
-        try {
-            if (m?.key?.id && m.message) {
-                enviados.set(m.key.id, m.message);
-                if (enviados.size > 2000) enviados.delete(enviados.keys().next().value);
-            }
-        } catch { /* nada */ }
-    };
     const saludLog = `${authDir}/../wa-salud.log`;
     const anotar = (o: any) => {
         try { fs.appendFileSync(saludLog, JSON.stringify({ ts: Math.round(Date.now() / 1000), ...o }) + "\n"); } catch { /* nada */ }
+    };
+    // Y en disco, para poder reenviarlo aunque el puente se haya reiniciado (2 días).
+    const dirEnviados = `${authDir}/../wa-enviados`;
+    try { fs.mkdirSync(dirEnviados, { recursive: true }); } catch { /* nada */ }
+    let guardados = 0;
+    const guardarEnviado = (m: any) => {
+        try {
+            if (!m?.key?.id || !m.message) return;
+            enviados.set(m.key.id, m.message);
+            if (enviados.size > 2000) enviados.delete(enviados.keys().next().value);
+            fs.writeFileSync(`${dirEnviados}/${m.key.id.replace(/[^A-Za-z0-9]/g, "")}.bin`, proto.Message.encode(m.message).finish());
+            if (++guardados % 50 === 1) {
+                const limite = Date.now() - 2 * 86400e3;
+                for (const f of fs.readdirSync(dirEnviados)) {
+                    try { if (fs.statSync(`${dirEnviados}/${f}`).mtimeMs < limite) fs.rmSync(`${dirEnviados}/${f}`, { force: true }); } catch { /* nada */ }
+                }
+            }
+        } catch (e) { anotar({ tipo: "guardar_fallido", error: String(e) }); }
+    };
+    const buscarEnviado = (id: string) => {
+        if (enviados.has(id)) return enviados.get(id);
+        try {
+            const f = `${dirEnviados}/${id.replace(/[^A-Za-z0-9]/g, "")}.bin`;
+            if (fs.existsSync(f)) return proto.Message.decode(fs.readFileSync(f));
+        } catch { /* nada */ }
+        return undefined;
     };
     const usuarioDe = (jid: string) => (jid || "").split("@")[0].split(":")[0].split("_")[0];
     const fallos = new Map<string, number[]>();
@@ -356,7 +375,7 @@ async function main(): Promise<void> {
       markOnlineOnConnect: false,
       syncFullHistory: false,
             getMessage: async (key: any) => {
-                const m = enviados.get(key?.id || "");
+                const m = buscarEnviado(key?.id || "");
                 anotar({ tipo: "reintento", id: key?.id, jid: key?.remoteJid, tenia: !!m });
                 return m;
             },
