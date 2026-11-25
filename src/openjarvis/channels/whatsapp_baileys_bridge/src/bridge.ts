@@ -177,6 +177,75 @@ async function main(): Promise<void> {
 
   let sock: WASocket | null = null;
 
+    // [salud-wa] Salud del cifrado de WhatsApp.
+    // 1) Guardamos lo enviado: si el móvil (u otro destinatario) no puede descifrar un mensaje,
+    //    WhatsApp pide reenviarlo y Baileys lo busca con getMessage. Sin esto se queda en
+    //    «Esperando el mensaje» para siempre.
+    // 2) Si un mensaje entrante no se puede descifrar, se anota en /data/wa-salud.log y se
+    //    renueva la sesión de cifrado con ese remitente (con tu propio número, a la primera;
+    //    con un contacto, si se repite) y te avisa por el chat contigo mismo.
+    const enviados = new Map<string, any>();
+    const guardarEnviado = (m: any) => {
+        try {
+            if (m?.key?.id && m.message) {
+                enviados.set(m.key.id, m.message);
+                if (enviados.size > 2000) enviados.delete(enviados.keys().next().value);
+            }
+        } catch { /* nada */ }
+    };
+    const saludLog = `${authDir}/../wa-salud.log`;
+    const anotar = (o: any) => {
+        try { fs.appendFileSync(saludLog, JSON.stringify({ ts: Math.round(Date.now() / 1000), ...o }) + "\n"); } catch { /* nada */ }
+    };
+    const usuarioDe = (jid: string) => (jid || "").split("@")[0].split(":")[0].split("_")[0];
+    const fallos = new Map<string, number[]>();
+    let ultimoAviso = 0;
+    const renovarSesion = (jid: string, motivo: string) => {
+        const u = usuarioDe(jid);
+        let n = 0;
+        if (!u) return n;
+        try {
+            for (const f of fs.readdirSync(authDir)) {
+                if (f.startsWith(`session-${u}_`) || f.startsWith(`session-${u}.`)) {
+                    fs.rmSync(`${authDir}/${f}`, { force: true });
+                    n++;
+                }
+            }
+        } catch { /* nada */ }
+        anotar({ tipo: "renovada", jid, ficheros: n, motivo });
+        return n;
+    };
+    const avisoPropio = async (texto: string) => {
+        try {
+            const yo = usuarioDe(sock?.user?.id || "");
+            if (!yo || !sock) return;
+            const messageId = generateMessageIDV2(sock.user?.id);
+            rememberSent(messageId);
+            guardarEnviado(await sock.sendMessage(`${yo}@s.whatsapp.net`, { text: texto }, { messageId }));
+        } catch (e) {
+            anotar({ tipo: "aviso_fallido", error: String(e) });
+        }
+    };
+    const noDescifra = (msg: any) => {
+        const k = msg.key || {};
+        const jid = k.participant || k.remoteJid || "";
+        const u = usuarioDe(jid);
+        const propio = !!k.fromMe || [sock?.user?.id, sock?.user?.lid].some((x: any) => x && usuarioDe(x) === u);
+        anotar({ tipo: "no_descifra", jid, chat: k.remoteJid, propio, id: k.id, motivo: (msg.messageStubParameters || []).join(" ").slice(0, 160) });
+        const ahora = Date.now();
+        const lista = (fallos.get(u) || []).filter((t: any) => ahora - t < 30 * 60e3);
+        lista.push(ahora);
+        fallos.set(u, lista);
+        if (!propio && lista.length < 2) return;
+        fallos.delete(u);
+        renovarSesion(jid, propio ? "propio" : "contacto");
+        if (propio && ahora - ultimoAviso > 6 * 3600e3) {
+            ultimoAviso = ahora;
+            setTimeout(() => void avisoPropio("🔧 Jarvis: tu móvil y yo habíamos perdido la sincronía del cifrado y la he renovado. Si ves algún «Esperando el mensaje», vuelve a escribirme."), 8000);
+        }
+    };
+
+
   async function resyncContacts(mark: boolean): Promise<void> {
     if (!sock) return;
     try {
@@ -286,6 +355,11 @@ async function main(): Promise<void> {
       printQRInTerminal: false,
       markOnlineOnConnect: false,
       syncFullHistory: false,
+            getMessage: async (key: any) => {
+                const m = enviados.get(key?.id || "");
+                anotar({ tipo: "reintento", id: key?.id, jid: key?.remoteJid, tenia: !!m });
+                return m;
+            },
     });
 
     sock.ev.on("creds.update", saveCreds);
@@ -357,6 +431,7 @@ async function main(): Promise<void> {
       // "append" covers history sync and our own sends; only live messages.
       if (m.type !== "notify") return;
       for (const msg of m.messages) {
+        if (msg.messageStubType === 2) { noDescifra(msg); continue; }  // CIPHERTEXT
         if (!msg.message) continue;
         if (shouldHandle(msg)) {
           const text = extractText(msg.message);
@@ -438,7 +513,7 @@ async function main(): Promise<void> {
         }
         const messageId = generateMessageIDV2(sock.user?.id);
         rememberSent(messageId);
-        await sock.sendMessage(jid, { text: cmd.text as string }, { messageId });
+        guardarEnviado(await sock.sendMessage(jid, { text: cmd.text as string }, { messageId }));
         if (requestId) {
           emit({ type: "send_result", request_id: requestId, ok: true, jid });
         }
